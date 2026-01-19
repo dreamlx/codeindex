@@ -1,0 +1,135 @@
+{
+  "project": {
+    "name": "codeindex",
+    "version": "0.1.2",
+    "description": "AI-native code indexing tool for large codebases",
+    "generated": "2026-01-15",
+    "python_requires": ">=3.10",
+    "license": "MIT"
+  },
+  "entry_points": {
+    "cli": {
+      "path": "src/codeindex/cli.py",
+      "function": "main",
+      "installed_as": "codeindex"
+    }
+  },
+  "modules": {
+    "cli": {
+      "path": "src/codeindex/cli.py",
+      "lines": 213,
+      "purpose": "Click-based CLI commands",
+      "exports": ["main", "scan", "init", "status", "list_dirs"],
+      "imports": ["click", "rich", "config", "invoker", "parser", "scanner", "writer"]
+    },
+    "parser": {
+      "path": "src/codeindex/parser.py",
+      "lines": 263,
+      "purpose": "Python AST extraction using tree-sitter",
+      "classes": ["Symbol", "Import", "ParseResult"],
+      "exports": ["parse_file", "parse_directory", "Symbol", "Import", "ParseResult"],
+      "imports": ["tree_sitter", "tree_sitter_python"]
+    },
+    "scanner": {
+      "path": "src/codeindex/scanner.py",
+      "lines": 107,
+      "purpose": "Directory traversal with glob filtering",
+      "classes": ["ScanResult"],
+      "exports": ["scan_directory", "find_all_directories", "ScanResult"],
+      "imports": ["fnmatch", "config"]
+    },
+    "writer": {
+      "path": "src/codeindex/writer.py",
+      "lines": 165,
+      "purpose": "Format prompts and write README_AI.md",
+      "classes": ["WriteResult"],
+      "exports": ["format_symbols_for_prompt", "format_imports_for_prompt", "format_files_for_prompt", "write_readme", "generate_fallback_readme", "WriteResult"],
+      "imports": ["parser"]
+    },
+    "invoker": {
+      "path": "src/codeindex/invoker.py",
+      "lines": 202,
+      "purpose": "Execute external AI CLI tools",
+      "classes": ["InvokeResult"],
+      "exports": ["format_prompt", "invoke_ai_cli", "invoke_ai_cli_stdin", "InvokeResult"],
+      "imports": ["subprocess", "shlex", "rich"]
+    },
+    "config": {
+      "path": "src/codeindex/config.py",
+      "lines": 100,
+      "purpose": "YAML configuration management",
+      "classes": ["Config"],
+      "exports": ["Config", "DEFAULT_CONFIG_NAME", "DEFAULT_OUTPUT_FILE", "DEFAULT_AI_COMMAND"],
+      "imports": ["yaml"]
+    },
+    "__init__": {
+      "path": "src/codeindex/__init__.py",
+      "lines": 12,
+      "purpose": "Package entry point",
+      "exports": ["__version__"]
+    }
+  },
+  "dependencies": {
+    "runtime": {
+      "click": ">=8.0",
+      "pyyaml": ">=6.0",
+      "rich": ">=13.0",
+      "tree-sitter": ">=0.21",
+      "tree-sitter-python": ">=0.21"
+    },
+    "dev": {
+      "pytest": ">=7.0",
+      "pytest-cov": ">=4.0",
+      "ruff": ">=0.1"
+    }
+  },
+  "tests": {
+    "path": "tests/",
+    "files": ["test_parser.py"],
+    "count": 5,
+    "coverage_areas": ["parser"]
+  },
+  "configuration": {
+    "files": [".codeindex.yaml", "pyproject.toml"],
+    "schema": {
+      "version": "integer",
+      "ai_command": "string with {prompt} placeholder",
+      "include": "list of glob patterns",
+      "exclude": "list of glob patterns",
+      "languages": "list of supported languages",
+      "output_file": "string filename"
+    }
+  },
+  "data_flow": [
+    {"step": 1, "module": "scanner", "function": "scan_directory", "input": "directory path", "output": "ScanResult"},
+    {"step": 2, "module": "parser", "function": "parse_file", "input": "file paths", "output": "ParseResult"},
+    {"step": 3, "module": "writer", "function": "format_*_for_prompt", "input": "ParseResult", "output": "formatted strings"},
+    {"step": 4, "module": "invoker", "function": "invoke_ai_cli", "input": "prompt", "output": "AI content"},
+    {"step": 5, "module": "writer", "function": "write_readme", "input": "content", "output": "README_AI.md"}
+  ],
+  "cli_commands": {
+    "scan": {
+      "args": ["path"],
+      "options": ["--dry-run", "--fallback", "--quiet", "--timeout"],
+      "description": "Scan directory and generate README_AI.md"
+    },
+    "init": {
+      "options": ["--force"],
+      "description": "Create .codeindex.yaml configuration file"
+    },
+    "status": {
+      "options": ["--root"],
+      "description": "Show indexing status for the project"
+    },
+    "list-dirs": {
+      "options": ["--root"],
+      "description": "List all directories that would be indexed"
+    }
+  },
+  "metrics": {
+    "total_modules": 7,
+    "total_lines": 1050,
+    "language_support": ["python"],
+    "test_count": 5
+  }
+}
