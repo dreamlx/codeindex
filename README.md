@@ -1,0 +1,309 @@
+# codeindex
+
+[![PyPI version](https://badge.fury.io/py/codeindex.svg)](https://badge.fury.io/py/codeindex)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests](https://github.com/yourusername/codeindex/workflows/Tests/badge.svg)](https://github.com/yourusername/codeindex/actions)
+
+**AI-native code indexing tool for large codebases.**
+
+codeindex automatically generates intelligent documentation (`README_AI.md`) for your directories using tree-sitter parsing and external AI CLIs. Perfect for understanding large codebases, onboarding new developers, and maintaining living documentation.
+
+---
+
+## ✨ Features
+
+- 🚀 **AI-Powered Documentation**: Generate comprehensive README files using Claude, GPT, or any AI CLI
+- 🌳 **Tree-sitter Parsing**: Accurate symbol extraction (classes, functions, methods, imports) for Python (more languages coming)
+- ⚡ **Parallel Scanning**: Scan multiple directories concurrently for fast indexing
+- 🎯 **Smart Filtering**: Include/exclude patterns with glob support
+- 🔧 **Flexible Integration**: Works with any AI CLI tool via configurable commands
+- 📊 **Coverage Tracking**: Check which directories have been indexed
+- 🎨 **Fallback Mode**: Generate basic documentation without AI
+
+---
+
+## 📦 Installation
+
+### Using pipx (Recommended)
+
+```bash
+pipx install codeindex
+```
+
+### Using pip
+
+```bash
+pip install codeindex
+```
+
+### From Source
+
+```bash
+git clone https://github.com/yourusername/codeindex.git
+cd codeindex
+pip install -e .
+```
+
+---
+
+## 🚀 Quick Start
+
+### 1. Initialize Configuration
+
+```bash
+cd /your/project
+codeindex init
+```
+
+This creates `.codeindex.yaml` in your project.
+
+### 2. Configure AI CLI
+
+Edit `.codeindex.yaml`:
+
+```yaml
+ai_command: 'claude -p "{prompt}" --allowedTools "Read"'
+
+include:
+  - src/
+exclude:
+  - "**/test/**"
+  - "**/__pycache__/**"
+
+languages:
+  - python
+
+output_file: "README_AI.md"
+```
+
+**Other AI CLI examples:**
+```yaml
+# OpenAI
+ai_command: 'openai chat "{prompt}" --model gpt-4'
+
+# Gemini
+ai_command: 'gemini "{prompt}"'
+
+# Custom script
+ai_command: '/path/to/my-ai-wrapper.sh "{prompt}"'
+```
+
+### 3. Scan a Directory
+
+```bash
+# Scan single directory
+codeindex scan ./src/auth
+
+# Preview prompt without executing
+codeindex scan ./src/auth --dry-run
+
+# Generate without AI (fallback mode)
+codeindex scan ./src/auth --fallback
+```
+
+### 4. Batch Processing
+
+```bash
+# List all indexable directories
+codeindex list-dirs
+
+# Scan all directories in parallel (4 workers)
+codeindex list-dirs | xargs -P 4 -I {} codeindex scan {}
+
+# Or with GNU parallel
+codeindex list-dirs | parallel -j 4 codeindex scan {}
+```
+
+### 5. Check Status
+
+```bash
+codeindex status
+```
+
+**Output:**
+```
+Indexing Status
+───────────────────────────────────────
+✅ src/auth/
+✅ src/utils/
+⚠️  src/api/ (no README_AI.md)
+✅ src/db/
+
+Indexed: 3/4 (75%)
+```
+
+---
+
+## 📖 Documentation
+
+- **[Getting Started](docs/guides/getting-started.md)** - Detailed installation and setup
+- **[Configuration Guide](docs/guides/configuration.md)** - All config options explained
+- **[Advanced Usage](docs/guides/advanced-usage.md)** - Parallel scanning, custom prompts
+- **[Contributing](docs/guides/contributing.md)** - Development setup and guidelines
+- **[Roadmap](docs/planning/roadmap/2025-Q1.md)** - Future plans and milestones
+- **[Architecture](docs/architecture/)** - Design decisions and ADRs
+- **[Changelog](CHANGELOG.md)** - Version history
+
+---
+
+## 🤖 Claude Code Integration
+
+codeindex includes skills for [Claude Code](https://claude.ai/code) to enhance your AI-assisted development workflow.
+
+### Install Skills
+
+```bash
+# Navigate to codeindex directory
+cd /path/to/codeindex
+
+# Run install script
+./skills/install.sh
+```
+
+### Available Skills
+
+| Command | Description |
+|---------|-------------|
+| `/mo:arch` | Query code architecture using README_AI.md indexes |
+| `/mo:index` | Generate repository index with codeindex |
+
+### Usage Example
+
+After indexing your project:
+
+```
+You: /mo:arch Where is the parser implemented?
+
+Claude: Based on README_AI.md, the parser is in src/codeindex/parser.py.
+        It uses tree-sitter for AST parsing and extracts Symbol and Import...
+```
+
+### CLAUDE.md Integration
+
+Add to your project's `CLAUDE.md`:
+
+```markdown
+Each source directory has README_AI.md - read it before modifying code to understand module structure.
+```
+
+See [skills/README.md](skills/README.md) for detailed documentation.
+
+---
+
+## 🎯 Use Cases
+
+### 📚 Code Understanding
+Generate comprehensive documentation for legacy codebases to help new developers onboard faster.
+
+### 🔍 Codebase Navigation
+Create structured overviews of large projects (10,000+ files) for efficient exploration.
+
+### 🤖 AI Agent Integration
+Use generated indexes with tools like Claude Code or Cursor for better code context.
+
+### 📝 Living Documentation
+Keep documentation up-to-date by regenerating README_AI.md files as code changes.
+
+---
+
+## 🛠️ How It Works
+
+```
+Directory → Scanner → Parser (tree-sitter) → Prompt Generator → AI CLI → README_AI.md
+```
+
+1. **Scanner**: Walks directories, filters by config patterns
+2. **Parser**: Extracts symbols (classes, functions, imports) using tree-sitter
+3. **Writer**: Formats parsed data into a prompt
+4. **Invoker**: Executes external AI CLI with the prompt
+5. **Output**: AI generates `README_AI.md` with intelligent documentation
+
+---
+
+## 🌍 Language Support
+
+| Language       | Status          | Parser      |
+|----------------|-----------------|-------------|
+| Python         | ✅ Supported    | tree-sitter |
+| TypeScript/JS  | 🚧 Coming Soon  | tree-sitter |
+| Java           | 🚧 Planned      | tree-sitter |
+| Go             | 🚧 Planned      | tree-sitter |
+| Rust           | 🚧 Planned      | tree-sitter |
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](docs/guides/contributing.md) for:
+
+- Development setup
+- TDD workflow
+- Code style guidelines
+- How to add new languages
+- Release process
+
+### Quick Start for Contributors
+
+```bash
+# Clone and install
+git clone https://github.com/yourusername/codeindex.git
+cd codeindex
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Lint and format
+ruff check src/
+ruff format src/
+```
+
+---
+
+## 📊 Roadmap
+
+See [2025 Q1 Roadmap](docs/planning/roadmap/2025-Q1.md) for detailed plans.
+
+**Upcoming:**
+- Multi-language support (TypeScript, Java, Go)
+- MCP service integration for Claude Code
+- Incremental indexing (only scan changed files)
+- Performance optimizations
+- Plugin system for custom AI providers
+
+---
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- [tree-sitter](https://tree-sitter.github.io/) - Fast, incremental parsing
+- [Claude CLI](https://github.com/anthropics/claude-cli) - AI integration inspiration
+- All contributors and users
+
+---
+
+## 📞 Support
+
+- **Questions**: [GitHub Discussions](https://github.com/yourusername/codeindex/discussions)
+- **Bugs**: [GitHub Issues](https://github.com/yourusername/codeindex/issues)
+- **Feature Requests**: [GitHub Issues](https://github.com/yourusername/codeindex/issues/new?labels=enhancement)
+
+---
+
+## ⭐ Star History
+
+If you find codeindex useful, please star the repository to show your support!
+
+[![Star History Chart](https://api.star-history.com/svg?repos=yourusername/codeindex&type=Date)](https://star-history.com/#yourusername/codeindex&Date)
+
+---
+
+<p align="center">
+  Made with ❤️ by the codeindex team
+</p>
