@@ -168,37 +168,10 @@ application/
 ```
 
 ### 实现任务
-- [ ] 4.1 检测 ThinkPHP 项目（composer.json 或目录结构）
-- [ ] 4.2 解析 controller 生成路由表
-- [ ] 4.3 解析 model 提取表名映射
+- [x] 4.1 检测 ThinkPHP 项目（composer.json 或目录结构）✅
+- [x] 4.2 解析 controller 生成路由表 ✅
+- [x] 4.3 解析 model 提取表名映射 ✅
 - [ ] 4.4 添加框架特定分组模式
-
----
-
-## P2: 从 PHPDoc 提取描述 [增强]
-
-### 问题描述
-当前只提取了符号签名，没有提取 PHPDoc 中的描述。
-
-### 当前输出
-```markdown
-- `public function create(Request $request): Response`
-```
-
-### 目标输出
-```markdown
-- `create(Request $request): Response` - 创建新用户
-  - @param Request $request 包含用户信息的请求
-  - @return Response 创建结果
-  - @throws ValidationException 验证失败时抛出
-```
-
-### 实现任务
-- [ ] 5.1 解析 PHPDoc 注释块
-- [ ] 5.2 提取 @param、@return、@throws 标签
-- [ ] 5.3 提取描述文本（第一行）
-- [ ] 5.4 更新 Symbol 数据结构支持 tags
-- [ ] 5.5 在 detailed 级别展示完整 PHPDoc
 
 ---
 
@@ -238,6 +211,24 @@ _完整符号列表见 PROJECT_SYMBOLS.md_
 - [ ] 6.3 设计 AI prompt（分组、核心类、架构概述）
 - [ ] 6.4 生成 PROJECT_OVERVIEW.md（AI 版）
 - [ ] 6.5 添加 `codeindex symbols --ai` 强制使用 AI
+
+---
+
+## P4: 从 PHPDoc 提取描述 [可选增强]
+
+### 问题描述
+当前只提取了符号签名，没有提取 PHPDoc 中的描述。
+
+### 收益分析
+- 如果 PHPDoc 质量好 → 对 AI 理解帮助大
+- 如果 PHPDoc 缺失/质量差 → 收益有限
+- 建议作为可选功能
+
+### 实现任务
+- [ ] 5.1 解析 PHPDoc 注释块
+- [ ] 5.2 提取 @param、@return、@throws 标签
+- [ ] 5.3 提取描述文本（第一行）
+- [ ] 5.4 更新 Symbol 数据结构支持 tags
 
 ---
 
