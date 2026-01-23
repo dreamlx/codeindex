@@ -281,6 +281,11 @@ class SmartWriter:
                         continue
 
                     lines.append(f"### {result.path.name}")
+
+                    # Show namespace for PHP files
+                    if result.namespace:
+                        lines.append(f"**Namespace:** `{result.namespace}`")
+
                     if result.module_docstring:
                         lines.append(f"_{result.module_docstring[:150]}_")
                     lines.append("")

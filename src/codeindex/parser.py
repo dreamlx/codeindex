@@ -38,6 +38,7 @@ class ParseResult:
     symbols: list[Symbol] = field(default_factory=list)
     imports: list[Import] = field(default_factory=list)
     module_docstring: str = ""
+    namespace: str = ""  # PHP namespace
     error: str | None = None
 
 
@@ -281,8 +282,15 @@ def parse_file(path: Path) -> ParseResult:
     elif language == "php":
         # PHP parsing
         root = tree.root_node
+        namespace = ""
+
         for child in root.children:
-            if child.type == "class_declaration":
+            if child.type == "namespace_definition":
+                namespace = _parse_php_namespace(child, source_bytes)
+            elif child.type == "namespace_use_declaration":
+                use_imports = _parse_php_use(child, source_bytes)
+                imports.extend(use_imports)
+            elif child.type == "class_declaration":
                 symbols.extend(_parse_php_class(child, source_bytes))
             elif child.type == "function_definition":
                 symbols.append(_parse_php_function(child, source_bytes))
@@ -297,6 +305,14 @@ def parse_file(path: Path) -> ParseResult:
             if child.type == "comment" and child.text.startswith(b"/**"):
                 module_docstring = _extract_php_docstring(child, source_bytes)
                 break
+
+        return ParseResult(
+            path=path,
+            symbols=symbols,
+            imports=imports,
+            module_docstring=module_docstring,
+            namespace=namespace,
+        )
 
     return ParseResult(
         path=path,
@@ -525,3 +541,77 @@ def _parse_php_include(node, source_bytes: bytes) -> Import | None:
                 module = module.strip('\'"')
                 return Import(module=module, names=[], is_from=False)
     return None
+
+
+def _parse_php_namespace(node, source_bytes: bytes) -> str:
+    """Parse PHP namespace definition."""
+    for child in node.children:
+        if child.type == "namespace_name":
+            return _get_node_text(child, source_bytes)
+    return ""
+
+
+def _parse_php_use(node, source_bytes: bytes) -> list[Import]:
+    """
+    Parse PHP use statement.
+
+    Handles:
+    - use App\\Service\\UserService;
+    - use App\\Model\\User as UserModel;
+    - use App\\Repository\\{UserRepository, OrderRepository};
+    """
+    imports = []
+    base_namespace = ""
+
+    for child in node.children:
+        if child.type == "namespace_name":
+            # Group import base: use App\Repository\{...}
+            base_namespace = _get_node_text(child, source_bytes)
+
+        elif child.type == "namespace_use_clause":
+            # Single import
+            module = ""
+            alias = ""
+
+            for clause_child in child.children:
+                if clause_child.type == "qualified_name":
+                    module = _get_node_text(clause_child, source_bytes)
+                elif clause_child.type == "name" and module:
+                    # This is the alias (after 'as')
+                    alias = _get_node_text(clause_child, source_bytes)
+
+            if module:
+                # If there's a base namespace (group import), prepend it
+                if base_namespace:
+                    module = f"{base_namespace}\\{module}"
+
+                imports.append(Import(
+                    module=module,
+                    names=[alias] if alias else [],
+                    is_from=True,  # PHP use is similar to Python's from...import
+                ))
+
+        elif child.type == "namespace_use_group":
+            # Group import: {UserRepository, OrderRepository}
+            for group_child in child.children:
+                if group_child.type == "namespace_use_clause":
+                    name = ""
+                    alias = ""
+                    for clause_child in group_child.children:
+                        if clause_child.type == "qualified_name":
+                            name = _get_node_text(clause_child, source_bytes)
+                        elif clause_child.type == "name":
+                            if not name:
+                                name = _get_node_text(clause_child, source_bytes)
+                            else:
+                                alias = _get_node_text(clause_child, source_bytes)
+
+                    if name:
+                        full_module = f"{base_namespace}\\{name}" if base_namespace else name
+                        imports.append(Import(
+                            module=full_module,
+                            names=[alias] if alias else [],
+                            is_from=True,
+                        ))
+
+    return imports

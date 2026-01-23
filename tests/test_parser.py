@@ -226,3 +226,77 @@ function helper(string $input): array {
     assert func.name == "helper"
     assert func.kind == "function"
     assert "function helper(string $input): array" in func.signature
+
+
+def test_parse_php_namespace():
+    """Test parsing PHP namespace declaration."""
+    code = '''<?php
+namespace App\\Controller;
+
+class UserController {}
+'''
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".php", delete=False) as f:
+        f.write(code)
+        f.flush()
+        path = Path(f.name)
+
+    result = parse_file(path)
+    path.unlink()
+
+    assert result.error is None
+    assert result.namespace == "App\\Controller"
+
+
+def test_parse_php_use_statements():
+    """Test parsing PHP use statements."""
+    code = '''<?php
+namespace App\\Controller;
+
+use App\\Service\\UserService;
+use App\\Model\\User as UserModel;
+use Illuminate\\Http\\Request;
+
+class TestController {}
+'''
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".php", delete=False) as f:
+        f.write(code)
+        f.flush()
+        path = Path(f.name)
+
+    result = parse_file(path)
+    path.unlink()
+
+    assert result.error is None
+    assert len(result.imports) == 3
+
+    modules = [imp.module for imp in result.imports]
+    assert "App\\Service\\UserService" in modules
+    assert "App\\Model\\User" in modules
+    assert "Illuminate\\Http\\Request" in modules
+
+    # Check alias
+    user_import = [imp for imp in result.imports if imp.module == "App\\Model\\User"][0]
+    assert "UserModel" in user_import.names
+
+
+def test_parse_php_group_use():
+    """Test parsing PHP group use statements."""
+    code = '''<?php
+use App\\Repository\\{UserRepository, OrderRepository};
+
+class Test {}
+'''
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".php", delete=False) as f:
+        f.write(code)
+        f.flush()
+        path = Path(f.name)
+
+    result = parse_file(path)
+    path.unlink()
+
+    assert result.error is None
+    assert len(result.imports) == 2
+
+    modules = [imp.module for imp in result.imports]
+    assert "App\\Repository\\UserRepository" in modules
+    assert "App\\Repository\\OrderRepository" in modules
