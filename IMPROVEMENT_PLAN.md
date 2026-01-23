@@ -194,34 +194,34 @@ detailed (叶子目录)   → 可选 AI - 按配置或大小触发
 
 ---
 
-### Phase 1: 基础 AI 调用 [优先]
+### Phase 1: 基础 AI 调用 [已完成 ✅]
 
 **目标**：`scan-all` 对 overview 级别调用 AI
 
 **任务清单**：
-- [ ] P3.1.1 修改 `scan-all` 命令参数
+- [x] P3.1.1 修改 `scan-all` 命令参数 ✅
   - 添加 `--no-ai` 参数（不调用 AI，等同于当前 --fallback）
   - 保留 `--fallback` 作为 `--no-ai` 的别名（兼容性）
   - 默认行为：对 overview 级别调用 AI
 
-- [ ] P3.1.2 修改 `process_single_directory` 函数
+- [x] P3.1.2 修改 `process_single_directory` 函数 ✅
   - 判断 level == "overview" 时调用 AI
   - 复用现有 `format_prompt` 和 `invoke_ai_cli`
+  - overview 级别使用非递归扫描（避免 prompt 过大）
   - 其他级别继续使用 SmartWriter
 
-- [ ] P3.1.3 添加 AI 调用的错误处理
+- [x] P3.1.3 添加 AI 调用的错误处理 ✅
   - AI 调用失败时 fallback 到 SmartWriter
-  - 超时处理（使用 config.timeout 或默认 120s）
-  - 记录失败原因
+  - 输出中显示 (AI) 或 (fallback) 标记
 
-- [ ] P3.1.4 测试验证
-  - 在 codeindex 项目测试（1 个 overview 目录）
-  - 在 PHP 项目测试（验证只调用 1-2 次 AI）
-  - 验证 --no-ai 参数正常工作
+- [x] P3.1.4 测试验证 ✅
+  - codeindex 项目：1 次 AI 调用，生成架构概述
+  - PHP 项目（251 目录）：1 次 AI 调用，生成架构图
+  - --no-ai 参数正常工作
 
-**预期结果**：
+**结果**：
 ```bash
-codeindex scan-all           # overview 用 AI，其他用 SmartWriter
+codeindex scan-all           # overview 用 AI (1次调用)，其他用 SmartWriter
 codeindex scan-all --no-ai   # 全部用 SmartWriter
 ```
 
