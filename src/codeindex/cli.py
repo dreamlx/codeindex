@@ -28,6 +28,7 @@ from .writer import (
     generate_fallback_readme,
     write_readme,
 )
+from .smart_writer import SmartWriter, determine_level
 
 console = Console()
 
@@ -100,12 +101,27 @@ def scan(
     imports_info = format_imports_for_prompt(parse_results)
 
     if fallback:
-        # Generate basic README without AI
+        # Generate smart README without AI
         if not quiet:
-            console.print("  [dim]→ Writing fallback README...[/dim]")
-        write_result = generate_fallback_readme(path, parse_results, config.output_file)
+            console.print("  [dim]→ Writing smart README...[/dim]")
+
+        # For single directory scan, always use detailed level
+        # (overview/navigation only make sense in hierarchical mode)
+        level = "detailed"
+
+        writer = SmartWriter(config.indexing)
+        write_result = writer.write_readme(
+            dir_path=path,
+            parse_results=parse_results,
+            level=level,
+            child_dirs=[],
+            output_file=config.output_file,
+        )
+
         if write_result.success:
-            console.print(f"[green]✓ Created (fallback):[/green] {write_result.path}")
+            size_kb = write_result.size_bytes / 1024
+            truncated_msg = " [truncated]" if write_result.truncated else ""
+            console.print(f"[green]✓ Created ({level}, {size_kb:.1f}KB{truncated_msg}):[/green] {write_result.path}")
         else:
             console.print(f"[red]✗ Error:[/red] {write_result.error}")
         return
@@ -179,11 +195,20 @@ def init(force: bool):
 
 
 @main.command()
+@click.option("--root", type=click.Path(exists=True, file_okay=False, path_type=Path), default=".")
 @click.option("--parallel", "-p", type=int, help="Override parallel workers")
 @click.option("--timeout", default=120, help="Timeout per directory in seconds")
 @click.option("--fallback", is_flag=True, help="Use fallback mode for all directories")
 @click.option("--quiet", "-q", is_flag=True, help="Minimal output")
-def scan_all(parallel: int | None, timeout: int, fallback: bool, quiet: bool):
+@click.option("--hierarchical", "-h", is_flag=True, help="Use hierarchical processing (bottom-up)")
+def scan_all(
+    root: Path | None,
+    parallel: int | None,
+    timeout: int,
+    fallback: bool,
+    quiet: bool,
+    hierarchical: bool
+):
     """Scan all project directories for README_AI.md generation."""
     import subprocess
     import sys
@@ -194,8 +219,30 @@ def scan_all(parallel: int | None, timeout: int, fallback: bool, quiet: bool):
     if parallel is not None:
         config.parallel_workers = parallel
 
+    # Use hierarchical processing if requested
+    if hierarchical:
+        # Get current directory
+        root = Path.cwd() if root is None else root
+
+        if not quiet:
+            console.print("[bold]🎯 Using hierarchical processing (bottom-up)[/bold]")
+
+        # Import hierarchical processor
+        from .hierarchical import scan_directories_hierarchical
+
+        success = scan_directories_hierarchical(
+            root,
+            config,
+            config.parallel_workers,
+            fallback,
+            quiet,
+            timeout
+        )
+
+        return
+
     # Get current directory
-    root = Path.cwd()
+    root = Path.cwd() if root is None else root
 
     # Find all directories to scan
     dirs = find_all_directories(root, config)
