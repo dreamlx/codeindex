@@ -63,19 +63,35 @@ This creates `.codeindex.yaml` in your project.
 Edit `.codeindex.yaml`:
 
 ```yaml
+# AI CLI command to use for generating documentation
 ai_command: 'claude -p "{prompt}" --allowedTools "Read"'
 
+# List of patterns to include for scanning
 include:
   - src/
+
+# List of patterns to exclude from scanning
 exclude:
   - "**/test/**"
   - "**/__pycache__/**"
 
+# Supported languages
 languages:
   - python
   - php
 
+# Output filename
 output_file: "README_AI.md"
+
+# AI Enhancement Settings (NEW)
+ai_enhancement:
+  strategy: "selective"     # "selective" | "all"
+  enabled: true
+  size_threshold: 40960     # >40KB triggers AI enhancement
+
+  # Parallel processing settings
+  max_concurrent: 2         # Maximum parallel AI calls
+  rate_limit_delay: 1.0     # Seconds between AI calls
 ```
 
 **Other AI CLI examples:**
@@ -106,14 +122,37 @@ codeindex scan ./src/auth --fallback
 ### 4. Batch Processing
 
 ```bash
-# List all indexable directories
-codeindex list-dirs
+# Two-phase processing with AI enhancement (NEW)
+codeindex scan-all                # Uses ai_enhancement strategy from config
+codeindex scan-all --ai-all       # Enhance ALL directories with AI
+codeindex scan-all --no-ai        # Use SmartWriter only (no AI)
 
-# Scan all directories in parallel (4 workers)
+# Traditional batch processing
 codeindex list-dirs | xargs -P 4 -I {} codeindex scan {}
-
-# Or with GNU parallel
 codeindex list-dirs | parallel -j 4 codeindex scan {}
+```
+
+#### AI Enhancement Strategies
+
+| Command | Behavior | Use Case |
+|---------|----------|----------|
+| `scan-all` | Uses config `ai_enhancement.strategy` | Smart and efficient |
+| `scan-all --ai-all` | Enhances ALL directories with AI | Best quality, more time |
+| `scan-all --no-ai` | SmartWriter only | Fast, no AI costs |
+
+**Example output with AI enhancement:**
+```
+📝 Phase 1: Generating READMEs (SmartWriter)...
+✓ Application ( 50KB)
+✓ Admin ( 20KB)
+✓ api ( 15KB)
+→ Phase 1 complete: 3 directories
+
+🤖 Phase 2: AI Enhancement...
+→ Checklist: 3 directories (1 overview, 2 oversize)
+✓ Application: AI enhanced (50KB → 22KB)
+✓ api: AI enhanced (15KB → 7KB)
+→ Completed: 3 directories, 2 AI enhanced
 ```
 
 ### 5. Check Status
@@ -145,6 +184,64 @@ Indexed: 3/4 (75%)
 - **[Roadmap](docs/planning/roadmap/2025-Q1.md)** - Future plans and milestones
 - **[Architecture](docs/architecture/)** - Design decisions and ADRs
 - **[Changelog](CHANGELOG.md)** - Version history
+
+---
+
+## ⚙️ Configuration Reference
+
+### Complete `.codeindex.yaml`
+
+```yaml
+codeindex: 1
+
+# AI CLI command (required)
+ai_command: 'claude -p "{prompt}" --allowedTools "Read"'
+
+# Directory patterns
+include:
+  - src/                # Include all subdirectories recursively
+  - modules/
+
+exclude:
+  - "**/test/**"
+  - "**/__pycache__/**"
+  - "**/node_modules/**"
+
+# Language support
+languages:
+  - python
+  - php
+
+# Output settings
+output_file: "README_AI.md"
+parallel_workers: 8
+batch_size: 50
+
+# Smart indexing (generates tiered documentation)
+indexing:
+  max_readme_size: 51200
+  root_level: "overview"
+  module_level: "navigation"
+  leaf_level: "detailed"
+
+# AI Enhancement (NEW - for scan-all command)
+ai_enhancement:
+  strategy: "selective"      # "selective" | "all"
+  enabled: true
+  size_threshold: 40960      # >40KB triggers AI
+
+  # Rate limiting and concurrency
+  max_concurrent: 2          # Max parallel AI calls
+  rate_limit_delay: 1.0      # Delay between calls
+
+# Incremental updates
+incremental:
+  enabled: true
+  thresholds:
+    skip_lines: 5
+    current_only: 50
+    suggest_full: 200
+```
 
 ---
 
