@@ -175,7 +175,115 @@ application/
 
 ---
 
-## P3: AI 智能总结大文件 [路线图]
+## P3: scan-all AI 增强 [当前]
+
+### 问题描述
+当前 `scan-all` 只使用 SmartWriter 生成机械化 README，没有利用 `ai_command` 配置。
+
+### 目标
+- `scan-all` 默认对关键目录调用 AI 增强
+- `scan-all --no-ai` 使用纯 SmartWriter（当前行为）
+- 智能选择哪些目录需要 AI 增强
+
+### 设计原则
+```
+overview (根目录)     → AI 调用 - 生成项目概述和架构说明
+navigation (中间层)   → SmartWriter - 符号列表够用
+detailed (叶子目录)   → 可选 AI - 按配置或大小触发
+```
+
+---
+
+### Phase 1: 基础 AI 调用 [优先]
+
+**目标**：`scan-all` 对 overview 级别调用 AI
+
+**任务清单**：
+- [ ] P3.1.1 修改 `scan-all` 命令参数
+  - 添加 `--no-ai` 参数（不调用 AI，等同于当前 --fallback）
+  - 保留 `--fallback` 作为 `--no-ai` 的别名（兼容性）
+  - 默认行为：对 overview 级别调用 AI
+
+- [ ] P3.1.2 修改 `process_single_directory` 函数
+  - 判断 level == "overview" 时调用 AI
+  - 复用现有 `format_prompt` 和 `invoke_ai_cli`
+  - 其他级别继续使用 SmartWriter
+
+- [ ] P3.1.3 添加 AI 调用的错误处理
+  - AI 调用失败时 fallback 到 SmartWriter
+  - 超时处理（使用 config.timeout 或默认 120s）
+  - 记录失败原因
+
+- [ ] P3.1.4 测试验证
+  - 在 codeindex 项目测试（1 个 overview 目录）
+  - 在 PHP 项目测试（验证只调用 1-2 次 AI）
+  - 验证 --no-ai 参数正常工作
+
+**预期结果**：
+```bash
+codeindex scan-all           # overview 用 AI，其他用 SmartWriter
+codeindex scan-all --no-ai   # 全部用 SmartWriter
+```
+
+---
+
+### Phase 2: 智能触发 AI [增强]
+
+**目标**：根据配置和文件大小智能决定是否调用 AI
+
+**任务清单**：
+- [ ] P3.2.1 添加 `ai_enhancement` 配置项
+  ```yaml
+  ai_enhancement:
+    enabled: true
+    levels:
+      overview: true      # 根目录用 AI
+      navigation: false   # 中间层不用
+      detailed: false     # 叶子目录不用
+    size_threshold: 40960 # >40KB 触发 AI 增强
+    max_concurrent: 2     # 最大并发 AI 调用
+    rate_limit_delay: 1.0 # 调用间隔（秒）
+  ```
+
+- [ ] P3.2.2 实现智能触发逻辑
+  - 先用 SmartWriter 生成 README
+  - 检查大小是否超过 threshold
+  - 超过则调用 AI 重新生成（或增强）
+
+- [ ] P3.2.3 实现并发控制
+  - 使用 Semaphore 限制并发 AI 调用数
+  - 添加调用间隔延迟（rate limiting）
+  - 避免触发 API 速率限制
+
+- [ ] P3.2.4 优化 prompt 设计
+  - 为不同级别设计不同的 prompt 模板
+  - overview: 强调架构、模块关系、入口点
+  - detailed: 强调具体实现、依赖关系
+
+- [ ] P3.2.5 测试验证
+  - 测试 size_threshold 触发逻辑
+  - 测试并发控制（同时处理多个目录）
+  - 测试 rate_limit_delay 生效
+  - 在 PHP 项目验证 AI 调用次数合理
+
+**预期结果**：
+```bash
+codeindex scan-all           # 智能选择 AI/SmartWriter
+codeindex scan-all --no-ai   # 强制全部用 SmartWriter
+```
+
+---
+
+### Phase 3: 增量更新 [未来]
+
+- [ ] P3.3.1 检测已有 README 的修改时间
+- [ ] P3.3.2 比较源文件修改时间
+- [ ] P3.3.3 只对有变化的目录重新生成
+- [ ] P3.3.4 添加 `--force` 参数强制全部重新生成
+
+---
+
+## P4: AI 智能总结大文件 [路线图]
 
 ### 问题描述
 当 PROJECT_SYMBOLS.md 超过 100KB 时，机械列表信息密度低，无人阅读。
@@ -183,38 +291,16 @@ application/
 ### 解决方案
 二次处理：检测文件大小 > 阈值时，触发 AI 总结。
 
-### 目标输出
-```markdown
-# Project Overview (AI Generated)
-
-## 架构概述
-这是一个基于 ThinkPHP 的零售管理系统，包含...
-
-## 核心模块
-
-### 用户管理
-- `UserController` - 用户 CRUD 操作
-- `AuthController` - 登录认证
-- `RoleController` - 权限管理
-
-### 订单处理
-- `OrderController` - 订单管理
-- `PaymentController` - 支付处理
-...
-
-_完整符号列表见 PROJECT_SYMBOLS.md_
-```
-
 ### 实现任务
-- [ ] 6.1 添加配置项 `ai_summary_threshold: 102400`
-- [ ] 6.2 检测生成文件大小，超阈值触发 AI
-- [ ] 6.3 设计 AI prompt（分组、核心类、架构概述）
-- [ ] 6.4 生成 PROJECT_OVERVIEW.md（AI 版）
-- [ ] 6.5 添加 `codeindex symbols --ai` 强制使用 AI
+- [ ] 4.1 添加配置项 `ai_summary_threshold: 102400`
+- [ ] 4.2 检测生成文件大小，超阈值触发 AI
+- [ ] 4.3 设计 AI prompt（分组、核心类、架构概述）
+- [ ] 4.4 生成 PROJECT_OVERVIEW.md（AI 版）
+- [ ] 4.5 添加 `codeindex symbols --ai` 强制使用 AI
 
 ---
 
-## P4: 从 PHPDoc 提取描述 [可选增强]
+## P5: 从 PHPDoc 提取描述 [可选增强]
 
 ### 问题描述
 当前只提取了符号签名，没有提取 PHPDoc 中的描述。
