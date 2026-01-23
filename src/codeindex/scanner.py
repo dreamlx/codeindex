@@ -102,6 +102,9 @@ def find_all_directories(root: Path, config: Config) -> list[Path]:
     """
     Find all directories that should be indexed.
 
+    If config.include is specified, returns those directories directly.
+    Otherwise, walks the directory tree to find all directories with indexable files.
+
     Args:
         root: Root directory to start from
         config: Configuration object
@@ -111,18 +114,31 @@ def find_all_directories(root: Path, config: Config) -> list[Path]:
     """
     dirs_to_index: list[Path] = []
 
+    # If include paths are specified, use them directly
+    if config.include:
+        for include_path in config.include:
+            full_path = root / include_path
+            if full_path.exists() and full_path.is_dir():
+                # Check if this directory has indexable files
+                result = scan_directory(full_path, config, root, recursive=True)
+                if result.files:
+                    dirs_to_index.append(full_path)
+        return dirs_to_index
+
+    # Otherwise, walk the directory tree
     def walk(current: Path):
         if should_exclude(current, config.exclude, root):
             return
 
         # Check if this directory has indexable files
-        result = scan_directory(current, config, root)
+        result = scan_directory(current, config, root, recursive=False)  # Don't recurse here
         if result.files:
             dirs_to_index.append(current)
 
         # Recurse into subdirectories
         for subdir in result.subdirs:
-            walk(subdir)
+            if not should_exclude(subdir, config.exclude, root):
+                walk(subdir)
 
     walk(root)
     return dirs_to_index

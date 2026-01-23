@@ -255,57 +255,64 @@ def scan_all(
     if not quiet:
         console.print(f"[green]Found {len(dirs)} directories to process[/green]")
 
-    # Build commands for each directory
-    commands = []
-    for dir_path in dirs:
-        cmd = [sys.executable, "-m", "codeindex.cli", "scan", str(dir_path)]
-        if fallback:
-            cmd.append("--fallback")
-        if quiet:
-            cmd.append("--quiet")
-        cmd.extend(["--timeout", str(timeout)])
-        commands.append(cmd)
+    # Process directories using concurrent.futures
+    import concurrent.futures
+    from functools import partial
 
-    # Execute in batches using xargs for true parallelism
-    batch_size = config.parallel_workers * 2  # Process in batches
+    def process_single_directory(dir_path: Path, config: Config, fallback: bool, timeout: int, quiet: bool):
+        """Process a single directory."""
+        try:
+            # Scan
+            result = scan_directory(dir_path, config)
+            if not result.files:
+                return dir_path, True, "No files"
+
+            # Parse
+            parse_results = parse_files_parallel(result.files, config, quiet=True)
+
+            # Write using SmartWriter
+            writer = SmartWriter(config.indexing)
+            write_result = writer.write_readme(
+                dir_path=dir_path,
+                parse_results=parse_results,
+                level="detailed",
+                child_dirs=[],
+                output_file=config.output_file,
+            )
+
+            if write_result.success:
+                size_kb = write_result.size_bytes / 1024
+                return dir_path, True, f"{size_kb:.1f}KB"
+            else:
+                return dir_path, False, write_result.error
+
+        except Exception as e:
+            return dir_path, False, str(e)
 
     if not quiet:
         console.print(f"[dim]→ Processing with {config.parallel_workers} parallel workers...[/dim]")
 
-    for i in range(0, len(commands), batch_size):
-        batch = commands[i:i + batch_size]
+    success_count = 0
+    with concurrent.futures.ThreadPoolExecutor(max_workers=config.parallel_workers) as executor:
+        futures = {
+            executor.submit(
+                process_single_directory, dir_path, config, fallback, timeout, quiet
+            ): dir_path
+            for dir_path in dirs
+        }
 
-        # Use xargs to run in parallel
-        cmd_list = []
-        for cmd in batch:
-            # Join command parts and escape quotes
-            cmd_str = ' '.join(f'"{c}"' if ' ' in c else c for c in cmd[2:])  # Skip python and -m
-            cmd_list.append(cmd_str)
+        for future in concurrent.futures.as_completed(futures):
+            dir_path, success, msg = future.result()
+            if success:
+                success_count += 1
+                if not quiet:
+                    console.print(f"[green]✓[/green] {dir_path.name} ({msg})")
+            else:
+                if not quiet:
+                    console.print(f"[red]✗[/red] {dir_path.name}: {msg}")
 
-        # Create xargs command
-        xargs_template = (
-            "echo '{cmds}' | xargs -P {workers} -I {{}} "
-            "{python} -m codeindex.cli {{}} "
-        )
-        xargs_cmd = xargs_template.format(
-            cmds=chr(10).join(cmd_list),
-            workers=config.parallel_workers,
-            python=sys.executable
-        )
-
-        batch_num = i // batch_size + 1
-        total_batches = (len(commands) - 1) // batch_size + 1
-
-        if not quiet and i == 0:
-            console.print(
-                f"[dim]→ Executing batch {batch_num}/{total_batches}...[/dim]"
-            )
-
-        # Execute
-        result = subprocess.run(xargs_cmd, shell=True, capture_output=True, text=True)
-
-        if result.returncode != 0 and not quiet:
-            console.print(f"[yellow]⚠ Batch {batch_num} completed with issues[/yellow]")
+    if not quiet:
+        console.print(f"\n[bold]Completed: {success_count}/{len(dirs)} directories[/bold]")
 
 
 @main.command()
