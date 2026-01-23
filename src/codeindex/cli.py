@@ -200,22 +200,28 @@ def init(force: bool):
 @click.option("--root", type=click.Path(exists=True, file_okay=False, path_type=Path), default=".")
 @click.option("--parallel", "-p", type=int, help="Override parallel workers")
 @click.option("--timeout", default=120, help="Timeout per directory in seconds")
-@click.option("--fallback", is_flag=True, help="Use fallback mode for all directories")
+@click.option("--no-ai", is_flag=True, help="Disable AI enhancement, use SmartWriter only")
+@click.option("--fallback", is_flag=True, help="Alias for --no-ai (deprecated)")
 @click.option("--quiet", "-q", is_flag=True, help="Minimal output")
 @click.option("--hierarchical", "-h", is_flag=True, help="Use hierarchical processing (bottom-up)")
 def scan_all(
     root: Path | None,
     parallel: int | None,
     timeout: int,
+    no_ai: bool,
     fallback: bool,
     quiet: bool,
     hierarchical: bool
 ):
-    """Scan all project directories for README_AI.md generation."""
-    import subprocess
-    import sys
+    """Scan all project directories for README_AI.md generation.
 
+    By default, uses AI enhancement for overview-level directories.
+    Use --no-ai to disable AI and use SmartWriter for all directories.
+    """
     config = Config.load()
+
+    # --fallback is alias for --no-ai
+    use_ai = not (no_ai or fallback)
 
     # Override parallel workers if specified
     if parallel is not None:
@@ -236,7 +242,7 @@ def scan_all(
             root,
             config,
             config.parallel_workers,
-            fallback,
+            not use_ai,  # fallback parameter
             quiet,
             timeout
         )
@@ -267,25 +273,75 @@ def scan_all(
     # Get processing order (bottom-up: deepest first)
     dirs = tree.get_processing_order()
 
+    # Count overview directories for AI calls
+    overview_dirs = [d for d in dirs if tree.get_level(d) == "overview"]
+    ai_call_count = len(overview_dirs) if use_ai else 0
+
+    if not quiet:
+        console.print(f"\n[bold]📝 Generating READMEs...[/bold]")
+        if use_ai and ai_call_count > 0:
+            console.print(f"[dim]→ AI enhancement enabled for {ai_call_count} overview directory(s)[/dim]")
+        console.print(f"[dim]→ Processing with {config.parallel_workers} parallel workers...[/dim]")
+
     # Process directories using concurrent.futures
     import concurrent.futures
 
-    def process_single_directory(dir_path: Path, tree: DirectoryTree, config: Config, quiet: bool):
+    def process_single_directory(
+        dir_path: Path,
+        tree: DirectoryTree,
+        config: Config,
+        quiet: bool,
+        use_ai: bool,
+        timeout: int
+    ):
         """Process a single directory with correct level."""
         try:
             # Get level and children from tree
             level = tree.get_level(dir_path)
             child_dirs = tree.get_children(dir_path)
 
-            # Scan
-            result = scan_directory(dir_path, config)
+            # Scan - for overview level, only scan direct files (not recursive)
+            # to avoid processing thousands of files for AI prompt
+            scan_recursive = level != "overview"
+            result = scan_directory(dir_path, config, recursive=scan_recursive)
 
             # Parse files (if any)
             parse_results = []
             if result.files:
                 parse_results = parse_files_parallel(result.files, config, quiet=True)
 
-            # Write using SmartWriter with correct level
+            # Decide whether to use AI for this directory
+            should_use_ai = use_ai and level == "overview"
+
+            if should_use_ai:
+                # Try AI enhancement for overview level
+                try:
+                    # Format prompt
+                    files_info = format_files_for_prompt(parse_results)
+                    symbols_info = format_symbols_for_prompt(parse_results)
+                    imports_info = format_imports_for_prompt(parse_results)
+                    prompt = format_prompt(dir_path, files_info, symbols_info, imports_info)
+
+                    # Invoke AI CLI
+                    invoke_result = invoke_ai_cli(config.ai_command, prompt, timeout=timeout)
+
+                    if invoke_result.success:
+                        # Clean and validate AI output
+                        cleaned_output = clean_ai_output(invoke_result.output)
+                        if validate_markdown_output(cleaned_output):
+                            # Write AI-generated README
+                            write_result = write_readme(dir_path, cleaned_output, config.output_file)
+                            if write_result.success:
+                                size_kb = write_result.path.stat().st_size / 1024
+                                return dir_path, True, f"[{level}] {size_kb:.1f}KB (AI)"
+                        # AI output validation failed, fall through to SmartWriter
+                    # AI call failed, fall through to SmartWriter
+
+                except Exception:
+                    # AI error, fall through to SmartWriter
+                    pass
+
+            # Use SmartWriter (default or fallback)
             writer = SmartWriter(config.indexing)
             write_result = writer.write_readme(
                 dir_path=dir_path,
@@ -298,22 +354,19 @@ def scan_all(
             if write_result.success:
                 size_kb = write_result.size_bytes / 1024
                 truncated = " [truncated]" if write_result.truncated else ""
-                return dir_path, True, f"[{level}] {size_kb:.1f}KB{truncated}"
+                fallback_note = " (fallback)" if should_use_ai else ""
+                return dir_path, True, f"[{level}] {size_kb:.1f}KB{truncated}{fallback_note}"
             else:
                 return dir_path, False, write_result.error
 
         except Exception as e:
             return dir_path, False, str(e)
 
-    if not quiet:
-        console.print(f"\n[bold]📝 Generating READMEs...[/bold]")
-        console.print(f"[dim]→ Processing with {config.parallel_workers} parallel workers...[/dim]")
-
     success_count = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=config.parallel_workers) as executor:
         futures = {
             executor.submit(
-                process_single_directory, dir_path, tree, config, quiet
+                process_single_directory, dir_path, tree, config, quiet, use_ai, timeout
             ): dir_path
             for dir_path in dirs
         }
