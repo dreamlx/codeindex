@@ -9,6 +9,12 @@ from typing import Literal
 
 from .config import IndexingConfig
 from .parser import ParseResult, Symbol
+from .framework_detect import (
+    detect_framework,
+    format_framework_info,
+    analyze_thinkphp_project,
+    extract_thinkphp_routes,
+)
 
 
 @dataclass
@@ -102,6 +108,14 @@ class SmartWriter:
             f"# {dir_path.name}",
             "",
         ]
+
+        # Detect framework
+        framework = detect_framework(dir_path)
+        if framework != "unknown":
+            lines.extend([
+                f"**Framework**: {framework.title()}",
+                "",
+            ])
 
         # Statistics
         total_files = len(parse_results)
@@ -247,6 +261,24 @@ class SmartWriter:
             f"- **Symbols**: {total_symbols}",
             "",
         ])
+
+        # ThinkPHP route table for Controller directories
+        if dir_path.name == "Controller":
+            # Infer module name from parent directory
+            module_name = dir_path.parent.name
+            routes = extract_thinkphp_routes(parse_results, module_name)
+            if routes:
+                lines.extend([
+                    "## Routes (ThinkPHP)",
+                    "",
+                    "| URL | Controller | Action |",
+                    "|-----|------------|--------|",
+                ])
+                for route in routes[:30]:  # Limit to 30 routes
+                    lines.append(f"| `{route.url}` | {route.controller} | {route.action} |")
+                if len(routes) > 30:
+                    lines.append(f"| ... | _{len(routes) - 30} more_ | |")
+                lines.extend(["", ""])
 
         # Subdirectories (brief, just references)
         if child_dirs:
