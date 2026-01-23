@@ -29,6 +29,7 @@ from .writer import (
     write_readme,
 )
 from .smart_writer import SmartWriter, determine_level
+from .directory_tree import DirectoryTree
 
 console = Console()
 
@@ -244,45 +245,59 @@ def scan_all(
     # Get current directory
     root = Path.cwd() if root is None else root
 
-    # Find all directories to scan
-    dirs = find_all_directories(root, config)
+    # Build directory tree (first pass)
+    if not quiet:
+        console.print("[bold]🌳 Building directory tree...[/bold]")
 
-    if not dirs:
+    tree = DirectoryTree(root, config)
+    stats = tree.get_stats()
+
+    if stats["total_directories"] == 0:
         if not quiet:
             console.print("[yellow]No indexable directories found[/yellow]")
         return
 
     if not quiet:
-        console.print(f"[green]Found {len(dirs)} directories to process[/green]")
+        console.print(f"[green]✓ Found {stats['total_directories']} directories[/green]")
+        console.print(f"  [dim]├── {stats['with_children']} with children (navigation)[/dim]")
+        console.print(f"  [dim]├── {stats['leaf_directories']} leaf directories (detailed)[/dim]")
+        console.print(f"  [dim]└── Max depth: {stats['max_depth']}[/dim]")
+
+    # Get processing order (bottom-up: deepest first)
+    dirs = tree.get_processing_order()
 
     # Process directories using concurrent.futures
     import concurrent.futures
-    from functools import partial
 
-    def process_single_directory(dir_path: Path, config: Config, fallback: bool, timeout: int, quiet: bool):
-        """Process a single directory."""
+    def process_single_directory(dir_path: Path, tree: DirectoryTree, config: Config, quiet: bool):
+        """Process a single directory with correct level."""
         try:
+            # Get level and children from tree
+            level = tree.get_level(dir_path)
+            child_dirs = tree.get_children(dir_path)
+
             # Scan
             result = scan_directory(dir_path, config)
-            if not result.files:
-                return dir_path, True, "No files"
 
-            # Parse
-            parse_results = parse_files_parallel(result.files, config, quiet=True)
+            # Parse files (if any)
+            parse_results = []
+            if result.files:
+                parse_results = parse_files_parallel(result.files, config, quiet=True)
 
-            # Write using SmartWriter
+            # Write using SmartWriter with correct level
             writer = SmartWriter(config.indexing)
             write_result = writer.write_readme(
                 dir_path=dir_path,
                 parse_results=parse_results,
-                level="detailed",
-                child_dirs=[],
+                level=level,
+                child_dirs=child_dirs,
                 output_file=config.output_file,
             )
 
             if write_result.success:
                 size_kb = write_result.size_bytes / 1024
-                return dir_path, True, f"{size_kb:.1f}KB"
+                truncated = " [truncated]" if write_result.truncated else ""
+                return dir_path, True, f"[{level}] {size_kb:.1f}KB{truncated}"
             else:
                 return dir_path, False, write_result.error
 
@@ -290,13 +305,14 @@ def scan_all(
             return dir_path, False, str(e)
 
     if not quiet:
+        console.print(f"\n[bold]📝 Generating READMEs...[/bold]")
         console.print(f"[dim]→ Processing with {config.parallel_workers} parallel workers...[/dim]")
 
     success_count = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=config.parallel_workers) as executor:
         futures = {
             executor.submit(
-                process_single_directory, dir_path, config, fallback, timeout, quiet
+                process_single_directory, dir_path, tree, config, quiet
             ): dir_path
             for dir_path in dirs
         }

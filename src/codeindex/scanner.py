@@ -31,6 +31,20 @@ class ScanResult:
         return [f for f in self.files if f.suffix in (".php", ".phtml")]
 
 
+LANGUAGE_EXTENSIONS = {
+    "python": [".py"],
+    "php": [".php", ".phtml"],
+}
+
+
+def get_language_extensions(languages: list[str]) -> set[str]:
+    """Get file extensions for specified languages."""
+    extensions = set()
+    for lang in languages:
+        extensions.update(LANGUAGE_EXTENSIONS.get(lang, []))
+    return extensions
+
+
 def should_exclude(path: Path, exclude_patterns: list[str], base_path: Path) -> bool:
     """Check if path matches any exclude pattern."""
     rel_path = str(path.relative_to(base_path))
