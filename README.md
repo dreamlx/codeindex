@@ -73,6 +73,7 @@ exclude:
 
 languages:
   - python
+  - php
 
 output_file: "README_AI.md"
 ```
@@ -223,13 +224,14 @@ Directory → Scanner → Parser (tree-sitter) → Prompt Generator → AI CLI �
 
 ## 🌍 Language Support
 
-| Language       | Status          | Parser      |
-|----------------|-----------------|-------------|
-| Python         | ✅ Supported    | tree-sitter |
-| TypeScript/JS  | 🚧 Coming Soon  | tree-sitter |
-| Java           | 🚧 Planned      | tree-sitter |
-| Go             | 🚧 Planned      | tree-sitter |
-| Rust           | 🚧 Planned      | tree-sitter |
+| Language       | Status          | Parser      | Features |
+|----------------|-----------------|-------------|----------|
+| Python         | ✅ Supported    | tree-sitter | Classes, functions, methods, imports, docstrings |
+| PHP            | ✅ Supported    | tree-sitter | Classes (extends/implements), methods (visibility, static, return types), properties, functions |
+| TypeScript/JS  | 🚧 Coming Soon  | tree-sitter | - |
+| Java           | 🚧 Planned      | tree-sitter | - |
+| Go             | 🚧 Planned      | tree-sitter | - |
+| Rust           | 🚧 Planned      | tree-sitter | - |
 
 ---
 

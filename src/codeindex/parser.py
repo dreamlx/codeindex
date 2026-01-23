@@ -335,44 +335,160 @@ def _extract_php_docstring(node, source_bytes: bytes) -> str:
     return ""
 
 def _parse_php_function(node, source_bytes: bytes, class_name: str = "") -> Symbol:
-    """Parse a PHP function definition node."""
+    """Parse a PHP function definition node (standalone function, not method)."""
     name = ""
-    signature_parts = []
+    params = ""
+    return_type = ""
 
     for child in node.children:
         if child.type == "name":
             name = _get_node_text(child, source_bytes)
         elif child.type == "formal_parameters":
-            param_text = _get_node_text(child, source_bytes)
-            signature_parts.append(param_text)
-        elif child.type == "compound_statement":
-            # Find docstring within function body
-            docstring = _extract_php_docstring(child, source_bytes)
+            params = _get_node_text(child, source_bytes)
+        elif child.type in ("named_type", "primitive_type", "optional_type"):
+            return_type = _get_node_text(child, source_bytes)
 
-    kind = "method" if class_name else "function"
-    full_name = f"{class_name}::{name}" if class_name else name
-    signature = f"function {name}{''.join(signature_parts)}"
+    signature = f"function {name}{params}"
+    if return_type:
+        signature += f": {return_type}"
+
     docstring = _extract_php_docstring(node, source_bytes)
 
     return Symbol(
-        name=full_name,
-        kind=kind,
+        name=name,
+        kind="function",
         signature=signature,
         docstring=docstring,
         line_start=node.start_point[0] + 1,
         line_end=node.end_point[0] + 1,
     )
 
+
+def _parse_php_method(node, source_bytes: bytes, class_name: str) -> Symbol:
+    """Parse a PHP method declaration node with visibility, static, and return type."""
+    name = ""
+    params = ""
+    return_type = ""
+    visibility = ""
+    is_static = False
+
+    for child in node.children:
+        if child.type == "visibility_modifier":
+            visibility = _get_node_text(child, source_bytes)
+        elif child.type == "static_modifier":
+            is_static = True
+        elif child.type == "name":
+            name = _get_node_text(child, source_bytes)
+        elif child.type == "formal_parameters":
+            params = _get_node_text(child, source_bytes)
+        elif child.type in ("named_type", "primitive_type", "optional_type"):
+            return_type = _get_node_text(child, source_bytes)
+
+    # Build signature: [visibility] [static] function name(params)[: return_type]
+    sig_parts = []
+    if visibility:
+        sig_parts.append(visibility)
+    if is_static:
+        sig_parts.append("static")
+    sig_parts.append(f"function {name}{params}")
+    signature = " ".join(sig_parts)
+    if return_type:
+        signature += f": {return_type}"
+
+    docstring = _extract_php_docstring(node, source_bytes)
+    full_name = f"{class_name}::{name}"
+
+    return Symbol(
+        name=full_name,
+        kind="method",
+        signature=signature,
+        docstring=docstring,
+        line_start=node.start_point[0] + 1,
+        line_end=node.end_point[0] + 1,
+    )
+
+
+def _parse_php_property(node, source_bytes: bytes, class_name: str) -> Symbol:
+    """Parse a PHP property declaration node."""
+    prop_name = ""
+    visibility = ""
+    is_static = False
+    prop_type = ""
+
+    for child in node.children:
+        if child.type == "visibility_modifier":
+            visibility = _get_node_text(child, source_bytes)
+        elif child.type == "static_modifier":
+            is_static = True
+        elif child.type in ("named_type", "primitive_type", "optional_type"):
+            prop_type = _get_node_text(child, source_bytes)
+        elif child.type == "property_element":
+            for prop_child in child.children:
+                if prop_child.type == "variable_name":
+                    prop_name = _get_node_text(prop_child, source_bytes)
+
+    # Build signature: [visibility] [static] [type] $name
+    sig_parts = []
+    if visibility:
+        sig_parts.append(visibility)
+    if is_static:
+        sig_parts.append("static")
+    if prop_type:
+        sig_parts.append(prop_type)
+    sig_parts.append(prop_name)
+    signature = " ".join(sig_parts)
+
+    full_name = f"{class_name}::{prop_name}"
+
+    return Symbol(
+        name=full_name,
+        kind="property",
+        signature=signature,
+        docstring="",
+        line_start=node.start_point[0] + 1,
+        line_end=node.end_point[0] + 1,
+    )
+
 def _parse_php_class(node, source_bytes: bytes) -> list[Symbol]:
-    """Parse a PHP class definition node and its methods."""
+    """Parse a PHP class definition node with extends, implements, properties and methods."""
     symbols = []
     class_name = ""
+    extends = ""
+    implements = []
+    is_abstract = False
+    is_final = False
 
     for child in node.children:
         if child.type == "name":
             class_name = _get_node_text(child, source_bytes)
+        elif child.type == "abstract_modifier":
+            is_abstract = True
+        elif child.type == "final_modifier":
+            is_final = True
+        elif child.type == "base_clause":
+            # extends BaseClass
+            for bc_child in child.children:
+                if bc_child.type == "name":
+                    extends = _get_node_text(bc_child, source_bytes)
+        elif child.type == "class_interface_clause":
+            # implements Interface1, Interface2
+            for ic_child in child.children:
+                if ic_child.type == "name":
+                    implements.append(_get_node_text(ic_child, source_bytes))
 
-    signature = f"class {class_name}"
+    # Build signature: [abstract|final] class Name [extends Base] [implements I1, I2]
+    sig_parts = []
+    if is_abstract:
+        sig_parts.append("abstract")
+    elif is_final:
+        sig_parts.append("final")
+    sig_parts.append(f"class {class_name}")
+    if extends:
+        sig_parts.append(f"extends {extends}")
+    if implements:
+        sig_parts.append(f"implements {', '.join(implements)}")
+    signature = " ".join(sig_parts)
+
     docstring = _extract_php_docstring(node, source_bytes)
 
     symbols.append(
@@ -386,16 +502,16 @@ def _parse_php_class(node, source_bytes: bytes) -> list[Symbol]:
         )
     )
 
-    # Parse methods
+    # Parse properties and methods from declaration_list
     for child in node.children:
         if child.type == "declaration_list":
             for decl in child.children:
-                if decl.type == "method_declaration":
-                    # Extract function from method declaration
-                    for func_child in decl.children:
-                        if func_child.type == "function_definition":
-                            method = _parse_php_function(func_child, source_bytes, class_name)
-                            symbols.append(method)
+                if decl.type == "property_declaration":
+                    prop = _parse_php_property(decl, source_bytes, class_name)
+                    symbols.append(prop)
+                elif decl.type == "method_declaration":
+                    method = _parse_php_method(decl, source_bytes, class_name)
+                    symbols.append(method)
 
     return symbols
 
