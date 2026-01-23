@@ -30,6 +30,7 @@ from .writer import (
 )
 from .smart_writer import SmartWriter, determine_level
 from .directory_tree import DirectoryTree
+from .symbol_index import GlobalSymbolIndex
 
 console = Console()
 
@@ -500,6 +501,38 @@ def index(root: Path, output: str):
     output_path.write_text(content)
     console.print(f"[green]✓ Created:[/green] {output_path}")
     console.print(f"[dim]Indexed {len(indexed_dirs)} modules[/dim]")
+
+
+@main.command()
+@click.option("--root", type=click.Path(exists=True, file_okay=False, path_type=Path), default=".")
+@click.option("--output", "-o", default="PROJECT_SYMBOLS.md", help="Output filename")
+@click.option("--quiet", "-q", is_flag=True, help="Minimal output")
+def symbols(root: Path, output: str, quiet: bool):
+    """Generate PROJECT_SYMBOLS.md - a global symbol index for all classes."""
+    root = root.resolve()
+    config = Config.load()
+
+    if not quiet:
+        console.print(f"[bold]Generating global symbol index:[/bold] {root}")
+        console.print("[dim]→ Scanning all directories...[/dim]")
+
+    indexer = GlobalSymbolIndex(root, config)
+    stats = indexer.collect_symbols(quiet=quiet)
+
+    if not quiet:
+        console.print(f"[dim]→ Found {stats['symbols']} symbols in {stats['files']} files[/dim]")
+
+    if stats["symbols"] == 0:
+        console.print("[yellow]No symbols found. Run 'codeindex scan' first.[/yellow]")
+        return
+
+    if not quiet:
+        console.print("[dim]→ Generating index...[/dim]")
+
+    output_path = indexer.generate_index(output)
+
+    console.print(f"[green]✓ Created:[/green] {output_path}")
+    console.print(f"[dim]Indexed {stats['symbols']} symbols from {stats['directories']} directories[/dim]")
 
 
 @main.command()
