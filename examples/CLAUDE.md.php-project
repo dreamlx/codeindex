@@ -1,0 +1,97 @@
+# CLAUDE.md (PHP Project Template)
+
+Copy this template to your PHP project and customize.
+
+## Code Index
+
+This project uses [codeindex](https://github.com/dreamlx/codeindex) for AI-friendly documentation.
+
+### Quick Commands
+
+```bash
+# 生成所有目录的索引 (最常用)
+codeindex scan-all --fallback
+
+# 查看会扫描哪些目录
+codeindex list-dirs
+
+# 生成全局符号索引 (PROJECT_SYMBOLS.md)
+codeindex symbols
+
+# 查看索引覆盖率
+codeindex status
+```
+
+### Configuration (.codeindex.yaml)
+
+```yaml
+version: 1
+
+# AI CLI command (optional, --fallback mode doesn't need this)
+ai_command: 'claude -p "{prompt}" --allowedTools "Read"'
+
+# ✅ 只需指定顶层目录，自动递归扫描所有子目录
+include:
+  - Application
+  - Public
+
+# 排除模式
+exclude:
+  - "**/test/**"
+  - "**/tests/**"
+  - "**/Runtime/**"
+  - "**/cache/**"
+  - "**/vendor/**"
+  - "**/.git/**"
+
+# 语言支持
+languages:
+  - php
+
+# 输出文件名
+output_file: README_AI.md
+
+# 并行处理
+parallel_workers: 8
+
+# 智能索引配置
+indexing:
+  max_readme_size: 51200    # 50KB 限制
+  symbols:
+    max_per_file: 15
+    include_visibility: [public, protected]
+  grouping:
+    by: suffix
+    patterns:
+      Controller: "HTTP 请求处理"
+      Service: "业务逻辑"
+      Model: "数据模型"
+      Business: "业务处理"
+```
+
+### How to Read Code Index
+
+1. **Start with overview**: Read root `README_AI.md` to understand project structure
+2. **Locate module**: Find the relevant module from the module list
+3. **Deep dive**: Read module's `README_AI.md` for file/symbol details
+4. **Read source**: Open specific files when you need implementation details
+
+### Index Files
+
+- `README_AI.md` - Directory-level documentation (≤50KB each)
+- `PROJECT_SYMBOLS.md` - Global symbol index (all classes)
+- Each directory with source code has its own README_AI.md
+
+### Example Workflow
+
+Task: "Fix user authentication bug"
+1. Read root README_AI.md → Find Auth/User module
+2. Read Application/Admin/Controller/README_AI.md → Find AuthController
+3. Read the specific PHP file → Understand implementation
+
+### ThinkPHP Features
+
+If this is a ThinkPHP project, README_AI.md will include:
+- **Route Table**: Controller action → URL mapping
+- **Namespace**: PHP namespace for each file
+- **Framework Detection**: Automatically identified as ThinkPHP
