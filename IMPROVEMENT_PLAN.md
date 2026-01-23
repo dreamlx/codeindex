@@ -31,10 +31,10 @@
 #### 推荐：方案 B（更通用）
 
 ### 实现任务
-- [ ] 1.1 添加 `DirectoryTree` 类，预先构建目录结构
-- [ ] 1.2 修改 `scan-all` 命令使用目录树
-- [ ] 1.3 修改 `determine_level` 接收目录树而非单个 `has_children`
-- [ ] 1.4 测试：验证根目录用 overview，中间层用 navigation
+- [x] 1.1 添加 `DirectoryTree` 类，预先构建目录结构 ✅
+- [x] 1.2 修改 `scan-all` 命令使用目录树 ✅
+- [x] 1.3 修改 `determine_level` 接收目录树而非单个 `has_children` ✅
+- [x] 1.4 测试：验证根目录用 overview，中间层用 navigation ✅
 
 ---
 
@@ -61,11 +61,11 @@ App\Controller
 ```
 
 ### 实现任务
-- [ ] 2.1 解析 `namespace` 声明
-- [ ] 2.2 解析 `use` 语句（含 alias）
+- [x] 2.1 解析 `namespace` 声明 ✅
+- [x] 2.2 解析 `use` 语句（含 alias 和 group import）✅
 - [ ] 2.3 解析 `use trait` 语句
-- [ ] 2.4 更新 `Import` 数据结构支持 PHP use
-- [ ] 2.5 在 README 中展示 namespace 信息
+- [x] 2.4 更新 `Import` 数据结构支持 PHP use ✅
+- [x] 2.5 在 README 中展示 namespace 信息 ✅
 
 ### tree-sitter AST 结构
 ```
@@ -120,10 +120,10 @@ namespace_use_declaration
 ```
 
 ### 实现任务
-- [ ] 3.1 收集所有目录的解析结果
-- [ ] 3.2 按功能/类型对符号分类
-- [ ] 3.3 生成全局索引文件
-- [ ] 3.4 添加 `codeindex index` 命令生成全局索引
+- [x] 3.1 收集所有目录的解析结果 ✅
+- [x] 3.2 按功能/类型对符号分类 ✅
+- [x] 3.3 生成全局索引文件 ✅
+- [x] 3.4 添加 `codeindex symbols` 命令生成全局索引 ✅
 
 ---
 
@@ -199,6 +199,45 @@ application/
 - [ ] 5.3 提取描述文本（第一行）
 - [ ] 5.4 更新 Symbol 数据结构支持 tags
 - [ ] 5.5 在 detailed 级别展示完整 PHPDoc
+
+---
+
+## P3: AI 智能总结大文件 [路线图]
+
+### 问题描述
+当 PROJECT_SYMBOLS.md 超过 100KB 时，机械列表信息密度低，无人阅读。
+
+### 解决方案
+二次处理：检测文件大小 > 阈值时，触发 AI 总结。
+
+### 目标输出
+```markdown
+# Project Overview (AI Generated)
+
+## 架构概述
+这是一个基于 ThinkPHP 的零售管理系统，包含...
+
+## 核心模块
+
+### 用户管理
+- `UserController` - 用户 CRUD 操作
+- `AuthController` - 登录认证
+- `RoleController` - 权限管理
+
+### 订单处理
+- `OrderController` - 订单管理
+- `PaymentController` - 支付处理
+...
+
+_完整符号列表见 PROJECT_SYMBOLS.md_
+```
+
+### 实现任务
+- [ ] 6.1 添加配置项 `ai_summary_threshold: 102400`
+- [ ] 6.2 检测生成文件大小，超阈值触发 AI
+- [ ] 6.3 设计 AI prompt（分组、核心类、架构概述）
+- [ ] 6.4 生成 PROJECT_OVERVIEW.md（AI 版）
+- [ ] 6.5 添加 `codeindex symbols --ai` 强制使用 AI
 
 ---
 
