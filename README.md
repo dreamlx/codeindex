@@ -211,14 +211,101 @@ Keep documentation up-to-date by regenerating README_AI.md files as code changes
 ## 🛠️ How It Works
 
 ```
-Directory → Scanner → Parser (tree-sitter) → Prompt Generator → AI CLI → README_AI.md
+Directory → Scanner → Parser (tree-sitter) → Smart Writer → README_AI.md (≤50KB)
 ```
 
 1. **Scanner**: Walks directories, filters by config patterns
 2. **Parser**: Extracts symbols (classes, functions, imports) using tree-sitter
-3. **Writer**: Formats parsed data into a prompt
-4. **Invoker**: Executes external AI CLI with the prompt
-5. **Output**: AI generates `README_AI.md` with intelligent documentation
+3. **Smart Writer**: Generates tiered documentation with size limits
+4. **Output**: Optimized `README_AI.md` for AI consumption
+
+---
+
+## 📐 Smart Indexing Architecture
+
+codeindex generates **tiered documentation** optimized for AI agents:
+
+```
+Project Root/
+├── PROJECT_INDEX.md (~10KB)     # Overview level
+│   └── Module list + descriptions
+│
+├── Module/
+│   └── README_AI.md (~30KB)     # Navigation level
+│       ├── Grouped files by type
+│       └── Key classes summary
+│
+└── LeafDir/
+    └── README_AI.md (≤50KB)     # Detailed level
+        ├── Full symbol info
+        └── Dependencies
+```
+
+### Configuration
+
+```yaml
+indexing:
+  max_readme_size: 51200    # 50KB limit
+  symbols:
+    max_per_file: 15
+    include_visibility: [public, protected]
+    exclude_patterns: ["get*", "set*"]
+  grouping:
+    by: suffix
+    patterns:
+      Controller: "HTTP handlers"
+      Service: "Business logic"
+      Model: "Data models"
+```
+
+---
+
+## 🤖 AI Coder Integration
+
+### For Claude Code Users
+
+Add this to your project's `CLAUDE.md`:
+
+```markdown
+## Code Index
+
+This project uses codeindex for AI-friendly documentation.
+
+### How to Read Code Index
+
+1. **Start with overview**: Read `PROJECT_INDEX.md` or root `README_AI.md` to understand project structure
+2. **Locate module**: Find the relevant module from the module list
+3. **Deep dive**: Read module's `README_AI.md` for file/symbol details
+4. **Read source**: Open specific files when you need implementation details
+
+### Index Files
+
+- `README_AI.md` - Directory-level documentation (≤50KB each)
+- Each directory with source code has its own README_AI.md
+
+### Example Workflow
+
+Task: "Fix user authentication bug"
+1. Read root README_AI.md → Find Auth/User module
+2. Read Auth/README_AI.md → Find AuthService.php
+3. Read AuthService.php → Understand implementation
+```
+
+### Usage Tips
+
+- **Token efficient**: Each README is ≤50KB, suitable for LLM context
+- **Progressive loading**: Start from overview, drill down as needed
+- **Keep indexes updated**: Run `codeindex scan-all --fallback` after major changes
+
+### CLAUDE.md Template
+
+Copy the template to your project:
+
+```bash
+cp /path/to/codeindex/examples/CLAUDE.md.template your-project/CLAUDE.md
+```
+
+Or see [examples/CLAUDE.md.template](examples/CLAUDE.md.template) for the full template.
 
 ---
 

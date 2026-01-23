@@ -1,0 +1,84 @@
+# CLAUDE.md Template for codeindex Projects
+
+Copy this template to your project's root as `CLAUDE.md` to help AI coders use your code index effectively.
+
+---
+
+# CLAUDE.md
+
+## Project Overview
+
+[Brief description of your project]
+
+## Code Index
+
+This project uses [codeindex](https://github.com/dreamlx/codeindex) for AI-friendly documentation.
+
+### Reading the Index
+
+**Progressive Loading Strategy** (recommended for large codebases):
+
+1. **Overview First**
+   ```
+   Read: README_AI.md (root) or PROJECT_INDEX.md
+   Purpose: Understand project structure, find relevant modules
+   ```
+
+2. **Locate Module**
+   ```
+   Read: [Module]/README_AI.md
+   Purpose: Find specific files and key classes
+   ```
+
+3. **Deep Dive**
+   ```
+   Read: Specific source files
+   Purpose: Understand implementation details
+   ```
+
+### Index File Locations
+
+```
+YourProject/
+├── README_AI.md          # Root index (overview)
+├── src/
+│   ├── README_AI.md      # src index
+│   ├── auth/
+│   │   └── README_AI.md  # auth module index
+│   └── api/
+│       └── README_AI.md  # api module index
+```
+
+### Key Modules
+
+| Module | Purpose | Key Files |
+|--------|---------|-----------|
+| `src/auth` | Authentication | AuthService, JWTHandler |
+| `src/api` | REST endpoints | Controllers |
+| `src/models` | Data models | User, Order |
+
+## Build Commands
+
+```bash
+# Install dependencies
+[your install command]
+
+# Run tests
+[your test command]
+
+# Build
+[your build command]
+```
+
+## Development Workflow
+
+[Your development guidelines]
+
+---
+
+## Tips for AI Coders
+
+1. **Don't read entire codebase** - Use README_AI.md files to navigate
+2. **Each README_AI.md ≤ 50KB** - Safe to load into context
+3. **Check module index first** - Before reading source files
+4. **Regenerate after changes** - Run `codeindex scan-all --fallback` after major refactoring
