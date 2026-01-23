@@ -197,6 +197,30 @@ class IndexingConfig:
 
 
 @dataclass
+class AIEnhancementConfig:
+    """Configuration for AI enhancement in scan-all."""
+
+    strategy: str = "selective"  # "selective" | "all"
+    enabled: bool = True
+    size_threshold: int = 40 * 1024  # 40KB - trigger AI for oversize files
+    max_concurrent: int = 2  # Max parallel AI calls
+    rate_limit_delay: float = 1.0  # Seconds between AI calls
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "AIEnhancementConfig":
+        """Create from config dict."""
+        if not data:
+            return cls()
+        return cls(
+            strategy=data.get("strategy", "selective"),
+            enabled=data.get("enabled", True),
+            size_threshold=data.get("size_threshold", 40 * 1024),
+            max_concurrent=data.get("max_concurrent", 2),
+            rate_limit_delay=data.get("rate_limit_delay", 1.0),
+        )
+
+
+@dataclass
 class IncrementalConfig:
     """Configuration for incremental updates."""
 
@@ -236,6 +260,7 @@ class Config:
     output_file: str = DEFAULT_OUTPUT_FILE
     incremental: IncrementalConfig = field(default_factory=IncrementalConfig)
     indexing: IndexingConfig = field(default_factory=IndexingConfig)
+    ai_enhancement: AIEnhancementConfig = field(default_factory=AIEnhancementConfig)
     parallel_workers: int = DEFAULT_PARALLEL_WORKERS
     batch_size: int = DEFAULT_BATCH_SIZE
 
@@ -260,6 +285,7 @@ class Config:
             output_file=data.get("output_file", DEFAULT_OUTPUT_FILE),
             incremental=IncrementalConfig.from_dict(data.get("incremental", {})),
             indexing=IndexingConfig.from_dict(data.get("indexing", {})),
+            ai_enhancement=AIEnhancementConfig.from_dict(data.get("ai_enhancement", {})),
             parallel_workers=data.get("parallel_workers", DEFAULT_PARALLEL_WORKERS),
             batch_size=data.get("batch_size", DEFAULT_BATCH_SIZE),
         )

@@ -227,49 +227,47 @@ codeindex scan-all --no-ai   # 全部用 SmartWriter
 
 ---
 
-### Phase 2: 智能触发 AI [增强]
+### Phase 2: 智能触发 AI [已完成 ✅]
 
 **目标**：根据配置和文件大小智能决定是否调用 AI
 
 **任务清单**：
-- [ ] P3.2.1 添加 `ai_enhancement` 配置项
+- [x] P3.2.1 添加 `ai_enhancement` 配置项 ✅
   ```yaml
   ai_enhancement:
     enabled: true
-    levels:
-      overview: true      # 根目录用 AI
-      navigation: false   # 中间层不用
-      detailed: false     # 叶子目录不用
     size_threshold: 40960 # >40KB 触发 AI 增强
     max_concurrent: 2     # 最大并发 AI 调用
     rate_limit_delay: 1.0 # 调用间隔（秒）
   ```
 
-- [ ] P3.2.2 实现智能触发逻辑
-  - 先用 SmartWriter 生成 README
-  - 检查大小是否超过 threshold
-  - 超过则调用 AI 重新生成（或增强）
+- [x] P3.2.2 实现两阶段处理 ✅
+  - Phase 1: SmartWriter 并行生成所有 README
+  - 收集 Oversize Checklist (overview + >threshold)
+  - Phase 2: AI 并行增强 checklist 中的目录
 
-- [ ] P3.2.3 实现并发控制
+- [x] P3.2.3 实现并发控制 ✅
   - 使用 Semaphore 限制并发 AI 调用数
   - 添加调用间隔延迟（rate limiting）
-  - 避免触发 API 速率限制
+  - ThreadPoolExecutor + Semaphore 实现
 
-- [ ] P3.2.4 优化 prompt 设计
-  - 为不同级别设计不同的 prompt 模板
-  - overview: 强调架构、模块关系、入口点
-  - detailed: 强调具体实现、依赖关系
+- [x] P3.2.4 测试验证 ✅
+  - codeindex 项目：1 AI 调用（overview）
+  - PHP 项目（251 目录）：5 AI 调用（1 overview + 4 oversize）
+  - AI 成功压缩：50KB → 7KB
+  - 并发控制正常工作
 
-- [ ] P3.2.5 测试验证
-  - 测试 size_threshold 触发逻辑
-  - 测试并发控制（同时处理多个目录）
-  - 测试 rate_limit_delay 生效
-  - 在 PHP 项目验证 AI 调用次数合理
-
-**预期结果**：
+**实现结果**：
 ```bash
-codeindex scan-all           # 智能选择 AI/SmartWriter
+codeindex scan-all           # 两阶段处理（SmartWriter + AI 增强）
 codeindex scan-all --no-ai   # 强制全部用 SmartWriter
+
+# PHP 项目测试结果：
+# Phase 1: 251/251 directories (SmartWriter)
+# Phase 2: 5 directories (1 overview, 4 oversize >40KB)
+#   - Model: 50KB → 7KB ✓
+#   - Controller: 50KB → 6KB ✓
+#   - Business: 47KB → 6KB ✓
 ```
 
 ---

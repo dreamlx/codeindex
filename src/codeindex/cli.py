@@ -202,6 +202,7 @@ def init(force: bool):
 @click.option("--timeout", default=120, help="Timeout per directory in seconds")
 @click.option("--no-ai", is_flag=True, help="Disable AI enhancement, use SmartWriter only")
 @click.option("--fallback", is_flag=True, help="Alias for --no-ai (deprecated)")
+@click.option("--ai-all", is_flag=True, help="Enhance ALL directories with AI (overrides config strategy)")
 @click.option("--quiet", "-q", is_flag=True, help="Minimal output")
 @click.option("--hierarchical", "-h", is_flag=True, help="Use hierarchical processing (bottom-up)")
 def scan_all(
@@ -210,14 +211,25 @@ def scan_all(
     timeout: int,
     no_ai: bool,
     fallback: bool,
+    ai_all: bool,
     quiet: bool,
     hierarchical: bool
 ):
     """Scan all project directories for README_AI.md generation.
 
-    By default, uses AI enhancement for overview-level directories.
-    Use --no-ai to disable AI and use SmartWriter for all directories.
+    Two-phase processing:
+    1. SmartWriter generates all READMEs in parallel
+    2. AI enhances overview dirs + oversize files (parallel with rate limiting)
+
+    Strategy:
+    - Default: Use selective strategy from config
+    - --ai-all: Enhance ALL directories with AI
+    - --no-ai: Disable AI, use SmartWriter for all directories
     """
+    import concurrent.futures
+    import threading
+    import time
+
     config = Config.load()
 
     # --fallback is alias for --no-ai
@@ -273,35 +285,18 @@ def scan_all(
     # Get processing order (bottom-up: deepest first)
     dirs = tree.get_processing_order()
 
-    # Count overview directories for AI calls
-    overview_dirs = [d for d in dirs if tree.get_level(d) == "overview"]
-    ai_call_count = len(overview_dirs) if use_ai else 0
-
+    # ========== Phase 1: SmartWriter parallel generation ==========
     if not quiet:
-        console.print(f"\n[bold]📝 Generating READMEs...[/bold]")
-        if use_ai and ai_call_count > 0:
-            console.print(f"[dim]→ AI enhancement enabled for {ai_call_count} overview directory(s)[/dim]")
+        console.print(f"\n[bold]📝 Phase 1: Generating READMEs (SmartWriter)...[/bold]")
         console.print(f"[dim]→ Processing with {config.parallel_workers} parallel workers...[/dim]")
 
-    # Process directories using concurrent.futures
-    import concurrent.futures
-
-    def process_single_directory(
-        dir_path: Path,
-        tree: DirectoryTree,
-        config: Config,
-        quiet: bool,
-        use_ai: bool,
-        timeout: int
-    ):
-        """Process a single directory with correct level."""
+    def process_with_smartwriter(dir_path: Path) -> tuple[Path, bool, str, int]:
+        """Process a single directory with SmartWriter. Returns (path, success, msg, size_bytes)."""
         try:
-            # Get level and children from tree
             level = tree.get_level(dir_path)
             child_dirs = tree.get_children(dir_path)
 
-            # Scan - for overview level, only scan direct files (not recursive)
-            # to avoid processing thousands of files for AI prompt
+            # Scan directory (non-recursive for overview to avoid huge file lists)
             scan_recursive = level != "overview"
             result = scan_directory(dir_path, config, recursive=scan_recursive)
 
@@ -310,38 +305,7 @@ def scan_all(
             if result.files:
                 parse_results = parse_files_parallel(result.files, config, quiet=True)
 
-            # Decide whether to use AI for this directory
-            should_use_ai = use_ai and level == "overview"
-
-            if should_use_ai:
-                # Try AI enhancement for overview level
-                try:
-                    # Format prompt
-                    files_info = format_files_for_prompt(parse_results)
-                    symbols_info = format_symbols_for_prompt(parse_results)
-                    imports_info = format_imports_for_prompt(parse_results)
-                    prompt = format_prompt(dir_path, files_info, symbols_info, imports_info)
-
-                    # Invoke AI CLI
-                    invoke_result = invoke_ai_cli(config.ai_command, prompt, timeout=timeout)
-
-                    if invoke_result.success:
-                        # Clean and validate AI output
-                        cleaned_output = clean_ai_output(invoke_result.output)
-                        if validate_markdown_output(cleaned_output):
-                            # Write AI-generated README
-                            write_result = write_readme(dir_path, cleaned_output, config.output_file)
-                            if write_result.success:
-                                size_kb = write_result.path.stat().st_size / 1024
-                                return dir_path, True, f"[{level}] {size_kb:.1f}KB (AI)"
-                        # AI output validation failed, fall through to SmartWriter
-                    # AI call failed, fall through to SmartWriter
-
-                except Exception:
-                    # AI error, fall through to SmartWriter
-                    pass
-
-            # Use SmartWriter (default or fallback)
+            # Use SmartWriter
             writer = SmartWriter(config.indexing)
             write_result = writer.write_readme(
                 dir_path=dir_path,
@@ -354,25 +318,23 @@ def scan_all(
             if write_result.success:
                 size_kb = write_result.size_bytes / 1024
                 truncated = " [truncated]" if write_result.truncated else ""
-                fallback_note = " (fallback)" if should_use_ai else ""
-                return dir_path, True, f"[{level}] {size_kb:.1f}KB{truncated}{fallback_note}"
+                return dir_path, True, f"[{level}] {size_kb:.1f}KB{truncated}", write_result.size_bytes
             else:
-                return dir_path, False, write_result.error
+                return dir_path, False, write_result.error, 0
 
         except Exception as e:
-            return dir_path, False, str(e)
+            return dir_path, False, str(e), 0
 
+    # Phase 1: Parallel SmartWriter processing
+    phase1_results = {}  # dir_path -> (success, msg, size_bytes)
     success_count = 0
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=config.parallel_workers) as executor:
-        futures = {
-            executor.submit(
-                process_single_directory, dir_path, tree, config, quiet, use_ai, timeout
-            ): dir_path
-            for dir_path in dirs
-        }
+        futures = {executor.submit(process_with_smartwriter, d): d for d in dirs}
 
         for future in concurrent.futures.as_completed(futures):
-            dir_path, success, msg = future.result()
+            dir_path, success, msg, size_bytes = future.result()
+            phase1_results[dir_path] = (success, msg, size_bytes)
             if success:
                 success_count += 1
                 if not quiet:
@@ -382,7 +344,137 @@ def scan_all(
                     console.print(f"[red]✗[/red] {dir_path.name}: {msg}")
 
     if not quiet:
-        console.print(f"\n[bold]Completed: {success_count}/{len(dirs)} directories[/bold]")
+        console.print(f"[dim]→ Phase 1 complete: {success_count}/{len(dirs)} directories[/dim]")
+
+    # ========== Collect AI Enhancement Checklist ==========
+    if not use_ai:
+        if not quiet:
+            console.print(f"\n[bold]Completed: {success_count}/{len(dirs)} directories[/bold]")
+        return
+
+    # Determine strategy
+    if ai_all:
+        strategy = "all"
+    elif config.ai_enhancement.enabled:
+        strategy = config.ai_enhancement.strategy
+    else:
+        strategy = "none"
+
+    if strategy == "none":
+        if not quiet:
+            console.print(f"\n[bold]Completed: {success_count}/{len(dirs)} directories (AI disabled)[/bold]")
+        return
+
+    ai_checklist = []
+    threshold = config.ai_enhancement.size_threshold
+
+    for dir_path in dirs:
+        level = tree.get_level(dir_path)
+        success, msg, size_bytes = phase1_results.get(dir_path, (False, "", 0))
+
+        if not success:
+            continue
+
+        # Strategy: all
+        if strategy == "all":
+            ai_checklist.append((dir_path, f"[{level}]"))
+        # Strategy: selective
+        elif strategy == "selective":
+            # Condition 1: overview level (always enhance)
+            if level == "overview":
+                ai_checklist.append((dir_path, "overview"))
+            # Condition 2: oversize files
+            elif size_bytes > threshold:
+                ai_checklist.append((dir_path, f"oversize ({size_bytes / 1024:.1f}KB > {threshold / 1024:.0f}KB)"))
+
+    if not ai_checklist:
+        if not quiet:
+            console.print(f"\n[bold]Completed: {success_count}/{len(dirs)} directories (no AI enhancement needed)[/bold]")
+        return
+
+    # ========== Phase 2: AI Enhancement (parallel with rate limiting) ==========
+    if not quiet:
+        overview_count = sum(1 for _, reason in ai_checklist if reason == "overview")
+        oversize_count = sum(1 for _, reason in ai_checklist if reason.startswith("oversize"))
+        level_count = len(ai_checklist) - overview_count - oversize_count
+
+        if strategy == "all":
+            console.print(f"\n[bold]🤖 Phase 2: AI Enhancement (--ai-all)...[/bold]")
+            console.print(f"[dim]→ Enhancing ALL directories: {len(ai_checklist)} total[/dim]")
+        else:
+            console.print(f"\n[bold]🤖 Phase 2: AI Enhancement...[/bold]")
+            console.print(f"[dim]→ Checklist: {len(ai_checklist)} directories ({overview_count} overview, {oversize_count} oversize, {level_count} other)[/dim]")
+
+        console.print(f"[dim]→ Max concurrent: {config.ai_enhancement.max_concurrent}, delay: {config.ai_enhancement.rate_limit_delay}s[/dim]")
+
+    # Rate limiting state
+    semaphore = threading.Semaphore(config.ai_enhancement.max_concurrent)
+    last_call_time = [0.0]
+    rate_lock = threading.Lock()
+
+    def enhance_with_ai(dir_path: Path, reason: str) -> tuple[Path, bool, str]:
+        """Enhance a single directory with AI. Includes rate limiting."""
+        with semaphore:
+            # Rate limiting
+            with rate_lock:
+                elapsed = time.time() - last_call_time[0]
+                if elapsed < config.ai_enhancement.rate_limit_delay:
+                    time.sleep(config.ai_enhancement.rate_limit_delay - elapsed)
+                last_call_time[0] = time.time()
+
+            try:
+                level = tree.get_level(dir_path)
+
+                # Re-scan directory (non-recursive for overview)
+                scan_recursive = level != "overview"
+                result = scan_directory(dir_path, config, recursive=scan_recursive)
+
+                # Parse files
+                parse_results = []
+                if result.files:
+                    parse_results = parse_files_parallel(result.files, config, quiet=True)
+
+                # Format prompt
+                files_info = format_files_for_prompt(parse_results)
+                symbols_info = format_symbols_for_prompt(parse_results)
+                imports_info = format_imports_for_prompt(parse_results)
+                prompt = format_prompt(dir_path, files_info, symbols_info, imports_info)
+
+                # Invoke AI CLI
+                invoke_result = invoke_ai_cli(config.ai_command, prompt, timeout=timeout)
+
+                if invoke_result.success:
+                    cleaned_output = clean_ai_output(invoke_result.output)
+                    if validate_markdown_output(cleaned_output):
+                        write_result = write_readme(dir_path, cleaned_output, config.output_file)
+                        if write_result.success:
+                            new_size = write_result.path.stat().st_size
+                            old_size = phase1_results[dir_path][2]
+                            return dir_path, True, f"AI enhanced ({old_size / 1024:.0f}KB → {new_size / 1024:.0f}KB)"
+
+                return dir_path, False, "AI failed, keeping SmartWriter version"
+
+            except Exception as e:
+                return dir_path, False, f"AI error: {str(e)[:50]}"
+
+    # Phase 2: Parallel AI enhancement with rate limiting
+    ai_success_count = 0
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=config.ai_enhancement.max_concurrent) as executor:
+        futures = {executor.submit(enhance_with_ai, d, r): (d, r) for d, r in ai_checklist}
+
+        for future in concurrent.futures.as_completed(futures):
+            dir_path, success, msg = future.result()
+            if success:
+                ai_success_count += 1
+                if not quiet:
+                    console.print(f"[green]✓[/green] {dir_path.name}: {msg}")
+            else:
+                if not quiet:
+                    console.print(f"[yellow]![/yellow] {dir_path.name}: {msg}")
+
+    if not quiet:
+        console.print(f"\n[bold]Completed: {success_count}/{len(dirs)} directories, {ai_success_count}/{len(ai_checklist)} AI enhanced[/bold]")
 
 
 @main.command()
