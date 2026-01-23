@@ -16,9 +16,19 @@ class ScanResult:
     subdirs: list[Path]
 
     @property
+    def indexable_files(self) -> list[Path]:
+        """Get all indexable files (Python, PHP, etc.)."""
+        return self.files
+
+    @property
     def python_files(self) -> list[Path]:
         """Get Python files only."""
         return [f for f in self.files if f.suffix == ".py"]
+
+    @property
+    def php_files(self) -> list[Path]:
+        """Get PHP files only."""
+        return [f for f in self.files if f.suffix in (".php", ".phtml")]
 
 
 def should_exclude(path: Path, exclude_patterns: list[str], base_path: Path) -> bool:
@@ -39,14 +49,20 @@ def should_exclude(path: Path, exclude_patterns: list[str], base_path: Path) -> 
     return False
 
 
-def scan_directory(path: Path, config: Config, base_path: Path | None = None) -> ScanResult:
+def scan_directory(
+    path: Path,
+    config: Config,
+    base_path: Path | None = None,
+    recursive: bool = True
+) -> ScanResult:
     """
-    Scan a single directory and return its contents.
+    Scan a directory and return its contents.
 
     Args:
         path: Directory to scan
         config: Configuration object
         base_path: Base path for relative pattern matching
+        recursive: Whether to scan subdirectories recursively
 
     Returns:
         ScanResult with files and subdirectories
@@ -69,9 +85,15 @@ def scan_directory(path: Path, config: Config, base_path: Path | None = None) ->
             # Filter by language/extension
             if item.suffix == ".py" and "python" in config.languages:
                 files.append(item)
+            elif item.suffix in (".php", ".phtml") and "php" in config.languages:
+                files.append(item)
             # Add more language support here in V2
-        elif item.is_dir():
-            subdirs.append(item)
+        elif item.is_dir() and recursive:
+            # Recursively scan subdirectories
+            sub_result = scan_directory(item, config, base_path, recursive)
+            files.extend(sub_result.files)
+            subdirs.extend(sub_result.subdirs)
+            subdirs.append(item)  # Track the subdirectory itself
 
     return ScanResult(path=path, files=files, subdirs=subdirs)
 

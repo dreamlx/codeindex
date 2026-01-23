@@ -1,8 +1,10 @@
-"""Python AST parser using tree-sitter."""
+"""Multi-language AST parser using tree-sitter."""
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Dict
 
+import tree_sitter_php as tsphp
 import tree_sitter_python as tspython
 from tree_sitter import Language, Parser
 
@@ -39,9 +41,22 @@ class ParseResult:
     error: str | None = None
 
 
-# Initialize tree-sitter parser
+# Initialize languages
 PY_LANGUAGE = Language(tspython.language())
-_parser = Parser(PY_LANGUAGE)
+PHP_LANGUAGE = Language(tsphp.language_php())
+
+# Language-specific parsers
+PARSERS: Dict[str, Parser] = {
+    "python": Parser(PY_LANGUAGE),
+    "php": Parser(PHP_LANGUAGE),
+}
+
+# File extension to language mapping
+FILE_EXTENSIONS: Dict[str, str] = {
+    ".py": "python",
+    ".php": "php",
+    ".phtml": "php",
+}
 
 
 def _get_node_text(node, source_bytes: bytes) -> str:
@@ -73,7 +88,12 @@ def _extract_docstring(node, source_bytes: bytes) -> str:
     return ""
 
 
-def _parse_function(node, source_bytes: bytes, class_name: str = "", decorators: list[str] | None = None) -> Symbol:
+def _parse_function(
+    node,
+    source_bytes: bytes,
+    class_name: str = "",
+    decorators: list[str] | None = None
+) -> Symbol:
     """Parse a function definition node."""
     name = ""
     signature_parts = []
@@ -206,10 +226,10 @@ def _extract_module_docstring(tree, source_bytes: bytes) -> str:
 
 def parse_file(path: Path) -> ParseResult:
     """
-    Parse a Python file and extract symbols and imports.
+    Parse a source file (Python or PHP) and extract symbols and imports.
 
     Args:
-        path: Path to the Python file
+        path: Path to the source file
 
     Returns:
         ParseResult containing symbols, imports, and docstrings
@@ -219,35 +239,64 @@ def parse_file(path: Path) -> ParseResult:
     except Exception as e:
         return ParseResult(path=path, error=str(e))
 
+    # Determine language
+    language = _get_language(path)
+    if not language:
+        return ParseResult(path=path, error=f"Unsupported file type: {path.suffix}")
+
+    # Get appropriate parser
+    parser = PARSERS.get(language)
+    if not parser:
+        return ParseResult(path=path, error=f"No parser for language: {language}")
+
     try:
-        tree = _parser.parse(source_bytes)
+        tree = parser.parse(source_bytes)
     except Exception as e:
         return ParseResult(path=path, error=f"Parse error: {e}")
 
     symbols: list[Symbol] = []
     imports: list[Import] = []
+    module_docstring = ""
 
-    # Extract module docstring
-    module_docstring = _extract_module_docstring(tree, source_bytes)
+    # Language-specific parsing
+    if language == "python":
+        module_docstring = _extract_module_docstring(tree, source_bytes)
+        root = tree.root_node
+        for child in root.children:
+            if child.type == "function_definition":
+                symbols.append(_parse_function(child, source_bytes))
+            elif child.type == "class_definition":
+                symbols.extend(_parse_class(child, source_bytes))
+            elif child.type == "decorated_definition":
+                for dec_child in child.children:
+                    if dec_child.type == "function_definition":
+                        symbols.append(_parse_function(dec_child, source_bytes))
+                    elif dec_child.type == "class_definition":
+                        symbols.extend(_parse_class(dec_child, source_bytes))
+            elif child.type in ("import_statement", "import_from_statement"):
+                imp = _parse_import(child, source_bytes)
+                if imp:
+                    imports.append(imp)
 
-    # Walk the AST
-    root = tree.root_node
-    for child in root.children:
-        if child.type == "function_definition":
-            symbols.append(_parse_function(child, source_bytes))
-        elif child.type == "class_definition":
-            symbols.extend(_parse_class(child, source_bytes))
-        elif child.type == "decorated_definition":
-            # Handle decorated functions/classes (e.g., @click.command())
-            for dec_child in child.children:
-                if dec_child.type == "function_definition":
-                    symbols.append(_parse_function(dec_child, source_bytes))
-                elif dec_child.type == "class_definition":
-                    symbols.extend(_parse_class(dec_child, source_bytes))
-        elif child.type in ("import_statement", "import_from_statement"):
-            imp = _parse_import(child, source_bytes)
-            if imp:
-                imports.append(imp)
+    elif language == "php":
+        # PHP parsing
+        root = tree.root_node
+        for child in root.children:
+            if child.type == "class_declaration":
+                symbols.extend(_parse_php_class(child, source_bytes))
+            elif child.type == "function_definition":
+                symbols.append(_parse_php_function(child, source_bytes))
+            elif child.type in ("include_expression", "require_expression"):
+                imp = _parse_php_include(child, source_bytes)
+                if imp:
+                    imports.append(imp)
+
+        # Extract module docstring from PHP file comments
+        module_docstring = ""
+        for child in root.children:
+            if child.type == "comment" and child.text.startswith(b"/**"):
+                module_docstring = _extract_php_docstring(child, source_bytes)
+                break
 
     return ParseResult(
         path=path,
@@ -260,3 +309,103 @@ def parse_file(path: Path) -> ParseResult:
 def parse_directory(paths: list[Path]) -> list[ParseResult]:
     """Parse multiple files."""
     return [parse_file(p) for p in paths]
+
+def _get_language(file_path: Path) -> str:
+    """Determine language from file extension."""
+    suffix = file_path.suffix.lower()
+    return FILE_EXTENSIONS.get(suffix)
+
+def _extract_php_docstring(node, source_bytes: bytes) -> str:
+    """Extract docstring from PHPDoc/DocComment."""
+    for child in node.children:
+        if child.type == "comment":
+            text = _get_node_text(child, source_bytes)
+            # Check if it's a DocComment (/** ... */)
+            if text.startswith("/**"):
+                # Extract content between /** and */
+                lines = text.split("\n")
+                content = []
+                for line in lines[1:-1]:  # Skip first and last line
+                    line = line.strip()
+                    if line.startswith("*"):
+                        line = line[1:].strip()
+                    if line:
+                        content.append(line)
+                return " ".join(content)
+    return ""
+
+def _parse_php_function(node, source_bytes: bytes, class_name: str = "") -> Symbol:
+    """Parse a PHP function definition node."""
+    name = ""
+    signature_parts = []
+
+    for child in node.children:
+        if child.type == "name":
+            name = _get_node_text(child, source_bytes)
+        elif child.type == "formal_parameters":
+            param_text = _get_node_text(child, source_bytes)
+            signature_parts.append(param_text)
+        elif child.type == "compound_statement":
+            # Find docstring within function body
+            docstring = _extract_php_docstring(child, source_bytes)
+
+    kind = "method" if class_name else "function"
+    full_name = f"{class_name}::{name}" if class_name else name
+    signature = f"function {name}{''.join(signature_parts)}"
+    docstring = _extract_php_docstring(node, source_bytes)
+
+    return Symbol(
+        name=full_name,
+        kind=kind,
+        signature=signature,
+        docstring=docstring,
+        line_start=node.start_point[0] + 1,
+        line_end=node.end_point[0] + 1,
+    )
+
+def _parse_php_class(node, source_bytes: bytes) -> list[Symbol]:
+    """Parse a PHP class definition node and its methods."""
+    symbols = []
+    class_name = ""
+
+    for child in node.children:
+        if child.type == "name":
+            class_name = _get_node_text(child, source_bytes)
+
+    signature = f"class {class_name}"
+    docstring = _extract_php_docstring(node, source_bytes)
+
+    symbols.append(
+        Symbol(
+            name=class_name,
+            kind="class",
+            signature=signature,
+            docstring=docstring,
+            line_start=node.start_point[0] + 1,
+            line_end=node.end_point[0] + 1,
+        )
+    )
+
+    # Parse methods
+    for child in node.children:
+        if child.type == "declaration_list":
+            for decl in child.children:
+                if decl.type == "method_declaration":
+                    # Extract function from method declaration
+                    for func_child in decl.children:
+                        if func_child.type == "function_definition":
+                            method = _parse_php_function(func_child, source_bytes, class_name)
+                            symbols.append(method)
+
+    return symbols
+
+def _parse_php_include(node, source_bytes: bytes) -> Import | None:
+    """Parse PHP include/require statements."""
+    if node.type == "include_expression" or node.type == "require_expression":
+        for child in node.children:
+            if child.type == "string":
+                module = _get_node_text(child, source_bytes)
+                # Remove quotes
+                module = module.strip('\'"')
+                return Import(module=module, names=[], is_from=False)
+    return None
