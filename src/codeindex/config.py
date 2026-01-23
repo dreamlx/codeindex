@@ -16,6 +16,8 @@ DEFAULT_EXCLUDE = [
     "**/.git/**",
 ]
 DEFAULT_LANGUAGES = ["python"]
+DEFAULT_PARALLEL_WORKERS = 4
+DEFAULT_BATCH_SIZE = 50
 
 # Incremental update defaults
 DEFAULT_INCREMENTAL = {
@@ -58,12 +60,16 @@ exclude:
   - "**/venv/**"
   - "**/.venv/**"
 
-# Supported languages (V1: python only)
+# Supported languages (currently PHP support added)
 languages:
-  - python
+  - php
 
 # Output file name
 output_file: README_AI.md
+
+# Parallel processing settings
+parallel_workers: 8      # Number of parallel workers for parsing files
+batch_size: 50          # Files per batch for AI processing
 
 # Incremental update settings
 incremental:
@@ -117,6 +123,8 @@ class Config:
     languages: list[str] = field(default_factory=lambda: DEFAULT_LANGUAGES.copy())
     output_file: str = DEFAULT_OUTPUT_FILE
     incremental: IncrementalConfig = field(default_factory=IncrementalConfig)
+    parallel_workers: int = DEFAULT_PARALLEL_WORKERS
+    batch_size: int = DEFAULT_BATCH_SIZE
 
     @classmethod
     def load(cls, path: Optional[Path] = None) -> "Config":
@@ -138,6 +146,8 @@ class Config:
             languages=data.get("languages", DEFAULT_LANGUAGES.copy()),
             output_file=data.get("output_file", DEFAULT_OUTPUT_FILE),
             incremental=IncrementalConfig.from_dict(data.get("incremental", {})),
+            parallel_workers=data.get("parallel_workers", DEFAULT_PARALLEL_WORKERS),
+            batch_size=data.get("batch_size", DEFAULT_BATCH_SIZE),
         )
 
     @staticmethod

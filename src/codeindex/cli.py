@@ -19,7 +19,7 @@ from .invoker import (
     invoke_ai_cli,
     validate_markdown_output,
 )
-from .parser import parse_file
+from .parallel import parse_files_parallel
 from .scanner import find_all_directories, scan_directory
 from .writer import (
     format_files_for_prompt,
@@ -45,7 +45,15 @@ def main():
 @click.option("--fallback", is_flag=True, help="Generate basic README without AI")
 @click.option("--quiet", "-q", is_flag=True, help="Minimal output")
 @click.option("--timeout", default=120, help="AI CLI timeout in seconds")
-def scan(path: Path, dry_run: bool, fallback: bool, quiet: bool, timeout: int):
+@click.option("--parallel", "-p", type=int, help="Override parallel workers (from config)")
+def scan(
+    path: Path,
+    dry_run: bool,
+    fallback: bool,
+    quiet: bool,
+    timeout: int,
+    parallel: int | None
+):
     """
     Scan a directory and generate README_AI.md.
 
@@ -55,6 +63,10 @@ def scan(path: Path, dry_run: bool, fallback: bool, quiet: bool, timeout: int):
 
     # Load config
     config = Config.load()
+
+    # Override parallel workers if specified
+    if parallel is not None:
+        config.parallel_workers = parallel
 
     if not quiet:
         console.print(f"[bold]Scanning:[/bold] {path}")
@@ -75,7 +87,7 @@ def scan(path: Path, dry_run: bool, fallback: bool, quiet: bool, timeout: int):
     # Parse files
     if not quiet:
         console.print("  [dim]→ Parsing with tree-sitter...[/dim]")
-    parse_results = [parse_file(f) for f in result.files]
+    parse_results = parse_files_parallel(result.files, config, quiet)
     total_symbols = sum(len(r.symbols) for r in parse_results)
     if not quiet:
         console.print(f"  [dim]→ Extracted {total_symbols} symbols[/dim]")
@@ -164,6 +176,89 @@ def init(force: bool):
     console.print("\nEdit this file to configure:")
     console.print("  - ai_command: Your AI CLI command")
     console.print("  - include/exclude: Directories to scan")
+
+
+@main.command()
+@click.option("--parallel", "-p", type=int, help="Override parallel workers")
+@click.option("--timeout", default=120, help="Timeout per directory in seconds")
+@click.option("--fallback", is_flag=True, help="Use fallback mode for all directories")
+@click.option("--quiet", "-q", is_flag=True, help="Minimal output")
+def scan_all(parallel: int | None, timeout: int, fallback: bool, quiet: bool):
+    """Scan all project directories for README_AI.md generation."""
+    import subprocess
+    import sys
+
+    config = Config.load()
+
+    # Override parallel workers if specified
+    if parallel is not None:
+        config.parallel_workers = parallel
+
+    # Get current directory
+    root = Path.cwd()
+
+    # Find all directories to scan
+    dirs = find_all_directories(root, config)
+
+    if not dirs:
+        if not quiet:
+            console.print("[yellow]No indexable directories found[/yellow]")
+        return
+
+    if not quiet:
+        console.print(f"[green]Found {len(dirs)} directories to process[/green]")
+
+    # Build commands for each directory
+    commands = []
+    for dir_path in dirs:
+        cmd = [sys.executable, "-m", "codeindex.cli", "scan", str(dir_path)]
+        if fallback:
+            cmd.append("--fallback")
+        if quiet:
+            cmd.append("--quiet")
+        cmd.extend(["--timeout", str(timeout)])
+        commands.append(cmd)
+
+    # Execute in batches using xargs for true parallelism
+    batch_size = config.parallel_workers * 2  # Process in batches
+
+    if not quiet:
+        console.print(f"[dim]→ Processing with {config.parallel_workers} parallel workers...[/dim]")
+
+    for i in range(0, len(commands), batch_size):
+        batch = commands[i:i + batch_size]
+
+        # Use xargs to run in parallel
+        cmd_list = []
+        for cmd in batch:
+            # Join command parts and escape quotes
+            cmd_str = ' '.join(f'"{c}"' if ' ' in c else c for c in cmd[2:])  # Skip python and -m
+            cmd_list.append(cmd_str)
+
+        # Create xargs command
+        xargs_template = (
+            "echo '{cmds}' | xargs -P {workers} -I {{}} "
+            "{python} -m codeindex.cli {{}} "
+        )
+        xargs_cmd = xargs_template.format(
+            cmds=chr(10).join(cmd_list),
+            workers=config.parallel_workers,
+            python=sys.executable
+        )
+
+        batch_num = i // batch_size + 1
+        total_batches = (len(commands) - 1) // batch_size + 1
+
+        if not quiet and i == 0:
+            console.print(
+                f"[dim]→ Executing batch {batch_num}/{total_batches}...[/dim]"
+            )
+
+        # Execute
+        result = subprocess.run(xargs_cmd, shell=True, capture_output=True, text=True)
+
+        if result.returncode != 0 and not quiet:
+            console.print(f"[yellow]⚠ Batch {batch_num} completed with issues[/yellow]")
 
 
 @main.command()
