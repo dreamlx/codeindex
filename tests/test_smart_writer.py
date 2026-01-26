@@ -12,6 +12,7 @@ def _create_mock_parse_result(
     filename: str,
     symbols: list[Symbol] = None,
     imports: list[Import] = None,
+    file_lines: int = 100,
 ) -> ParseResult:
     """Create a mock ParseResult for testing."""
     return ParseResult(
@@ -20,6 +21,7 @@ def _create_mock_parse_result(
         imports=imports or [],
         module_docstring="",
         error=None,
+        file_lines=file_lines,
     )
 
 

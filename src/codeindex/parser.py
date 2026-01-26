@@ -40,6 +40,7 @@ class ParseResult:
     module_docstring: str = ""
     namespace: str = ""  # PHP namespace
     error: str | None = None
+    file_lines: int = 0  # Number of lines in the file
 
 
 # Initialize languages
@@ -238,22 +239,25 @@ def parse_file(path: Path) -> ParseResult:
     try:
         source_bytes = path.read_bytes()
     except Exception as e:
-        return ParseResult(path=path, error=str(e))
+        return ParseResult(path=path, error=str(e), file_lines=0)
+
+    # Calculate file lines
+    file_lines = source_bytes.count(b'\n') + (1 if source_bytes and not source_bytes.endswith(b'\n') else 0)
 
     # Determine language
     language = _get_language(path)
     if not language:
-        return ParseResult(path=path, error=f"Unsupported file type: {path.suffix}")
+        return ParseResult(path=path, error=f"Unsupported file type: {path.suffix}", file_lines=file_lines)
 
     # Get appropriate parser
     parser = PARSERS.get(language)
     if not parser:
-        return ParseResult(path=path, error=f"No parser for language: {language}")
+        return ParseResult(path=path, error=f"No parser for language: {language}", file_lines=file_lines)
 
     try:
         tree = parser.parse(source_bytes)
     except Exception as e:
-        return ParseResult(path=path, error=f"Parse error: {e}")
+        return ParseResult(path=path, error=f"Parse error: {e}", file_lines=file_lines)
 
     symbols: list[Symbol] = []
     imports: list[Import] = []
@@ -312,6 +316,7 @@ def parse_file(path: Path) -> ParseResult:
             imports=imports,
             module_docstring=module_docstring,
             namespace=namespace,
+            file_lines=file_lines,
         )
 
     return ParseResult(
@@ -319,6 +324,7 @@ def parse_file(path: Path) -> ParseResult:
         symbols=symbols,
         imports=imports,
         module_docstring=module_docstring,
+        file_lines=file_lines,
     )
 
 
