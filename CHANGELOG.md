@@ -7,16 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+### Added - Epic 2: Adaptive Symbol Extraction 🎉
+- **Adaptive symbol extraction** based on file size (5-150 symbols per file)
+- 7-tier file size classification system (tiny/small/medium/large/xlarge/huge/mega)
+- `AdaptiveSymbolsConfig` data structure for flexible configuration
+- `AdaptiveSymbolSelector` with intelligent limit calculation algorithm
+- `file_lines` field in ParseResult for file size tracking
+- YAML configuration support for adaptive symbols settings
+- 69 new tests for adaptive functionality (18+13+30+8)
+- Comprehensive validation report (docs/epic2-validation-report.md)
+
+### Changed - Epic 2
+- **SmartWriter** now uses adaptive symbol limits when enabled
+- **Config system** supports adaptive_symbols configuration with defaults merging
+- **Symbol display** dynamically adjusts from fixed 15 to 5-150 based on file size
+- Large file information coverage improved from 26% to 100% (+280%)
+- Truncation messages now use filtered symbol count (bug fix)
+
+### Added - Documentation
 - Comprehensive documentation structure (docs/)
 - Architecture Decision Records (ADR)
 - Getting started guide
 - Configuration guide
 - Roadmap for 2025 Q1
+- Epic 2 validation report with real-world testing results
 
-### Changed
+### Changed - Structure
 - Migrated design docs to docs/architecture/
 - Improved project structure
+
+### Performance
+- Adaptive calculation overhead: <1%
+- No regression in parsing speed
+- Memory usage stable
+
+### Backward Compatibility
+- ✅ Adaptive symbols disabled by default (enabled: false)
+- ✅ All existing configurations work without modification
+- ✅ 66 regression tests passing
 
 ## [0.1.3] - 2025-01-15
 

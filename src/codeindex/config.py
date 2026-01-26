@@ -6,6 +6,8 @@ from typing import Optional
 
 import yaml
 
+from codeindex.adaptive_config import DEFAULT_ADAPTIVE_CONFIG, AdaptiveSymbolsConfig
+
 DEFAULT_CONFIG_NAME = ".codeindex.yaml"
 DEFAULT_OUTPUT_FILE = "README_AI.md"
 DEFAULT_AI_COMMAND = 'claude -p "{prompt}" --allowedTools "Read"'
@@ -145,6 +147,13 @@ class SymbolsConfig:
     max_per_file: int = 15
     include_visibility: list[str] = field(default_factory=lambda: ["public", "protected"])
     exclude_patterns: list[str] = field(default_factory=lambda: ["get*", "set*", "__*"])
+    adaptive_symbols: AdaptiveSymbolsConfig = field(default_factory=lambda: AdaptiveSymbolsConfig(
+        enabled=DEFAULT_ADAPTIVE_CONFIG.enabled,
+        thresholds=DEFAULT_ADAPTIVE_CONFIG.thresholds.copy(),
+        limits=DEFAULT_ADAPTIVE_CONFIG.limits.copy(),
+        min_symbols=DEFAULT_ADAPTIVE_CONFIG.min_symbols,
+        max_symbols=DEFAULT_ADAPTIVE_CONFIG.max_symbols,
+    ))
 
 
 @dataclass
@@ -172,10 +181,39 @@ class IndexingConfig:
             return cls()
 
         symbols_data = data.get("symbols", {})
+        
+        # Load adaptive_symbols configuration
+        adaptive_data = symbols_data.get("adaptive_symbols", {})
+        if adaptive_data:
+            # Merge user config with defaults
+            adaptive_config = AdaptiveSymbolsConfig(
+                enabled=adaptive_data.get("enabled", DEFAULT_ADAPTIVE_CONFIG.enabled),
+                thresholds={
+                    **DEFAULT_ADAPTIVE_CONFIG.thresholds,
+                    **adaptive_data.get("thresholds", {})
+                },
+                limits={
+                    **DEFAULT_ADAPTIVE_CONFIG.limits,
+                    **adaptive_data.get("limits", {})
+                },
+                min_symbols=adaptive_data.get("min_symbols", DEFAULT_ADAPTIVE_CONFIG.min_symbols),
+                max_symbols=adaptive_data.get("max_symbols", DEFAULT_ADAPTIVE_CONFIG.max_symbols),
+            )
+        else:
+            # Use default adaptive config
+            adaptive_config = AdaptiveSymbolsConfig(
+                enabled=DEFAULT_ADAPTIVE_CONFIG.enabled,
+                thresholds=DEFAULT_ADAPTIVE_CONFIG.thresholds.copy(),
+                limits=DEFAULT_ADAPTIVE_CONFIG.limits.copy(),
+                min_symbols=DEFAULT_ADAPTIVE_CONFIG.min_symbols,
+                max_symbols=DEFAULT_ADAPTIVE_CONFIG.max_symbols,
+            )
+        
         symbols = SymbolsConfig(
             max_per_file=symbols_data.get("max_per_file", 15),
             include_visibility=symbols_data.get("include_visibility", ["public", "protected"]),
             exclude_patterns=symbols_data.get("exclude_patterns", ["get*", "set*", "__*"]),
+            adaptive_symbols=adaptive_config,
         )
 
         grouping_data = data.get("grouping", {})

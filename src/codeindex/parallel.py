@@ -77,7 +77,8 @@ def parse_files_parallel(
                 # Create error result
                 error_result = ParseResult(
                     path=files[index],
-                    error=f"Processing error: {str(e)}"
+                    error=f"Processing error: {str(e)}",
+                    file_lines=0,
                 )
                 parse_results[index] = error_result
                 errors += 1

@@ -7,14 +7,13 @@ from fnmatch import fnmatch
 from pathlib import Path
 from typing import Literal
 
+from .adaptive_selector import AdaptiveSymbolSelector
 from .config import IndexingConfig
-from .parser import ParseResult, Symbol
 from .framework_detect import (
     detect_framework,
-    format_framework_info,
-    analyze_thinkphp_project,
     extract_thinkphp_routes,
 )
+from .parser import ParseResult, Symbol
 
 
 @dataclass
@@ -44,6 +43,8 @@ class SmartWriter:
     def __init__(self, config: IndexingConfig):
         self.config = config
         self.max_size = config.max_readme_size
+        # Initialize adaptive symbol selector
+        self.adaptive_selector = AdaptiveSymbolSelector(config.symbols.adaptive_symbols)
 
     def write_readme(
         self,
@@ -324,7 +325,17 @@ class SmartWriter:
 
                     # Filter and limit symbols
                     symbols = self._filter_symbols(result.symbols)
-                    symbols = symbols[:self.config.symbols.max_per_file]
+                    total_filtered_symbols = len(symbols)  # Save count after filtering
+
+                    # Calculate symbol limit: use adaptive if enabled, otherwise use max_per_file
+                    if self.config.symbols.adaptive_symbols.enabled:
+                        limit = self.adaptive_selector.calculate_limit(
+                            result.file_lines, len(symbols)
+                        )
+                    else:
+                        limit = self.config.symbols.max_per_file
+
+                    symbols = symbols[:limit]
 
                     # Group by kind
                     classes = [s for s in symbols if s.kind == "class"]
@@ -358,10 +369,11 @@ class SmartWriter:
                         lines.append("")
 
                     # Show truncation notice
-                    total_symbols = len(result.symbols)
                     shown_symbols = len(symbols)
-                    if shown_symbols < total_symbols:
-                        lines.append(f"_... and {total_symbols - shown_symbols} more symbols_")
+                    if shown_symbols < total_filtered_symbols:
+                        lines.append(
+                            f"_... and {total_filtered_symbols - shown_symbols} more symbols_"
+                        )
                         lines.append("")
 
         # Dependencies section
