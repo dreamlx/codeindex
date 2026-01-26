@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from codeindex.parser import parse_file
-from codeindex.symbol_scorer import SymbolImportanceScorer, ScoringContext
+from codeindex.symbol_scorer import SymbolImportanceScorer
 
 
 def analyze_file(file_path: Path, scorer=None):
@@ -67,9 +67,6 @@ def analyze_file(file_path: Path, scorer=None):
                         "protected" if "protected" in sym.signature.lower() else \
                         "private" if "private" in sym.signature.lower() else "?"
 
-            # 截断长签名
-            sig = sym.signature[:60] + "..." if len(sym.signature) > 60 else sym.signature
-
             print(f"  {i:2d}. [{score:5.1f}] {visibility:9s} {sym.kind:8s} {sym.name:30s}")
             if i <= 5:  # 前5个显示完整签名
                 print(f"      {sym.signature}")
@@ -90,14 +87,14 @@ def main():
     print("=" * 80)
     print(f"\n项目路径: {php_project}")
 
-    # 创建评分器（只有基础评分，未来会增加更多维度）
+    # 创建评分器（多维度评分系统）
     scorer = SymbolImportanceScorer()
-    print(f"\n评分器: SymbolImportanceScorer")
-    print(f"  - 可见性评分: ✅")
-    print(f"  - 语义评分: ✅")
-    print(f"  - 文档评分: ⏳ (未实现)")
-    print(f"  - 复杂度评分: ⏳ (未实现)")
-    print(f"  - 命名模式评分: ⏳ (未实现)")
+    print("\n评分器: SymbolImportanceScorer (多维度评分系统)")
+    print("  - 可见性评分: ✅ (0-20分)")
+    print("  - 语义评分: ✅ (5-25分)")
+    print("  - 文档评分: ✅ (0-15分)")
+    print("  - 复杂度评分: ✅ (5-20分)")
+    print("  - 命名模式评分: ✅ (-20-0分)")
 
     # 测试几个大文件
     test_files = [
@@ -127,14 +124,14 @@ def main():
     print(f"提取符号总数: {total_symbols}")
 
     print("\n当前限制:")
-    print(f"  - 每个文件最多15个符号 (max_per_file: 15)")
-    print(f"  - 对于8891行的文件，15个符号仅覆盖 0.17% 的代码")
-    print(f"  - 对于7923行的文件，15个符号仅覆盖 0.19% 的代码")
+    print("  - 每个文件最多15个符号 (max_per_file: 15)")
+    print("  - 对于8891行的文件，15个符号仅覆盖 0.17% 的代码")
+    print("  - 对于7923行的文件，15个符号仅覆盖 0.19% 的代码")
 
     print("\n改进目标 (Phase 1):")
-    print(f"  - 自适应符号数量: 大文件可提取 80-120 个符号")
-    print(f"  - 智能评分选择: 优先选择重要的业务方法")
-    print(f"  - 预期改进: +433%-700% 的信息完整度")
+    print("  - 自适应符号数量: 大文件可提取 80-120 个符号")
+    print("  - 智能评分选择: 优先选择重要的业务方法")
+    print("  - 预期改进: +433%-700% 的信息完整度")
 
     print("\n💡 建议:")
     print("  1. 继续开发 Story 1.1.4-1.1.6 (文档、复杂度、命名模式评分)")
