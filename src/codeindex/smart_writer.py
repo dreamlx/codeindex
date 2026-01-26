@@ -9,13 +9,11 @@ from typing import Literal
 
 from .adaptive_selector import AdaptiveSymbolSelector
 from .config import IndexingConfig
-from .parser import ParseResult, Symbol
 from .framework_detect import (
     detect_framework,
-    format_framework_info,
-    analyze_thinkphp_project,
     extract_thinkphp_routes,
 )
+from .parser import ParseResult, Symbol
 
 
 @dataclass
@@ -327,6 +325,7 @@ class SmartWriter:
 
                     # Filter and limit symbols
                     symbols = self._filter_symbols(result.symbols)
+                    total_filtered_symbols = len(symbols)  # Save count after filtering
 
                     # Calculate symbol limit: use adaptive if enabled, otherwise use max_per_file
                     if self.config.symbols.adaptive_symbols.enabled:
@@ -370,10 +369,11 @@ class SmartWriter:
                         lines.append("")
 
                     # Show truncation notice
-                    total_symbols = len(result.symbols)
                     shown_symbols = len(symbols)
-                    if shown_symbols < total_symbols:
-                        lines.append(f"_... and {total_symbols - shown_symbols} more symbols_")
+                    if shown_symbols < total_filtered_symbols:
+                        lines.append(
+                            f"_... and {total_filtered_symbols - shown_symbols} more symbols_"
+                        )
                         lines.append("")
 
         # Dependencies section
