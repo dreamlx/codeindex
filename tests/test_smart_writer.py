@@ -3,8 +3,8 @@
 import tempfile
 from pathlib import Path
 
-from codeindex.config import IndexingConfig, SymbolsConfig, GroupingConfig
-from codeindex.parser import ParseResult, Symbol, Import
+from codeindex.config import GroupingConfig, IndexingConfig, SymbolsConfig
+from codeindex.parser import Import, ParseResult, Symbol
 from codeindex.smart_writer import SmartWriter, determine_level
 
 

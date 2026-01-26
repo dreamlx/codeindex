@@ -242,17 +242,23 @@ def parse_file(path: Path) -> ParseResult:
         return ParseResult(path=path, error=str(e), file_lines=0)
 
     # Calculate file lines
-    file_lines = source_bytes.count(b'\n') + (1 if source_bytes and not source_bytes.endswith(b'\n') else 0)
+    file_lines = source_bytes.count(b"\n") + (
+        1 if source_bytes and not source_bytes.endswith(b"\n") else 0
+    )
 
     # Determine language
     language = _get_language(path)
     if not language:
-        return ParseResult(path=path, error=f"Unsupported file type: {path.suffix}", file_lines=file_lines)
+        return ParseResult(
+            path=path, error=f"Unsupported file type: {path.suffix}", file_lines=file_lines
+        )
 
     # Get appropriate parser
     parser = PARSERS.get(language)
     if not parser:
-        return ParseResult(path=path, error=f"No parser for language: {language}", file_lines=file_lines)
+        return ParseResult(
+            path=path, error=f"No parser for language: {language}", file_lines=file_lines
+        )
 
     try:
         tree = parser.parse(source_bytes)
