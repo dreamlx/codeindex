@@ -360,3 +360,76 @@ class TestDocumentationScoring:
         )
         score = scorer._score_documentation(symbol)
         assert score == 0.0
+
+
+class TestComplexityScoring:
+    """测试复杂度评分"""
+
+    @pytest.fixture
+    def scorer(self):
+        return SymbolImportanceScorer()
+
+    def test_very_large_method_high_score(self, scorer):
+        """超大方法（>100行）获得高分"""
+        symbol = Symbol(
+            name="processPayment",
+            kind="method",
+            signature="public function processPayment()",
+            docstring="",
+            line_start=1,
+            line_end=150,  # 150 lines
+        )
+        score = scorer._score_complexity(symbol)
+        assert score == 20.0
+
+    def test_large_method_high_score(self, scorer):
+        """大方法（50-100行）获得较高分"""
+        symbol = Symbol(
+            name="processPayment",
+            kind="method",
+            signature="public function processPayment()",
+            docstring="",
+            line_start=1,
+            line_end=75,  # 75 lines
+        )
+        score = scorer._score_complexity(symbol)
+        assert score == 15.0
+
+    def test_medium_method_medium_score(self, scorer):
+        """中等方法（20-50行）获得中等分数"""
+        symbol = Symbol(
+            name="processPayment",
+            kind="method",
+            signature="public function processPayment()",
+            docstring="",
+            line_start=1,
+            line_end=35,  # 35 lines
+        )
+        score = scorer._score_complexity(symbol)
+        assert score == 10.0
+
+    def test_small_method_low_score(self, scorer):
+        """小方法（<20行）获得低分"""
+        symbol = Symbol(
+            name="getPayType",
+            kind="method",
+            signature="public function getPayType()",
+            docstring="",
+            line_start=1,
+            line_end=10,  # 10 lines
+        )
+        score = scorer._score_complexity(symbol)
+        assert score == 5.0
+
+    def test_one_line_method_low_score(self, scorer):
+        """单行方法获得低分"""
+        symbol = Symbol(
+            name="getPayType",
+            kind="method",
+            signature="public function getPayType()",
+            docstring="",
+            line_start=5,
+            line_end=5,  # 1 line
+        )
+        score = scorer._score_complexity(symbol)
+        assert score == 5.0

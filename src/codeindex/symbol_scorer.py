@@ -181,6 +181,35 @@ class SymbolImportanceScorer:
         else:
             return 0.0
 
+    def _score_complexity(self, symbol: Symbol) -> float:
+        """Score symbol based on code complexity (measured by line count).
+
+        Larger, more complex symbols often contain critical business logic
+        and should be prioritized for documentation.
+
+        Scoring:
+        - Very large (>100 lines): 20 points
+        - Large (50-100 lines): 15 points
+        - Medium (20-50 lines): 10 points
+        - Small (<20 lines): 5 points
+
+        Args:
+            symbol: The Symbol to score
+
+        Returns:
+            float: Complexity score (5-20)
+        """
+        lines = symbol.line_end - symbol.line_start + 1
+
+        if lines > 100:
+            return 20.0
+        elif lines >= 50:
+            return 15.0
+        elif lines >= 20:
+            return 10.0
+        else:
+            return 5.0
+
     def score(self, symbol: Symbol) -> float:
         """Calculate importance score for a symbol.
 
