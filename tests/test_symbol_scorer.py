@@ -274,3 +274,89 @@ class TestSemanticScoring:
         for symbol in symbols:
             score = scorer._score_semantics(symbol)
             assert score == 25.0
+
+
+class TestDocumentationScoring:
+    """测试文档质量评分"""
+
+    @pytest.fixture
+    def scorer(self):
+        return SymbolImportanceScorer()
+
+    def test_long_docstring_high_score(self, scorer):
+        """长文档（>200字符）获得高分"""
+        long_doc = (
+            "Process user payment with detailed validation.\n\n"
+            + "This method handles the complete payment workflow including:\n"
+            + "1. User authentication verification\n"
+            + "2. Payment amount validation\n"
+            + "3. Transaction processing\n"
+            + "4. Receipt generation and email notification"
+        )
+
+        symbol = Symbol(
+            name="processPayment",
+            kind="method",
+            signature="public function processPayment()",
+            docstring=long_doc,
+            line_start=1,
+            line_end=50,
+        )
+        score = scorer._score_documentation(symbol)
+        assert score == 15.0
+
+    def test_medium_docstring_medium_score(self, scorer):
+        """中等文档（>50字符）获得中等分数"""
+        medium_doc = "Process payment and generate receipt for customer transaction"
+
+        symbol = Symbol(
+            name="processPayment",
+            kind="method",
+            signature="public function processPayment()",
+            docstring=medium_doc,
+            line_start=1,
+            line_end=50,
+        )
+        score = scorer._score_documentation(symbol)
+        assert score == 10.0
+
+    def test_short_docstring_low_score(self, scorer):
+        """短文档获得低分"""
+        short_doc = "Process payment"
+
+        symbol = Symbol(
+            name="processPayment",
+            kind="method",
+            signature="public function processPayment()",
+            docstring=short_doc,
+            line_start=1,
+            line_end=50,
+        )
+        score = scorer._score_documentation(symbol)
+        assert score == 5.0
+
+    def test_no_docstring_zero_score(self, scorer):
+        """无文档获得0分"""
+        symbol = Symbol(
+            name="processPayment",
+            kind="method",
+            signature="public function processPayment()",
+            docstring="",
+            line_start=1,
+            line_end=50,
+        )
+        score = scorer._score_documentation(symbol)
+        assert score == 0.0
+
+    def test_none_docstring_zero_score(self, scorer):
+        """None文档获得0分"""
+        symbol = Symbol(
+            name="processPayment",
+            kind="method",
+            signature="public function processPayment()",
+            docstring=None,
+            line_start=1,
+            line_end=50,
+        )
+        score = scorer._score_documentation(symbol)
+        assert score == 0.0

@@ -149,6 +149,38 @@ class SymbolImportanceScorer:
         # Generic method
         return 5.0
 
+    def _score_documentation(self, symbol: Symbol) -> float:
+        """Score symbol based on documentation quality.
+
+        Well-documented code is more important for understanding and
+        should be prioritized in documentation.
+
+        Scoring:
+        - Comprehensive docs (>200 chars): 15 points
+        - Medium docs (>50 chars): 10 points
+        - Brief docs (any): 5 points
+        - No docs: 0 points
+
+        Args:
+            symbol: The Symbol to score
+
+        Returns:
+            float: Documentation quality score (0-15)
+        """
+        if not symbol.docstring:
+            return 0.0
+
+        doc_length = len(symbol.docstring.strip())
+
+        if doc_length > 200:
+            return 15.0
+        elif doc_length > 50:
+            return 10.0
+        elif doc_length > 0:
+            return 5.0
+        else:
+            return 0.0
+
     def score(self, symbol: Symbol) -> float:
         """Calculate importance score for a symbol.
 
