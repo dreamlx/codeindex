@@ -37,6 +37,41 @@ class SymbolImportanceScorer:
                 about the codebase being scored
     """
 
+    # Critical keywords indicating core business functionality
+    CRITICAL_KEYWORDS = [
+        "create",
+        "update",
+        "delete",
+        "remove",
+        "save",
+        "insert",
+        "process",
+        "handle",
+        "execute",
+        "run",
+        "pay",
+        "notify",
+        "callback",
+        "validate",
+        "sign",
+        "auth",
+        "login",
+        "logout",
+        "register",
+    ]
+
+    # Secondary keywords for query/retrieval operations
+    SECONDARY_KEYWORDS = [
+        "find",
+        "search",
+        "query",
+        "list",
+        "show",
+        "display",
+        "fetch",
+        "load",
+    ]
+
     def __init__(self, context: Optional[ScoringContext] = None):
         """Initialize the scorer with optional context.
 
@@ -79,6 +114,40 @@ class SymbolImportanceScorer:
                 return 5.0
             else:
                 return 15.0
+
+    def _score_semantics(self, symbol: Symbol) -> float:
+        """Score symbol based on semantic importance of its name.
+
+        Core business operations (pay, create, update, delete) should be
+        prioritized over generic helpers or accessor methods.
+
+        Scoring:
+        - Critical keywords (pay, create, update, etc.): 25 points
+        - Secondary keywords (find, search, list): 15 points
+        - Generic names: 5 points
+
+        Matching is case-insensitive.
+
+        Args:
+            symbol: The Symbol to score
+
+        Returns:
+            float: Semantic importance score (5-25)
+        """
+        name_lower = symbol.name.lower()
+
+        # Check for critical keywords
+        for keyword in self.CRITICAL_KEYWORDS:
+            if keyword in name_lower:
+                return 25.0
+
+        # Check for secondary keywords
+        for keyword in self.SECONDARY_KEYWORDS:
+            if keyword in name_lower:
+                return 15.0
+
+        # Generic method
+        return 5.0
 
     def score(self, symbol: Symbol) -> float:
         """Calculate importance score for a symbol.

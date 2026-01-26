@@ -173,3 +173,104 @@ class TestVisibilityScoring:
         )
         score = scorer._score_visibility(symbol)
         assert score == 5.0
+
+
+class TestSemanticScoring:
+    """测试语义重要性评分"""
+
+    @pytest.fixture
+    def scorer(self):
+        return SymbolImportanceScorer()
+
+    @pytest.mark.parametrize(
+        "method_name,expected_score",
+        [
+            ("pay", 25.0),
+            ("createOrder", 25.0),
+            ("updateUser", 25.0),
+            ("deleteProduct", 25.0),
+            ("processPayment", 25.0),
+            ("handleNotify", 25.0),
+            ("validateSign", 25.0),
+        ],
+    )
+    def test_critical_keywords_high_score(self, scorer, method_name, expected_score):
+        """核心关键词获得高分"""
+        symbol = Symbol(
+            name=method_name,
+            kind="method",
+            signature=f"public function {method_name}()",
+            docstring="",
+            line_start=1,
+            line_end=10,
+        )
+        score = scorer._score_semantics(symbol)
+        assert score == expected_score
+
+    @pytest.mark.parametrize(
+        "method_name,expected_score",
+        [
+            ("findUser", 15.0),
+            ("searchProducts", 15.0),
+            ("listOrders", 15.0),
+            ("showDetails", 15.0),
+        ],
+    )
+    def test_secondary_keywords_medium_score(self, scorer, method_name, expected_score):
+        """次要关键词获得中等分数"""
+        symbol = Symbol(
+            name=method_name,
+            kind="method",
+            signature=f"public function {method_name}()",
+            docstring="",
+            line_start=1,
+            line_end=10,
+        )
+        score = scorer._score_semantics(symbol)
+        assert score == expected_score
+
+    def test_generic_method_low_score(self, scorer):
+        """普通方法获得低分"""
+        symbol = Symbol(
+            name="helper",
+            kind="method",
+            signature="public function helper()",
+            docstring="",
+            line_start=1,
+            line_end=10,
+        )
+        score = scorer._score_semantics(symbol)
+        assert score == 5.0
+
+    def test_case_insensitive_matching(self, scorer):
+        """关键词匹配不区分大小写"""
+        symbols = [
+            Symbol(
+                name="PAY",
+                kind="method",
+                signature="public function PAY()",
+                docstring="",
+                line_start=1,
+                line_end=10,
+            ),
+            Symbol(
+                name="Pay",
+                kind="method",
+                signature="public function Pay()",
+                docstring="",
+                line_start=1,
+                line_end=10,
+            ),
+            Symbol(
+                name="pay",
+                kind="method",
+                signature="public function pay()",
+                docstring="",
+                line_start=1,
+                line_end=10,
+            ),
+        ]
+
+        for symbol in symbols:
+            score = scorer._score_semantics(symbol)
+            assert score == 25.0
