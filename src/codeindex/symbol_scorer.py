@@ -254,13 +254,14 @@ class SymbolImportanceScorer:
         Returns a score between 0-100, where higher scores indicate
         more important symbols that should be prioritized for documentation.
 
-        The base implementation returns a neutral score. Future versions
-        will implement multi-dimensional scoring based on:
-        - Visibility (public/private)
-        - Semantic importance (keywords in name)
-        - Documentation quality
-        - Code complexity
-        - Naming patterns
+        Multi-dimensional scoring based on:
+        - Visibility (public/private): 0-20 points
+        - Semantic importance (keywords): 5-25 points
+        - Documentation quality: 0-15 points
+        - Code complexity: 5-20 points
+        - Naming patterns (noise detection): -20-0 points
+
+        Theoretical range: -10 to 100 (clamped to 0-100)
 
         Args:
             symbol: The Symbol to score
@@ -268,33 +269,15 @@ class SymbolImportanceScorer:
         Returns:
             float: Score between 0-100
         """
-        # Base score starts at 50.0 (neutral)
-        score = 50.0
+        # Start with neutral base
+        score = 0.0
 
-        # Future scoring dimensions will be added here:
-        # score += self._score_visibility(symbol)      # 0-20
-        # score += self._score_semantics(symbol)       # 0-25
-        # score += self._score_documentation(symbol)   # 0-15
-        # score += self._score_complexity(symbol)      # 0-20
-        # score += self._score_naming_pattern(symbol)  # -20-0
+        # Add all scoring dimensions
+        score += self._score_visibility(symbol)  # 0-20
+        score += self._score_semantics(symbol)  # 5-25
+        score += self._score_documentation(symbol)  # 0-15
+        score += self._score_complexity(symbol)  # 5-20
+        score += self._score_naming_pattern(symbol)  # -20-0
 
-        # For now, add simple differentiation based on symbol attributes
-        # to pass the test that different symbols should have different scores
-
-        # Boost score for symbols with documentation
-        if symbol.docstring and len(symbol.docstring) > 10:
-            score += 10.0
-
-        # Boost score for larger symbols (likely more complex/important)
-        lines = symbol.line_end - symbol.line_start + 1
-        if lines > 50:
-            score += 15.0
-        elif lines > 20:
-            score += 5.0
-
-        # Penalize getter-like methods
-        if symbol.name.startswith("get") and len(symbol.name) > 3:
-            score -= 10.0
-
-        # Ensure score stays in valid range
+        # Ensure score stays in valid range [0, 100]
         return max(0.0, min(100.0, score))
