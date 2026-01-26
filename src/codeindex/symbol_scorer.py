@@ -210,6 +210,44 @@ class SymbolImportanceScorer:
         else:
             return 5.0
 
+    def _score_naming_pattern(self, symbol: Symbol) -> float:
+        """Score symbol based on naming patterns (noise detection).
+
+        Penalize common noise patterns like getters, setters, and
+        internal/magic methods that clutter documentation.
+
+        Scoring (penalties):
+        - Magic methods (__*): -20 points
+        - Private methods (_*): -15 points
+        - Getter/setter/checker methods (get*/set*/is*/has*): -10 points
+        - Normal methods: 0 points
+
+        Args:
+            symbol: The Symbol to score
+
+        Returns:
+            float: Naming pattern score (-20 to 0)
+        """
+        name = symbol.name
+
+        # Check for magic methods (highest penalty)
+        if name.startswith("__"):
+            return -20.0
+
+        # Check for private methods (high penalty)
+        if name.startswith("_"):
+            return -15.0
+
+        # Check for getter/setter/checker patterns (moderate penalty)
+        name_lower = name.lower()
+        noise_prefixes = ["get", "set", "is", "has"]
+        for prefix in noise_prefixes:
+            if name_lower.startswith(prefix):
+                return -10.0
+
+        # Normal method name
+        return 0.0
+
     def score(self, symbol: Symbol) -> float:
         """Calculate importance score for a symbol.
 

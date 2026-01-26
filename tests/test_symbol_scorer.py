@@ -433,3 +433,105 @@ class TestComplexityScoring:
         )
         score = scorer._score_complexity(symbol)
         assert score == 5.0
+
+
+class TestNamingPatternScoring:
+    """测试命名模式评分（噪音检测）"""
+
+    @pytest.fixture
+    def scorer(self):
+        return SymbolImportanceScorer()
+
+    def test_getter_method_penalty(self, scorer):
+        """Getter方法受到惩罚"""
+        symbol = Symbol(
+            name="getPayType",
+            kind="method",
+            signature="public function getPayType()",
+            docstring="",
+            line_start=1,
+            line_end=3,
+        )
+        score = scorer._score_naming_pattern(symbol)
+        assert score == -10.0
+
+    def test_setter_method_penalty(self, scorer):
+        """Setter方法受到惩罚"""
+        symbol = Symbol(
+            name="setPaymentStatus",
+            kind="method",
+            signature="public function setPaymentStatus($status)",
+            docstring="",
+            line_start=1,
+            line_end=3,
+        )
+        score = scorer._score_naming_pattern(symbol)
+        assert score == -10.0
+
+    def test_is_method_penalty(self, scorer):
+        """is/has检查方法受到惩罚"""
+        symbol = Symbol(
+            name="isValid",
+            kind="method",
+            signature="public function isValid()",
+            docstring="",
+            line_start=1,
+            line_end=2,
+        )
+        score = scorer._score_naming_pattern(symbol)
+        assert score == -10.0
+
+    def test_private_method_moderate_penalty(self, scorer):
+        """私有方法（单下划线）受到适度惩罚"""
+        symbol = Symbol(
+            name="_internalHelper",
+            kind="method",
+            signature="private function _internalHelper()",
+            docstring="",
+            line_start=1,
+            line_end=10,
+        )
+        score = scorer._score_naming_pattern(symbol)
+        assert score == -15.0
+
+    def test_magic_method_high_penalty(self, scorer):
+        """魔术方法（双下划线）受到高惩罚"""
+        symbol = Symbol(
+            name="__construct",
+            kind="method",
+            signature="public function __construct()",
+            docstring="",
+            line_start=1,
+            line_end=5,
+        )
+        score = scorer._score_naming_pattern(symbol)
+        assert score == -20.0
+
+    def test_normal_method_no_penalty(self, scorer):
+        """正常方法名没有惩罚"""
+        symbol = Symbol(
+            name="processPayment",
+            kind="method",
+            signature="public function processPayment()",
+            docstring="",
+            line_start=1,
+            line_end=50,
+        )
+        score = scorer._score_naming_pattern(symbol)
+        assert score == 0.0
+
+    def test_getter_but_important_no_penalty(self, scorer):
+        """重要的get方法（如getData）可能不惩罚，但这里按模式匹配"""
+        # Note: 这个测试展示了简单模式匹配的局限性
+        # 未来可能需要更智能的判断
+        symbol = Symbol(
+            name="getData",
+            kind="method",
+            signature="public function getData()",
+            docstring="",
+            line_start=1,
+            line_end=5,
+        )
+        score = scorer._score_naming_pattern(symbol)
+        # 现在仍然惩罚，因为符合get*模式
+        assert score == -10.0
