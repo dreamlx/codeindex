@@ -3,8 +3,8 @@
 import tempfile
 from pathlib import Path
 
-from codeindex.config import IndexingConfig, SymbolsConfig, GroupingConfig
-from codeindex.parser import ParseResult, Symbol, Import
+from codeindex.config import GroupingConfig, IndexingConfig, SymbolsConfig
+from codeindex.parser import Import, ParseResult, Symbol
 from codeindex.smart_writer import SmartWriter, determine_level
 
 
@@ -12,6 +12,7 @@ def _create_mock_parse_result(
     filename: str,
     symbols: list[Symbol] = None,
     imports: list[Import] = None,
+    file_lines: int = 100,
 ) -> ParseResult:
     """Create a mock ParseResult for testing."""
     return ParseResult(
@@ -20,6 +21,7 @@ def _create_mock_parse_result(
         imports=imports or [],
         module_docstring="",
         error=None,
+        file_lines=file_lines,
     )
 
 
