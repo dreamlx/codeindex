@@ -1,5 +1,7 @@
 """Tests for symbol importance scorer."""
 
+import pytest
+
 from codeindex.parser import Symbol
 from codeindex.symbol_scorer import ScoringContext, SymbolImportanceScorer
 
@@ -85,3 +87,89 @@ class TestSymbolScorerBase:
         score_trivial = scorer.score(trivial)
 
         assert score_important > score_trivial
+
+
+class TestVisibilityScoring:
+    """测试可见性评分"""
+
+    @pytest.fixture
+    def scorer(self):
+        return SymbolImportanceScorer()
+
+    def test_php_public_method_high_score(self, scorer):
+        """PHP public 方法获得高分"""
+        symbol = Symbol(
+            name="createOrder",
+            kind="method",
+            signature="public function createOrder()",
+            docstring="",
+            line_start=1,
+            line_end=10,
+        )
+        score = scorer._score_visibility(symbol)
+        assert score == 20.0
+
+    def test_php_protected_method_medium_score(self, scorer):
+        """PHP protected 方法获得中等分数"""
+        symbol = Symbol(
+            name="validateData",
+            kind="method",
+            signature="protected function validateData()",
+            docstring="",
+            line_start=1,
+            line_end=10,
+        )
+        score = scorer._score_visibility(symbol)
+        assert score == 10.0
+
+    def test_php_private_method_low_score(self, scorer):
+        """PHP private 方法获得低分"""
+        symbol = Symbol(
+            name="_log",
+            kind="method",
+            signature="private function _log()",
+            docstring="",
+            line_start=1,
+            line_end=10,
+        )
+        score = scorer._score_visibility(symbol)
+        assert score == 0.0
+
+    def test_python_public_function_high_score(self, scorer):
+        """Python 公共函数获得高分"""
+        symbol = Symbol(
+            name="process_payment",
+            kind="function",
+            signature="def process_payment()",
+            docstring="",
+            line_start=1,
+            line_end=10,
+        )
+        score = scorer._score_visibility(symbol)
+        assert score == 15.0
+
+    def test_python_private_function_low_score(self, scorer):
+        """Python 私有函数（_前缀）获得低分"""
+        symbol = Symbol(
+            name="_internal_helper",
+            kind="function",
+            signature="def _internal_helper()",
+            docstring="",
+            line_start=1,
+            line_end=10,
+        )
+        score = scorer._score_visibility(symbol)
+        assert score == 5.0
+
+    def test_python_magic_method_low_score(self, scorer):
+        """Python 魔术方法（__前缀）获得低分"""
+        symbol = Symbol(
+            name="__init__",
+            kind="method",
+            signature="def __init__(self)",
+            docstring="",
+            line_start=1,
+            line_end=10,
+        )
+        score = scorer._score_visibility(symbol)
+        assert score == 5.0

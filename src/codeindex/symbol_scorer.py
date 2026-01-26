@@ -45,6 +45,41 @@ class SymbolImportanceScorer:
         """
         self.context = context or ScoringContext()
 
+    def _score_visibility(self, symbol: Symbol) -> float:
+        """Score symbol based on its visibility.
+
+        Public APIs should be prioritized over private implementation details.
+
+        Scoring:
+        - PHP public: 20 points (main API surface)
+        - PHP protected: 10 points (inheritance API)
+        - PHP private: 0 points (internal implementation)
+        - Python public (no _): 15 points
+        - Python private (_ or __): 5 points
+
+        Args:
+            symbol: The Symbol to score
+
+        Returns:
+            float: Visibility score (0-20)
+        """
+        sig_lower = symbol.signature.lower()
+
+        # PHP visibility keywords
+        if "public" in sig_lower:
+            return 20.0
+        elif "protected" in sig_lower:
+            return 10.0
+        elif "private" in sig_lower:
+            return 0.0
+        else:
+            # Python naming conventions
+            # Private/magic methods start with underscore
+            if symbol.name.startswith("_"):
+                return 5.0
+            else:
+                return 15.0
+
     def score(self, symbol: Symbol) -> float:
         """Calculate importance score for a symbol.
 
