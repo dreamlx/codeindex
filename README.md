@@ -173,6 +173,64 @@ Indexing Status
 Indexed: 3/4 (75%)
 ```
 
+### 6. Analyze Technical Debt
+
+**NEW in v0.2.1**: Detect code quality issues and technical debt patterns.
+
+```bash
+# Analyze directory for technical debt
+codeindex tech-debt ./src
+
+# Output formats
+codeindex tech-debt ./src --format console   # Human-readable (default)
+codeindex tech-debt ./src --format markdown  # Documentation
+codeindex tech-debt ./src --format json      # API/scripting
+
+# Save to file
+codeindex tech-debt ./src --output debt_report.md
+
+# Recursive analysis
+codeindex tech-debt ./src --recursive
+
+# Quiet mode (minimal output)
+codeindex tech-debt ./src --quiet
+```
+
+**What it detects:**
+- 🔴 **Super large files** (>5000 lines) - CRITICAL
+- 🟡 **Large files** (>2000 lines) - HIGH
+- 🔴 **God Classes** (>50 methods) - CRITICAL
+- 🟡 **Symbol overload** (>100 symbols) - CRITICAL
+- 🟠 **High noise ratio** (>50% low-quality symbols) - HIGH
+
+**Example output:**
+```
+══════════════════════════════════════
+  Technical Debt Report
+══════════════════════════════════════
+
+Summary
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Files analyzed: 15
+Issues found: 3
+Quality Score: 78.3/100
+
+Severity Breakdown
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CRITICAL: 1
+HIGH: 2
+MEDIUM: 0
+LOW: 0
+
+File Details
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📄 src/models/user.py (Quality: 70.0)
+  🔴 CRITICAL - super_large_file
+     File has 6000 lines (threshold: 5000)
+     → Split into 3-5 smaller files
+```
+
 ---
 
 ## 📖 Documentation
@@ -247,9 +305,77 @@ incremental:
 
 ## 🤖 Claude Code Integration
 
-codeindex includes skills for [Claude Code](https://claude.ai/code) to enhance your AI-assisted development workflow.
+codeindex generates `README_AI.md` files that are perfect for [Claude Code](https://claude.ai/code) to understand your project architecture. By adding a `CLAUDE.md` file to your project, you can guide Claude Code to use these indexes effectively.
 
-### Install Skills
+### Why Use CLAUDE.md?
+
+Without guidance, Claude Code might:
+- ❌ Blindly search through all source files (slow and inefficient)
+- ❌ Miss important architectural context
+- ❌ Use Glob/Grep instead of semantic understanding
+
+With `CLAUDE.md`, Claude Code will:
+- ✅ Read `README_AI.md` files first (fast and structured)
+- ✅ Understand your project architecture before diving into code
+- ✅ Use Serena MCP tools for precise symbol navigation
+
+### Quick Setup
+
+**1. Copy the template to your project:**
+
+```bash
+# After running codeindex scan-all
+cp examples/CLAUDE.md.template CLAUDE.md
+```
+
+**2. Customize the project-specific sections:**
+
+Edit the "Project Specific Configuration" section in your `CLAUDE.md` to document your project structure, key components, and development guidelines.
+
+**3. Commit and push:**
+
+```bash
+git add CLAUDE.md README_AI.md **/README_AI.md
+git commit -m "docs: add Claude Code integration"
+```
+
+### What's Included in the Template
+
+The template includes guidance for Claude Code to:
+
+1. **Prioritize README_AI.md files** when understanding architecture
+2. **Use Serena MCP tools** (find_symbol, find_referencing_symbols) for precise navigation
+3. **Follow a structured workflow**: README → find_symbol → read source → analyze dependencies
+4. **Avoid inefficient patterns** like Glob/Grep searches
+
+### Example Workflow
+
+After setup, when you ask Claude Code about your project:
+
+```
+❌ Without CLAUDE.md:
+You: "Where is the authentication module?"
+Claude: [Uses Glob to search for "auth*"]
+        [Scans 50 files, wastes time]
+
+✅ With CLAUDE.md:
+You: "Where is the authentication module?"
+Claude: [Reads /src/README_AI.md]
+        [Reads /src/auth/README_AI.md]
+        "The authentication module is in src/auth/authenticator.py:15
+         with UserAuthenticator class..."
+```
+
+### Advanced Integration: MCP Skills
+
+codeindex also includes MCP skills for Claude Code:
+
+| Skill | Description |
+|-------|-------------|
+| `/mo:arch` | Query code architecture using README_AI.md indexes |
+| `/mo:index` | Generate repository index with codeindex |
+
+**Install skills:**
 
 ```bash
 # Navigate to codeindex directory
@@ -259,33 +385,11 @@ cd /path/to/codeindex
 ./skills/install.sh
 ```
 
-### Available Skills
+### Full Documentation
 
-| Command | Description |
-|---------|-------------|
-| `/mo:arch` | Query code architecture using README_AI.md indexes |
-| `/mo:index` | Generate repository index with codeindex |
-
-### Usage Example
-
-After indexing your project:
-
-```
-You: /mo:arch Where is the parser implemented?
-
-Claude: Based on README_AI.md, the parser is in src/codeindex/parser.py.
-        It uses tree-sitter for AST parsing and extracts Symbol and Import...
-```
-
-### CLAUDE.md Integration
-
-Add to your project's `CLAUDE.md`:
-
-```markdown
-Each source directory has README_AI.md - read it before modifying code to understand module structure.
-```
-
-See [skills/README.md](skills/README.md) for detailed documentation.
+- **User Guide**: [docs/guides/claude-code-integration.md](docs/guides/claude-code-integration.md)
+- **Template File**: [examples/CLAUDE.md.template](examples/CLAUDE.md.template)
+- **Skills Documentation**: [skills/README.md](skills/README.md)
 
 ---
 
