@@ -25,7 +25,7 @@ from .scanner import find_all_directories, scan_directory
 from .smart_writer import SmartWriter
 from .symbol_index import GlobalSymbolIndex
 from .symbol_scorer import ScoringContext, SymbolImportanceScorer
-from .tech_debt import TechDebtDetector, TechDebtReporter
+from .tech_debt import TechDebtDetector, TechDebtReport, TechDebtReporter
 from .tech_debt_formatters import ConsoleFormatter, JSONFormatter, MarkdownFormatter
 from .writer import (
     format_files_for_prompt,
@@ -751,6 +751,124 @@ def affected(since: str, until: str, as_json: bool):
             console.print("  codeindex list-dirs | xargs -P 4 -I {} codeindex scan {}")
 
 
+def _find_python_files(path: Path, recursive: bool) -> list[Path]:
+    """Find Python files in the given directory.
+
+    Args:
+        path: Directory path to search
+        recursive: If True, search subdirectories recursively
+
+    Returns:
+        List of Python file paths
+    """
+    files = []
+    if recursive:
+        # Recursively find all Python files
+        for py_file in path.rglob("*.py"):
+            if py_file.is_file():
+                files.append(py_file)
+    else:
+        # Only files in the immediate directory
+        for py_file in path.glob("*.py"):
+            if py_file.is_file():
+                files.append(py_file)
+    return files
+
+
+def _analyze_files(
+    files: list[Path],
+    detector: TechDebtDetector,
+    reporter: TechDebtReporter,
+    show_progress: bool,
+) -> None:
+    """Analyze files and add results to reporter.
+
+    Args:
+        files: List of Python files to analyze
+        detector: Technical debt detector instance
+        reporter: Reporter to collect results
+        show_progress: Whether to show progress messages
+    """
+    from .parser import parse_file
+
+    for file_path in files:
+        try:
+            # Parse file
+            parse_result = parse_file(file_path)
+
+            if parse_result.error:
+                if show_progress:
+                    console.print(
+                        f"[yellow]⚠ Skipping {file_path.name}: {parse_result.error}[/yellow]"
+                    )
+                continue
+
+            # Create scorer context
+            scoring_context = ScoringContext(
+                framework=None,
+                file_type="python",
+                total_symbols=len(parse_result.symbols),
+            )
+            scorer = SymbolImportanceScorer(scoring_context)
+
+            # Detect technical debt
+            debt_analysis = detector.analyze_file(parse_result, scorer)
+
+            # Analyze symbol overload
+            symbol_issues, symbol_analysis = detector.analyze_symbol_overload(
+                parse_result, scorer
+            )
+
+            # Merge symbol overload issues into debt analysis
+            debt_analysis.issues.extend(symbol_issues)
+
+            # Add to reporter
+            reporter.add_file_result(
+                file_path=file_path,
+                debt_analysis=debt_analysis,
+                symbol_analysis=symbol_analysis,
+            )
+
+        except Exception as e:
+            if show_progress:
+                console.print(f"[red]✗ Error analyzing {file_path.name}: {e}[/red]")
+            continue
+
+
+def _format_and_output(
+    report: TechDebtReport,
+    format: str,
+    output: Path | None,
+    quiet: bool,
+) -> None:
+    """Format and output the technical debt report.
+
+    Args:
+        report: Technical debt report to format
+        format: Output format (console, markdown, or json)
+        output: Optional output file path
+        quiet: Whether to suppress status messages
+    """
+    # Select formatter
+    if format == "console":
+        formatter = ConsoleFormatter()
+    elif format == "markdown":
+        formatter = MarkdownFormatter()
+    else:  # json
+        formatter = JSONFormatter()
+
+    formatted_output = formatter.format(report)
+
+    # Write output
+    if output:
+        output.write_text(formatted_output)
+        if not quiet:
+            console.print(f"[green]✓ Report written to {output}[/green]")
+    else:
+        # Print to stdout
+        print(formatted_output)
+
+
 @main.command()
 @click.argument("path", type=click.Path(exists=True, file_okay=False, path_type=Path))
 @click.option(
@@ -798,38 +916,12 @@ def tech_debt(path: Path, format: str, output: Path | None, recursive: bool, qui
         reporter = TechDebtReporter()
 
         # Find all Python files to analyze
-        files_to_analyze = []
-        if recursive:
-            # Recursively find all Python files
-            for py_file in path.rglob("*.py"):
-                if py_file.is_file():
-                    files_to_analyze.append(py_file)
-        else:
-            # Only files in the immediate directory
-            for py_file in path.glob("*.py"):
-                if py_file.is_file():
-                    files_to_analyze.append(py_file)
+        files_to_analyze = _find_python_files(path, recursive)
 
+        # Handle empty directory
         if not files_to_analyze:
-            # Generate empty report
             report = reporter.generate_report()
-
-            # Format and output
-            if format == "console":
-                formatter = ConsoleFormatter()
-            elif format == "markdown":
-                formatter = MarkdownFormatter()
-            else:  # json
-                formatter = JSONFormatter()
-
-            formatted_output = formatter.format(report)
-
-            if output:
-                output.write_text(formatted_output)
-                if not quiet:
-                    console.print(f"[green]✓ Report written to {output}[/green]")
-            else:
-                print(formatted_output)
+            _format_and_output(report, format, output, quiet)
             return
 
         # Only show progress if not JSON to stdout (JSON needs clean output)
@@ -839,72 +931,11 @@ def tech_debt(path: Path, format: str, output: Path | None, recursive: bool, qui
             console.print(f"[dim]Analyzing {len(files_to_analyze)} Python files...[/dim]")
 
         # Parse and analyze each file
-        from .parser import parse_file
+        _analyze_files(files_to_analyze, detector, reporter, show_progress)
 
-        for file_path in files_to_analyze:
-            try:
-                # Parse file
-                parse_result = parse_file(file_path)
-
-                if parse_result.error:
-                    if show_progress:
-                        console.print(
-                            f"[yellow]⚠ Skipping {file_path.name}: {parse_result.error}[/yellow]"
-                        )
-                    continue
-
-                # Create scorer context
-                scoring_context = ScoringContext(
-                    framework=None,
-                    file_type="python",
-                    total_symbols=len(parse_result.symbols),
-                )
-                scorer = SymbolImportanceScorer(scoring_context)
-
-                # Detect technical debt
-                debt_analysis = detector.analyze_file(parse_result, scorer)
-
-                # Analyze symbol overload
-                symbol_issues, symbol_analysis = detector.analyze_symbol_overload(
-                    parse_result, scorer
-                )
-
-                # Merge symbol overload issues into debt analysis
-                debt_analysis.issues.extend(symbol_issues)
-
-                # Add to reporter
-                reporter.add_file_result(
-                    file_path=file_path,
-                    debt_analysis=debt_analysis,
-                    symbol_analysis=symbol_analysis,
-                )
-
-            except Exception as e:
-                if show_progress:
-                    console.print(f"[red]✗ Error analyzing {file_path.name}: {e}[/red]")
-                continue
-
-        # Generate report
+        # Generate and output report
         report = reporter.generate_report()
-
-        # Format output
-        if format == "console":
-            formatter = ConsoleFormatter()
-        elif format == "markdown":
-            formatter = MarkdownFormatter()
-        else:  # json
-            formatter = JSONFormatter()
-
-        formatted_output = formatter.format(report)
-
-        # Write output
-        if output:
-            output.write_text(formatted_output)
-            if not quiet:
-                console.print(f"[green]✓ Report written to {output}[/green]")
-        else:
-            # Print to stdout
-            print(formatted_output)
+        _format_and_output(report, format, output, quiet)
 
     except Exception as e:
         console.print(f"[red]✗ Error: {e}[/red]")
