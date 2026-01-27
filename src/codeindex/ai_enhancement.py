@@ -27,6 +27,8 @@ class SuperLargeFileDetection:
 def is_super_large_file(parse_result: ParseResult, config: Config) -> SuperLargeFileDetection:
     """Detect if a file is super large and needs multi-turn dialogue.
 
+    Uses unified FileSizeClassifier for consistent detection (Epic 4 refactoring).
+
     A file is considered super large if:
     - Lines > super_large_lines threshold (default 5000), OR
     - Symbols > super_large_symbols threshold (default 100)
@@ -38,44 +40,29 @@ def is_super_large_file(parse_result: ParseResult, config: Config) -> SuperLarge
     Returns:
         SuperLargeFileDetection with detection result and recommended strategy
     """
-    file_lines = parse_result.file_lines
-    symbol_count = len(parse_result.symbols)
+    from codeindex.file_classifier import FileSizeCategory, FileSizeClassifier
 
-    # Get thresholds from config
-    lines_threshold = config.ai_enhancement.super_large_lines
-    symbols_threshold = config.ai_enhancement.super_large_symbols
-
-    # Check thresholds
-    exceeds_lines = file_lines > lines_threshold
-    exceeds_symbols = symbol_count > symbols_threshold
+    # Use FileSizeClassifier for unified detection (Epic 4 Story 4.2)
+    classifier = FileSizeClassifier(config)
+    analysis = classifier.classify(parse_result)
 
     # Determine if super large
-    is_super_large = exceeds_lines or exceeds_symbols
+    is_super_large = analysis.category == FileSizeCategory.SUPER_LARGE
 
-    # Build reason string
-    reasons = []
-    if exceeds_lines:
-        reasons.append("excessive_lines")
-    if exceeds_symbols:
-        reasons.append("excessive_symbols")
-
-    reason = ",".join(reasons) if reasons else None
-
-    # Determine strategy
-    if is_super_large:
+    # Determine strategy based on category
+    if analysis.category == FileSizeCategory.SUPER_LARGE:
         recommended_strategy = "multi_turn"
-    elif file_lines > 2000 or symbol_count > 40:
-        # Large but not super large
+    elif analysis.category == FileSizeCategory.LARGE:
         recommended_strategy = "hierarchical"
     else:
         recommended_strategy = "standard"
 
     return SuperLargeFileDetection(
         is_super_large=is_super_large,
-        reason=reason,
+        reason=analysis.reason,
         recommended_strategy=recommended_strategy,
-        file_lines=file_lines,
-        symbol_count=symbol_count,
+        file_lines=analysis.file_lines,
+        symbol_count=analysis.symbol_count,
     )
 
 

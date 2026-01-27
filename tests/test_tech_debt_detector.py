@@ -107,14 +107,15 @@ class TestTechDebtDetector:
         assert detector.config == mock_config
 
     def test_detector_has_thresholds(self, mock_config):
-        """Detector should have configurable thresholds."""
+        """Detector should use FileSizeClassifier for file size detection (Epic 4)."""
         detector = TechDebtDetector(mock_config)
-        assert hasattr(detector, "SUPER_LARGE_FILE")
-        assert hasattr(detector, "LARGE_FILE")
+        # After Epic 4 refactoring: uses FileSizeClassifier instead of hard-coded constants
+        assert hasattr(detector, "classifier")
         assert hasattr(detector, "GOD_CLASS_METHODS")
-        assert detector.SUPER_LARGE_FILE == 5000
-        assert detector.LARGE_FILE == 2000
         assert detector.GOD_CLASS_METHODS == 50
+        # Verify classifier is configured with correct thresholds
+        assert detector.classifier.super_large_lines == 5000
+        assert detector.classifier.super_large_symbols == 100
 
 
 class TestFileSizeDetection:

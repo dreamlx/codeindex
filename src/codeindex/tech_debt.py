@@ -222,13 +222,12 @@ class TechDebtDetector:
 
     Attributes:
         config: Configuration object
-        SUPER_LARGE_FILE: Threshold for super large files (>5000 lines)
-        LARGE_FILE: Threshold for large files (>2000 lines)
+        classifier: Unified file size classifier (Epic 4 refactoring)
         GOD_CLASS_METHODS: Threshold for God Class detection (>50 methods)
+        MASSIVE_SYMBOL_COUNT: Threshold for massive symbol count (>100)
+        HIGH_NOISE_RATIO: High noise ratio threshold (>0.5)
     """
 
-    SUPER_LARGE_FILE = 5000  # Lines
-    LARGE_FILE = 2000  # Lines
     GOD_CLASS_METHODS = 50  # Methods per class
     MASSIVE_SYMBOL_COUNT = 100  # Total symbols
     HIGH_NOISE_RATIO = 0.5  # 50% filter ratio
@@ -240,6 +239,10 @@ class TechDebtDetector:
             config: Configuration object
         """
         self.config = config
+        # Use unified FileSizeClassifier (Epic 4 Story 4.2)
+        from codeindex.file_classifier import FileSizeClassifier
+
+        self.classifier = FileSizeClassifier(config)
 
     def analyze_file(
         self, parse_result: ParseResult, scorer: SymbolImportanceScorer
@@ -275,36 +278,45 @@ class TechDebtDetector:
     def _detect_file_size_issues(self, parse_result: ParseResult) -> list[DebtIssue]:
         """Detect file size related technical debt.
 
+        Uses unified FileSizeClassifier for consistent detection (Epic 4 refactoring).
+
         Args:
             parse_result: The parsed file to analyze
 
         Returns:
             List of DebtIssue for file size problems
         """
+        from codeindex.file_classifier import FileSizeCategory
+
         issues = []
+        analysis = self.classifier.classify(parse_result)
         lines = parse_result.file_lines
 
-        if lines > self.SUPER_LARGE_FILE:
+        if analysis.category == FileSizeCategory.SUPER_LARGE:
+            # Use config thresholds instead of hard-coded constants
+            threshold = self.config.ai_enhancement.super_large_lines
             issues.append(
                 DebtIssue(
                     severity=DebtSeverity.CRITICAL,
                     category="super_large_file",
                     file_path=parse_result.path,
                     metric_value=lines,
-                    threshold=self.SUPER_LARGE_FILE,
-                    description=f"File has {lines} lines (threshold: {self.SUPER_LARGE_FILE})",
+                    threshold=threshold,
+                    description=f"File has {lines} lines (threshold: {threshold})",
                     suggestion="Split into 3-5 smaller files by responsibility",
                 )
             )
-        elif lines > self.LARGE_FILE:
+        elif analysis.category == FileSizeCategory.LARGE:
+            # Large file threshold (2000 lines from classifier)
+            threshold = 2000
             issues.append(
                 DebtIssue(
                     severity=DebtSeverity.HIGH,
                     category="large_file",
                     file_path=parse_result.path,
                     metric_value=lines,
-                    threshold=self.LARGE_FILE,
-                    description=f"File has {lines} lines (threshold: {self.LARGE_FILE})",
+                    threshold=threshold,
+                    description=f"File has {lines} lines (threshold: {threshold})",
                     suggestion="Consider splitting into 2-3 smaller modules",
                 )
             )
