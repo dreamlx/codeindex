@@ -106,81 +106,31 @@ def scan(
     if not quiet:
         console.print(f"  [dim]→ Extracted {total_symbols} symbols[/dim]")
 
-    # Detect if super large file and select strategy (Epic 3.2)
-    actual_strategy = strategy
-    if strategy == "auto" and not fallback:
-        from codeindex.ai_enhancement import is_super_large_file
+    # Try multi-turn enhancement if not using fallback (Epic 4 refactoring)
+    if not fallback:
+        from codeindex.ai_helper import execute_multi_turn_enhancement
 
-        # Aggregate all parse results into single ParseResult for detection
-        all_symbols = []
-        total_lines = 0
-        for pr in parse_results:
-            all_symbols.extend(pr.symbols)
-            total_lines += pr.file_lines
-
-        # Create aggregated parse result for detection
-        from codeindex.parser import ParseResult
-
-        aggregated = ParseResult(path=path, file_lines=total_lines, symbols=all_symbols)
-
-        detection = is_super_large_file(aggregated, config)
-        if detection.is_super_large:
-            actual_strategy = "multi_turn"
-            if not quiet:
-                console.print(
-                    f"  [yellow]⚠ Super large file detected: {detection.reason}[/yellow]"
-                )
-                console.print("  [dim]→ Using multi-turn dialogue strategy...[/dim]")
-
-    # Execute multi-turn dialogue if strategy selected (Epic 3.2)
-    if actual_strategy == "multi_turn" and not fallback:
-        from codeindex.ai_enhancement import multi_turn_ai_enhancement
-
-        # Create aggregated parse result for multi-turn dialogue
-        all_symbols = []
-        total_lines = 0
-        for pr in parse_results:
-            all_symbols.extend(pr.symbols)
-            total_lines += pr.file_lines
-
-        from codeindex.parser import ParseResult
-
-        aggregated = ParseResult(path=path, file_lines=total_lines, symbols=all_symbols)
-
-        if not quiet:
-            console.print("  [bold cyan]→ Starting multi-turn dialogue...[/bold cyan]")
-
-        result_mt = multi_turn_ai_enhancement(
-            parse_result=aggregated,
+        success, write_result, message = execute_multi_turn_enhancement(
+            dir_path=path,
+            parse_results=parse_results,
             config=config,
-            ai_command=config.ai_command,
-            timeout_per_round=timeout,
+            timeout=timeout,
+            strategy=strategy,
+            quiet=quiet,
         )
 
-        if result_mt.success:
-            # Write final README from Round 3
+        if success:
+            # Multi-turn succeeded
             if not quiet:
-                console.print("  [dim]→ Writing README_AI.md...[/dim]")
-            write_result = write_readme(path, result_mt.final_readme, config.output_file)
-
-            if write_result.success:
-                if not quiet:
-                    duration_msg = f"{result_mt.total_time:.1f}s"
-                    console.print(
-                        f"[green]✓ Multi-turn complete ({duration_msg}):[/green] "
-                        f"{write_result.path}"
-                    )
-                else:
-                    print(write_result.path)
+                console.print(f"[green]✓ {message}:[/green] {write_result.path}")
             else:
-                console.print(f"[red]✗ Write error:[/red] {write_result.error}")
+                print(write_result.path)
             return
         else:
-            # Multi-turn failed, fall back to standard enhancement
-            if not quiet:
-                console.print(
-                    f"[yellow]⚠ Multi-turn failed: {result_mt.error}[/yellow]"
-                )
+            # Multi-turn not applicable or failed, continue to standard enhancement
+            if "not applicable" not in message and not quiet:
+                # Only show error if it's a real failure (not just "not applicable")
+                console.print(f"[yellow]⚠ {message}[/yellow]")
                 console.print("  [dim]→ Falling back to standard enhancement...[/dim]")
             # Continue to standard enhancement below
 
@@ -540,48 +490,29 @@ def scan_all(
                 if result.files:
                     parse_results = parse_files_parallel(result.files, config, quiet=True)
 
-                # Detect if super large file and use multi-turn dialogue (Epic 3.2)
+                # Try multi-turn enhancement for super large files (Epic 4 refactoring)
                 if parse_results:
-                    from codeindex.ai_enhancement import is_super_large_file
-                    from codeindex.parser import ParseResult
+                    from codeindex.ai_helper import execute_multi_turn_enhancement
 
-                    # Aggregate parse results
-                    all_symbols = []
-                    total_lines = 0
-                    for pr in parse_results:
-                        all_symbols.extend(pr.symbols)
-                        total_lines += pr.file_lines
-
-                    aggregated = ParseResult(
-                        path=dir_path, file_lines=total_lines, symbols=all_symbols
+                    success, write_result, message = execute_multi_turn_enhancement(
+                        dir_path=dir_path,
+                        parse_results=parse_results,
+                        config=config,
+                        timeout=timeout,
+                        strategy="auto",  # Auto-detect in scan-all
+                        quiet=True,  # scan-all handles its own output
                     )
 
-                    detection = is_super_large_file(aggregated, config)
-                    if detection.is_super_large:
-                        # Use multi-turn dialogue for super large files
-                        from codeindex.ai_enhancement import multi_turn_ai_enhancement
-
-                        result_mt = multi_turn_ai_enhancement(
-                            parse_result=aggregated,
-                            config=config,
-                            ai_command=config.ai_command,
-                            timeout_per_round=timeout,
+                    if success:
+                        # Multi-turn succeeded
+                        new_size = write_result.path.stat().st_size
+                        old_size = phase1_results[dir_path][2]
+                        msg = (
+                            f"{message} ({old_size / 1024:.0f}KB → "
+                            f"{new_size / 1024:.0f}KB)"
                         )
-
-                        if result_mt.success:
-                            write_result = write_readme(
-                                dir_path, result_mt.final_readme, config.output_file
-                            )
-                            if write_result.success:
-                                new_size = write_result.path.stat().st_size
-                                old_size = phase1_results[dir_path][2]
-                                time_str = f"{result_mt.total_time:.1f}s"
-                                msg = (
-                                    f"Multi-turn ({old_size / 1024:.0f}KB → "
-                                    f"{new_size / 1024:.0f}KB, {time_str})"
-                                )
-                                return dir_path, True, msg
-                        # If multi-turn fails, fall through to standard enhancement
+                        return dir_path, True, msg
+                    # If multi-turn not applicable or failed, fall through to standard enhancement
 
                 # Format prompt
                 files_info = format_files_for_prompt(parse_results)
