@@ -68,6 +68,28 @@ class DebtAnalysisResult:
     total_symbols: int = 0
 
 
+@dataclass
+class SymbolOverloadAnalysis:
+    """Analysis result of symbol overload detection.
+
+    Attributes:
+        total_symbols: Total number of symbols in the file
+        filtered_symbols: Number of high-quality symbols after filtering
+        filter_ratio: Ratio of filtered symbols (0.0 to 1.0)
+        noise_breakdown: Dictionary categorizing noise sources
+            Keys: "getters_setters", "private_methods", "magic_methods", "other"
+            Values: Count of symbols in each category
+        quality_score: Symbol quality score (0-100, higher is better)
+            Based on filter ratio and noise breakdown
+    """
+
+    total_symbols: int = 0
+    filtered_symbols: int = 0
+    filter_ratio: float = 0.0
+    noise_breakdown: dict[str, int] = field(default_factory=dict)
+    quality_score: float = 100.0
+
+
 class TechDebtDetector:
     """Detector for technical debt in code.
 
@@ -84,6 +106,8 @@ class TechDebtDetector:
     SUPER_LARGE_FILE = 5000  # Lines
     LARGE_FILE = 2000  # Lines
     GOD_CLASS_METHODS = 50  # Methods per class
+    MASSIVE_SYMBOL_COUNT = 100  # Total symbols
+    HIGH_NOISE_RATIO = 0.5  # 50% filter ratio
 
     def __init__(self, config: Config):
         """Initialize the technical debt detector.
@@ -244,4 +268,216 @@ class TechDebtDetector:
                 score -= 2
 
         # Ensure score doesn't go below 0
+        return max(0.0, score)
+
+    def analyze_symbol_overload(
+        self, parse_result: ParseResult, scorer: SymbolImportanceScorer
+    ) -> tuple[list[DebtIssue], SymbolOverloadAnalysis]:
+        """Analyze symbol overload issues.
+
+        Detects:
+        - Massive symbol count (>100 symbols)
+        - High noise ratio (>50% filtered)
+        - Data Class smell (>66% getters/setters)
+
+        Args:
+            parse_result: The parsed file to analyze
+            scorer: Symbol importance scorer for quality analysis
+
+        Returns:
+            Tuple of (issues list, SymbolOverloadAnalysis)
+        """
+        issues = []
+        total_symbols = len(parse_result.symbols)
+
+        # Detect massive symbol count
+        if total_symbols > self.MASSIVE_SYMBOL_COUNT:
+            issues.append(
+                DebtIssue(
+                    severity=DebtSeverity.CRITICAL,
+                    category="massive_symbol_count",
+                    file_path=parse_result.path,
+                    metric_value=total_symbols,
+                    threshold=self.MASSIVE_SYMBOL_COUNT,
+                    description=f"File has {total_symbols} symbols "
+                    f"(threshold: {self.MASSIVE_SYMBOL_COUNT})",
+                    suggestion="Split into multiple modules to reduce cognitive load",
+                )
+            )
+
+        # Score all symbols and filter
+        scored_symbols = []
+        for symbol in parse_result.symbols:
+            score = scorer.score(symbol)
+            scored_symbols.append((symbol, score))
+
+        # Use standard threshold for filtering (30.0 is a reasonable cutoff)
+        threshold = 30.0
+        filtered_symbols = [s for s, score in scored_symbols if score >= threshold]
+
+        # Calculate metrics
+        filtered_count = len(filtered_symbols)
+        filter_ratio = 1.0 - (filtered_count / total_symbols) if total_symbols > 0 else 0.0
+
+        # Analyze noise breakdown
+        noise_breakdown = self._analyze_noise_breakdown(
+            parse_result.symbols, filtered_symbols
+        )
+
+        # Detect high noise ratio
+        if filter_ratio > self.HIGH_NOISE_RATIO:
+            noise_description = self._format_noise_description(noise_breakdown)
+            issues.append(
+                DebtIssue(
+                    severity=DebtSeverity.HIGH,
+                    category="low_quality_symbols",
+                    file_path=parse_result.path,
+                    metric_value=filter_ratio,
+                    threshold=self.HIGH_NOISE_RATIO,
+                    description=f"High symbol noise ratio: {filter_ratio*100:.1f}% "
+                    f"({total_symbols - filtered_count}/{total_symbols} symbols filtered). "
+                    f"{noise_description}",
+                    suggestion=self._suggest_noise_reduction(noise_breakdown),
+                )
+            )
+
+        # Calculate quality score
+        quality_score = self._calculate_symbol_quality_score(
+            total_symbols, filtered_count, noise_breakdown
+        )
+
+        analysis = SymbolOverloadAnalysis(
+            total_symbols=total_symbols,
+            filtered_symbols=filtered_count,
+            filter_ratio=filter_ratio,
+            noise_breakdown=noise_breakdown,
+            quality_score=quality_score,
+        )
+
+        return issues, analysis
+
+    def _analyze_noise_breakdown(
+        self, all_symbols: list, filtered_symbols: list
+    ) -> dict[str, int]:
+        """Analyze and categorize noise sources.
+
+        Args:
+            all_symbols: All symbols in the file
+            filtered_symbols: High-quality symbols after filtering
+
+        Returns:
+            Dictionary with noise categories and counts
+        """
+        # Get filtered symbol names for quick lookup
+        filtered_names = {s.name for s in filtered_symbols}
+
+        # Categorize noise
+        breakdown = {
+            "getters_setters": 0,
+            "private_methods": 0,
+            "magic_methods": 0,
+            "other": 0,
+        }
+
+        for symbol in all_symbols:
+            if symbol.name in filtered_names:
+                continue  # Skip high-quality symbols
+
+            # Categorize this noise symbol
+            if symbol.name.startswith(("get", "set")) and len(symbol.name) > 3:
+                # Simple getter/setter pattern
+                breakdown["getters_setters"] += 1
+            elif symbol.name.startswith("_") and not symbol.name.startswith("__"):
+                # Private method (single underscore)
+                breakdown["private_methods"] += 1
+            elif symbol.name.startswith("__") and symbol.name.endswith("__"):
+                # Magic method
+                breakdown["magic_methods"] += 1
+            else:
+                breakdown["other"] += 1
+
+        return breakdown
+
+    def _format_noise_description(self, noise_breakdown: dict[str, int]) -> str:
+        """Format noise breakdown into readable description.
+
+        Args:
+            noise_breakdown: Dictionary of noise categories and counts
+
+        Returns:
+            Human-readable description
+        """
+        parts = []
+        if noise_breakdown.get("getters_setters", 0) > 0:
+            parts.append(f"{noise_breakdown['getters_setters']} getters/setters")
+        if noise_breakdown.get("private_methods", 0) > 0:
+            parts.append(f"{noise_breakdown['private_methods']} private methods")
+        if noise_breakdown.get("magic_methods", 0) > 0:
+            parts.append(f"{noise_breakdown['magic_methods']} magic methods")
+        if noise_breakdown.get("other", 0) > 0:
+            parts.append(f"{noise_breakdown['other']} other low-quality symbols")
+
+        return "Breakdown: " + ", ".join(parts) if parts else "No breakdown available"
+
+    def _suggest_noise_reduction(self, noise_breakdown: dict[str, int]) -> str:
+        """Generate suggestions for reducing symbol noise.
+
+        Args:
+            noise_breakdown: Dictionary of noise categories and counts
+
+        Returns:
+            Actionable suggestion
+        """
+        getters_setters = noise_breakdown.get("getters_setters", 0)
+        total_noise = sum(noise_breakdown.values())
+
+        if getters_setters > total_noise * 0.66:
+            # Data Class smell
+            return (
+                "Data Class smell detected: >66% getters/setters. "
+                "Consider using DTOs, value objects, or applying Tell Don't Ask principle"
+            )
+        elif getters_setters > 10:
+            return (
+                "High number of getters/setters. "
+                "Consider encapsulating data with behavior or using data classes"
+            )
+        else:
+            return (
+                "Reduce low-quality symbols: improve method naming, "
+                "merge helpers, or extract utilities"
+            )
+
+    def _calculate_symbol_quality_score(
+        self, total: int, filtered: int, noise_breakdown: dict[str, int]
+    ) -> float:
+        """Calculate symbol quality score.
+
+        Args:
+            total: Total symbol count
+            filtered: Filtered (high-quality) symbol count
+            noise_breakdown: Noise categorization
+
+        Returns:
+            Quality score (0-100, higher is better)
+        """
+        if total == 0:
+            return 100.0
+
+        # Base score from retention ratio
+        retention_ratio = filtered / total
+        score = retention_ratio * 100
+
+        # Penalty for getters/setters (Data Class smell)
+        getters_setters = noise_breakdown.get("getters_setters", 0)
+        if getters_setters > total * 0.5:
+            score -= 20  # Heavy penalty for Data Class
+        elif getters_setters > total * 0.3:
+            score -= 10  # Moderate penalty
+
+        # Penalty for many private methods (poor encapsulation)
+        private_methods = noise_breakdown.get("private_methods", 0)
+        if private_methods > total * 0.3:
+            score -= 10
+
         return max(0.0, score)
