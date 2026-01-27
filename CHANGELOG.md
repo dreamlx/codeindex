@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-01-28
+
 ### Changed - Epic 4: CLI Module Split (Story 4.3) 🏗️
 - **CLI architecture refactored** into 6 focused modules (from 1 monolithic file)
   - `cli.py` - Main entry point and command registration (31 lines, -97%)
@@ -177,7 +179,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Timeout and error handling
 - Development mode installation
 
-[Unreleased]: https://github.com/yourusername/codeindex/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/yourusername/codeindex/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/yourusername/codeindex/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/yourusername/codeindex/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/yourusername/codeindex/compare/v0.1.3...v0.2.0
 [0.1.3]: https://github.com/yourusername/codeindex/compare/v0.1.2...v0.1.3
