@@ -7,6 +7,7 @@ from rich.console import Console
 from rich.table import Table
 
 from .config import DEFAULT_CONFIG_NAME, Config
+from .directory_tree import DirectoryTree
 from .incremental import (
     UpdateLevel,
     analyze_changes,
@@ -21,6 +22,11 @@ from .invoker import (
 )
 from .parallel import parse_files_parallel
 from .scanner import find_all_directories, scan_directory
+from .smart_writer import SmartWriter
+from .symbol_index import GlobalSymbolIndex
+from .symbol_scorer import ScoringContext, SymbolImportanceScorer
+from .tech_debt import TechDebtDetector, TechDebtReporter
+from .tech_debt_formatters import ConsoleFormatter, JSONFormatter, MarkdownFormatter
 from .writer import (
     format_files_for_prompt,
     format_imports_for_prompt,
@@ -28,9 +34,6 @@ from .writer import (
     generate_fallback_readme,
     write_readme,
 )
-from .smart_writer import SmartWriter, determine_level
-from .directory_tree import DirectoryTree
-from .symbol_index import GlobalSymbolIndex
 
 console = Console()
 
@@ -287,7 +290,7 @@ def scan_all(
 
     # ========== Phase 1: SmartWriter parallel generation ==========
     if not quiet:
-        console.print(f"\n[bold]📝 Phase 1: Generating READMEs (SmartWriter)...[/bold]")
+        console.print("\n[bold]📝 Phase 1: Generating READMEs (SmartWriter)...[/bold]")
         console.print(f"[dim]→ Processing with {config.parallel_workers} parallel workers...[/dim]")
 
     def process_with_smartwriter(dir_path: Path) -> tuple[Path, bool, str, int]:
@@ -399,10 +402,10 @@ def scan_all(
         level_count = len(ai_checklist) - overview_count - oversize_count
 
         if strategy == "all":
-            console.print(f"\n[bold]🤖 Phase 2: AI Enhancement (--ai-all)...[/bold]")
+            console.print("\n[bold]🤖 Phase 2: AI Enhancement (--ai-all)...[/bold]")
             console.print(f"[dim]→ Enhancing ALL directories: {len(ai_checklist)} total[/dim]")
         else:
-            console.print(f"\n[bold]🤖 Phase 2: AI Enhancement...[/bold]")
+            console.print("\n[bold]🤖 Phase 2: AI Enhancement...[/bold]")
             console.print(f"[dim]→ Checklist: {len(ai_checklist)} directories ({overview_count} overview, {oversize_count} oversize, {level_count} other)[/dim]")
 
         console.print(f"[dim]→ Max concurrent: {config.ai_enhancement.max_concurrent}, delay: {config.ai_enhancement.rate_limit_delay}s[/dim]")
@@ -746,6 +749,166 @@ def affected(since: str, until: str, as_json: bool):
             console.print(f"  codeindex scan {dirs_to_update[0]}")
         else:
             console.print("  codeindex list-dirs | xargs -P 4 -I {} codeindex scan {}")
+
+
+@main.command()
+@click.argument("path", type=click.Path(exists=True, file_okay=False, path_type=Path))
+@click.option(
+    "--format",
+    type=click.Choice(["console", "markdown", "json"], case_sensitive=False),
+    default="console",
+    help="Output format",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path),
+    help="Write output to file instead of stdout",
+)
+@click.option(
+    "--recursive",
+    "-r",
+    is_flag=True,
+    help="Recursively scan subdirectories",
+)
+@click.option(
+    "--quiet",
+    "-q",
+    is_flag=True,
+    help="Minimal output",
+)
+def tech_debt(path: Path, format: str, output: Path | None, recursive: bool, quiet: bool):
+    """Analyze technical debt in a directory.
+
+    Scans Python files for technical debt issues including:
+    - Super large files (>5000 lines)
+    - Large files (>2000 lines)
+    - God Classes (>50 methods)
+    - Massive symbol count (>100 symbols)
+    - High noise ratio (>50% low-quality symbols)
+
+    Results can be output in console, markdown, or JSON format.
+    """
+    try:
+        # Load config
+        config = Config.load()
+
+        # Initialize detector and reporter
+        detector = TechDebtDetector(config)
+        reporter = TechDebtReporter()
+
+        # Find all Python files to analyze
+        files_to_analyze = []
+        if recursive:
+            # Recursively find all Python files
+            for py_file in path.rglob("*.py"):
+                if py_file.is_file():
+                    files_to_analyze.append(py_file)
+        else:
+            # Only files in the immediate directory
+            for py_file in path.glob("*.py"):
+                if py_file.is_file():
+                    files_to_analyze.append(py_file)
+
+        if not files_to_analyze:
+            # Generate empty report
+            report = reporter.generate_report()
+
+            # Format and output
+            if format == "console":
+                formatter = ConsoleFormatter()
+            elif format == "markdown":
+                formatter = MarkdownFormatter()
+            else:  # json
+                formatter = JSONFormatter()
+
+            formatted_output = formatter.format(report)
+
+            if output:
+                output.write_text(formatted_output)
+                if not quiet:
+                    console.print(f"[green]✓ Report written to {output}[/green]")
+            else:
+                print(formatted_output)
+            return
+
+        # Only show progress if not JSON to stdout (JSON needs clean output)
+        show_progress = not quiet and not (format == "json" and output is None)
+
+        if show_progress:
+            console.print(f"[dim]Analyzing {len(files_to_analyze)} Python files...[/dim]")
+
+        # Parse and analyze each file
+        from .parser import parse_file
+
+        for file_path in files_to_analyze:
+            try:
+                # Parse file
+                parse_result = parse_file(file_path)
+
+                if parse_result.error:
+                    if show_progress:
+                        console.print(
+                            f"[yellow]⚠ Skipping {file_path.name}: {parse_result.error}[/yellow]"
+                        )
+                    continue
+
+                # Create scorer context
+                scoring_context = ScoringContext(
+                    framework=None,
+                    file_type="python",
+                    total_symbols=len(parse_result.symbols),
+                )
+                scorer = SymbolImportanceScorer(scoring_context)
+
+                # Detect technical debt
+                debt_analysis = detector.analyze_file(parse_result, scorer)
+
+                # Analyze symbol overload
+                symbol_issues, symbol_analysis = detector.analyze_symbol_overload(
+                    parse_result, scorer
+                )
+
+                # Merge symbol overload issues into debt analysis
+                debt_analysis.issues.extend(symbol_issues)
+
+                # Add to reporter
+                reporter.add_file_result(
+                    file_path=file_path,
+                    debt_analysis=debt_analysis,
+                    symbol_analysis=symbol_analysis,
+                )
+
+            except Exception as e:
+                if show_progress:
+                    console.print(f"[red]✗ Error analyzing {file_path.name}: {e}[/red]")
+                continue
+
+        # Generate report
+        report = reporter.generate_report()
+
+        # Format output
+        if format == "console":
+            formatter = ConsoleFormatter()
+        elif format == "markdown":
+            formatter = MarkdownFormatter()
+        else:  # json
+            formatter = JSONFormatter()
+
+        formatted_output = formatter.format(report)
+
+        # Write output
+        if output:
+            output.write_text(formatted_output)
+            if not quiet:
+                console.print(f"[green]✓ Report written to {output}[/green]")
+        else:
+            # Print to stdout
+            print(formatted_output)
+
+    except Exception as e:
+        console.print(f"[red]✗ Error: {e}[/red]")
+        raise click.Abort()
 
 
 if __name__ == "__main__":
