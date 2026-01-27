@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Epic 3.2: Multi-turn Dialogue for Super Large Files 🚀
+- **Super large file detection** with configurable thresholds (>5000 lines OR >100 symbols)
+- **Three-round multi-turn dialogue** for complex file documentation:
+  - Round 1: Architecture Overview (10KB prompt, 10-20 lines)
+  - Round 2: Core Component Analysis (15KB prompt, 30-60 lines)
+  - Round 3: Final README Synthesis (15KB prompt, 100+ lines)
+- **Symbol grouping by responsibility** (CRUD, Query, Validation, Calculation, Utility)
+- **Intelligent strategy selection** (auto/standard/multi_turn)
+- `--strategy` CLI option for manual strategy override
+- Automatic multi-turn dialogue in `scan-all` for super large files
+- Graceful fallback to standard enhancement on failure
+- Progress indicators and timing information
+- 22 new BDD tests (13 multi-turn + 9 detection scenarios)
+
+### Changed - Epic 3.2
+- **scan command** now supports `--strategy` option with auto-detection
+- **scan-all command** automatically detects and processes super large files with multi-turn dialogue
+- Enhanced CLI output with round-by-round progress tracking
+
+### Added - Epic 3.1: Technical Debt Analysis 🔍
+- **Complexity analysis module** with cyclomatic, cognitive, and nesting depth metrics
+- **Symbol overload detection** for classes/files with too many methods
+- **Technical debt reporting** with multiple output formats:
+  - Console: Rich table with emoji indicators
+  - Markdown: Detailed report with metrics breakdown
+  - JSON: Machine-readable format for CI/CD integration
+- `tech-debt` CLI command for project-wide analysis:
+  - `codeindex tech-debt` - Console output with summary
+  - `codeindex tech-debt --format markdown` - Detailed markdown report
+  - `codeindex tech-debt --format json` - JSON export
+  - `codeindex tech-debt --output report.md` - Save to file
+- Configurable thresholds for complexity and overload detection
+- 69 new tests (30 TDD + 5 BDD complexity + 12 TDD + 2 BDD overload + 22 TDD + 5 BDD reporting + 12 CLI integration)
+
+### Changed - Epic 3.1
+- **Parser** enhanced with complexity metrics extraction
+- **Symbol data models** extended with complexity scores
+- CLI refactored with focused helper functions for better maintainability
+
 ### Added - Epic 2: Adaptive Symbol Extraction 🎉
 - **Adaptive symbol extraction** based on file size (5-150 symbols per file)
 - 7-tier file size classification system (tiny/small/medium/large/xlarge/huge/mega)
