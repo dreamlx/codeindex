@@ -92,3 +92,12 @@ Prompt (Writer) → AI CLI (Invoker) → README_AI.md (Writer)
 | Adaptive Symbol Selection | `SmartWriter` integrates `AdaptiveSymbolSelector` to dynamically calculate per-file symbol limits. When `adaptive_symbols.enabled=True`, calls `calculate_limit(file_lines, total_symbols)` using actual file line counts; otherwise falls back to static `max_per_file`. Categories: tiny (<100 lines/10 symbols), small (<200/15), medium (<500/30), large (<1000/50), xlarge (<2000/80), huge (<5000/120), mega (≥5000/150). Constraints: min 5 symbols, max 200 symbols, capped by total available symbols. Truncation message uses filtered symbol count for accurate remaining symbol calculation. |
 | Configuration Validation | `IndexingConfig.from_dict()` validates and merges user YAML with `DEFAULT_ADAPTIVE_CONFIG`, ensuring type safety and completeness |
 | Technical Debt Analysis | `TechDebtDetector.analyze_file()` evaluates code quality and returns `DebtAnalysisResult` with detected issues, quality score (0-100), and actionable suggestions. Detects: super large files (>5000 lines CRITICAL), large files (>2000 lines HIGH), and God Classes (>50 methods CRITICAL with split recommendations) |
+
+---
+
+## Recent Changes
+
+**Commit `03b0821`**: feat(tech-debt): add symbol overload detection
+
+Changed files:
+- `tech_debt.py`
