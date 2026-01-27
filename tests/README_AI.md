@@ -249,11 +249,17 @@ Changed files:
 Changed files:
 - `test_super_large_detection_bdd.py`
 
+
+**Commit `51094c0`**: feat(epic3.2): implement multi-turn dialogue core (Story 3.2.2 WIP)
+
+Changed files:
+- `test_multi_turn_dialogue_bdd.py`
+
 ---
 
 ## Recent Changes
 
-**Commit `51094c0`**: feat(epic3.2): implement multi-turn dialogue core (Story 3.2.2 WIP)
+**Commit `b50dfeb`**: test(epic3.2): complete BDD tests for multi-turn dialogue (Story 3.2.2)
 
 Changed files:
 - `test_multi_turn_dialogue_bdd.py`
