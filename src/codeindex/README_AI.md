@@ -241,12 +241,19 @@ Changed files:
 - `cli.py`
 - `cli_config.py`
 
----
-
-## Recent Changes
 
 **Commit `0563989`**: refactor(epic4): extract cli_symbols module
 
 Changed files:
 - `cli.py`
 - `cli_symbols.py`
+
+---
+
+## Recent Changes
+
+**Commit `35e4756`**: refactor(epic4): extract cli_scan module
+
+Changed files:
+- `cli.py`
+- `cli_scan.py`
