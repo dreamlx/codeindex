@@ -275,26 +275,93 @@ Code Quality: All ruff checks passed ✅
 - **Test-to-Code Ratio**: 2.2:1 (excellent)
 - **Tests**: 22 TDD + 5 BDD = 27 tests for Story 3.1.3
 
+**Story 3.1.4: CLI Integration - 100% COMPLETE**
+
+1. ✅ **tech-debt CLI Command** (Task 1)
+   - Added new `tech-debt` command to CLI using Click
+   - Accepts directory path as argument
+   - Options: --format (console|markdown|json), --output (file), --recursive, --quiet
+   - Integrated with existing parser and scanner infrastructure
+
+2. ✅ **TechDebtDetector Integration** (Task 2)
+   - Integrated TechDebtDetector with scanner/parser workflow
+   - Scans directory for Python files (recursive optional)
+   - Parses files and detects technical debt
+   - Analyzes both file-level debt and symbol overload
+   - Collects results using TechDebtReporter
+
+3. ✅ **Output Formatting** (Task 3)
+   - Format selection based on --format option
+   - Console output with ANSI colors (default)
+   - Markdown output for documentation
+   - JSON output for API/scripting
+   - Output to file (--output) or stdout
+   - Clean JSON output without progress messages
+
+4. ✅ **Integration Tests** (Task 4)
+   - 12 comprehensive CLI integration tests
+   - TestTechDebtCommand: 9 tests (command exists, formats, options, error handling)
+   - TestTechDebtIntegration: 3 tests (multiple issues, quality scores, colors)
+   - All tests use CliRunner for end-to-end testing
+   - Tests cover all format options and file output
+
+### Test Results 📊
+
+```
+Total Tests: 76 (64 previous + 12 CLI integration)
+Passed: 76 ✅
+Failed: 0
+Code Quality: All ruff checks passed (except pre-existing line length issues) ✅
+```
+
+### Test Breakdown - Story 3.1.4
+
+- **CLI Command Tests**: 9 tests (command exists, console/markdown/JSON formats, file output, error handling)
+- **Integration Tests**: 3 tests (multiple issues, quality scores, console colors)
+
+### Files Created/Modified - Story 3.1.4
+
+1. `src/codeindex/cli.py` (+140 lines)
+   - Added tech-debt command with full implementation
+   - Integrated TechDebtDetector, TechDebtReporter, and formatters
+   - File scanning with recursive option
+   - Output formatting and file writing
+   - Error handling and progress messages
+
+2. `tests/test_cli_tech_debt.py` (200 lines, NEW)
+   - 12 comprehensive CLI integration tests
+   - Sample file fixtures
+   - End-to-end workflow testing
+   - All format options covered
+
+### Code Metrics - Story 3.1.4
+
+- **Lines of Code**: +140 (cli.py)
+- **Test Lines**: +200 (test_cli_tech_debt.py)
+- **Test-to-Code Ratio**: 1.4:1 (good)
+- **Tests**: 12 integration tests
+
 ### In Progress 🔵
 
-- None (Stories 3.1.1, 3.1.2, and 3.1.3 all complete)
+- None (Epic 3.1 - Technical Debt Detection - 100% COMPLETE)
 
 ### Blockers ⛔
 
 - None
 
-### Tomorrow's Plan 📅
+### Summary 📅
 
-**Next Story: 3.1.4 - CLI Integration (1 day estimated)**
+**Epic 3.1: Technical Debt Detection - 100% COMPLETE ✅**
 
-Tasks:
-1. Add tech-debt command to CLI
-2. Integrate TechDebtDetector and TechDebtReporter
-3. Add format option (--format console|markdown|json)
-4. Add output file option (--output FILE)
-5. Write integration tests
+All 4 stories completed:
+- Story 3.1.1: File-level Debt Detection (30 tests)
+- Story 3.1.2: Symbol Overload Detection (12 tests)
+- Story 3.1.3: Technical Debt Report Generation (27 tests)
+- Story 3.1.4: CLI Integration (12 tests)
 
-Estimated completion: Day 2 (2026-01-28)
+**Total**: 81 tests (76 unit/integration + 5 BDD scenarios from reporting)
+**Time Spent**: ~11-12 hours (Day 1)
+**Quality**: Excellent - All tests passing, full TDD coverage
 
 ---
 
