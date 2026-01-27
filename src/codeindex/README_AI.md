@@ -234,12 +234,19 @@ Key changes:
 - Classifier uses config values for super_large thresholds (lines and symbols) with fallback defaults
 - Provides consistent classification logic for use across `TechDebtDetector` and `ai_enhancement` modules
 
----
-
-## Recent Changes
 
 **Commit `0508856`**: refactor(epic4): extract cli_config module
 
 Changed files:
 - `cli.py`
 - `cli_config.py`
+
+---
+
+## Recent Changes
+
+**Commit `0563989`**: refactor(epic4): extract cli_symbols module
+
+Changed files:
+- `cli.py`
+- `cli_symbols.py`
