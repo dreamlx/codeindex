@@ -21,7 +21,7 @@ from .invoker import (
     validate_markdown_output,
 )
 from .parallel import parse_files_parallel
-from .scanner import find_all_directories, scan_directory
+from .scanner import scan_directory
 from .smart_writer import SmartWriter
 from .writer import (
     format_files_for_prompt,
@@ -30,7 +30,6 @@ from .writer import (
     generate_fallback_readme,
     write_readme,
 )
-
 
 # ========== Helper functions for scan_all (extracted from nested functions) ==========
 

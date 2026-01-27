@@ -1,6 +1,16 @@
-"""CLI entry point for codeindex."""
+"""CLI entry point for codeindex.
+
+This module serves as the main entry point for the codeindex CLI tool.
+It imports and registers commands from specialized modules to keep the
+codebase organized and maintainable.
+"""
 
 import click
+
+from .cli_config import init, list_dirs, status
+from .cli_scan import scan, scan_all
+from .cli_symbols import affected, index, symbols
+from .cli_tech_debt import tech_debt
 
 
 @click.group()
@@ -11,11 +21,6 @@ def main():
 
 
 # Register commands from specialized modules
-from .cli_config import init, list_dirs, status
-from .cli_scan import scan, scan_all
-from .cli_symbols import affected, index, symbols
-from .cli_tech_debt import tech_debt
-
 main.add_command(scan)
 main.add_command(scan_all)
 main.add_command(init)

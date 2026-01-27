@@ -12,7 +12,7 @@ import click
 from rich.table import Table
 
 from .cli_common import console
-from .config import DEFAULT_CONFIG_NAME, Config
+from .config import Config
 from .incremental import (
     UpdateLevel,
     analyze_changes,

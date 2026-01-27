@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Epic 4: CLI Module Split (Story 4.3) 🏗️
+- **CLI architecture refactored** into 6 focused modules (from 1 monolithic file)
+  - `cli.py` - Main entry point and command registration (31 lines, -97%)
+  - `cli_common.py` - Shared utilities (console instance)
+  - `cli_scan.py` - Core scanning commands (scan, scan-all)
+  - `cli_config.py` - Configuration and status commands
+  - `cli_symbols.py` - Symbol indexing and dependency analysis
+  - `cli_tech_debt.py` - Technical debt analysis
+- **Nested functions refactored** into independent helper functions with proper parameters
+- **Code organization improved**: 1062 → 31 lines in cli.py (-97.1%)
+- **Maintainability enhanced**: Each module has single, clear responsibility
+- **No breaking changes**: All commands and options preserved
+- All 263 tests passing, zero regressions
+
 ## [0.3.0] - 2026-01-27
 
 ### Added - Epic 4: Code Refactoring (Partial) 🔧
