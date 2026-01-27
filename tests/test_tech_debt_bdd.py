@@ -7,11 +7,23 @@ from pytest_bdd import given, parsers, scenarios, then, when
 from codeindex.config import Config
 from codeindex.parser import ParseResult, Symbol
 from codeindex.symbol_scorer import SymbolImportanceScorer
-from codeindex.tech_debt import DebtSeverity, TechDebtDetector
+from codeindex.tech_debt import (
+    DebtAnalysisResult,
+    DebtIssue,
+    DebtSeverity,
+    TechDebtDetector,
+    TechDebtReporter,
+)
+from codeindex.tech_debt_formatters import (
+    ConsoleFormatter,
+    JSONFormatter,
+    MarkdownFormatter,
+)
 
 # Load all scenarios from the feature files
 scenarios("features/tech_debt_detection.feature")
 scenarios("features/symbol_overload_detection.feature")
+scenarios("features/tech_debt_reporting.feature")
 
 
 # Background steps
@@ -289,3 +301,187 @@ def metric_value_equals(symbol_overload_result, value):
     """Check that metric value matches expected."""
     issues = symbol_overload_result["issues"]
     assert any(i.metric_value == value for i in issues)
+
+
+# Technical Debt Reporting steps
+
+
+@given("a TechDebtReporter", target_fixture="reporter")
+def tech_debt_reporter_fixture():
+    """Create a TechDebtReporter."""
+    return TechDebtReporter()
+
+
+@given(
+    parsers.parse('a file "{filename}" with {count:d} CRITICAL issue'),
+    target_fixture="reporter",
+)
+@given(
+    parsers.parse('a file "{filename}" with {count:d} CRITICAL issues'),
+    target_fixture="reporter",
+)
+def file_with_critical_issues(reporter, filename, count):
+    """Add a file with CRITICAL issues to reporter."""
+    from pathlib import Path
+
+    issues = [
+        DebtIssue(
+            severity=DebtSeverity.CRITICAL,
+            category="test",
+            file_path=Path(filename),
+            metric_value=100,
+            threshold=50,
+            description=f"Critical issue {i+1}",
+            suggestion="Fix it",
+        )
+        for i in range(count)
+    ]
+    reporter.add_file_result(
+        file_path=Path(filename),
+        debt_analysis=DebtAnalysisResult(
+            issues=issues,
+            quality_score=70.0,
+            file_path=Path(filename),
+            file_lines=100,
+            total_symbols=10,
+        ),
+        symbol_analysis=None,
+    )
+    return reporter
+
+
+@given(
+    parsers.parse('a file "{filename}" with {count:d} HIGH issue'),
+    target_fixture="reporter",
+)
+@given(
+    parsers.parse('a file "{filename}" with {count:d} HIGH issues'),
+    target_fixture="reporter",
+)
+def file_with_high_issues(reporter, filename, count):
+    """Add a file with HIGH issues to reporter."""
+    from pathlib import Path
+
+    issues = [
+        DebtIssue(
+            severity=DebtSeverity.HIGH,
+            category="test",
+            file_path=Path(filename),
+            metric_value=100,
+            threshold=50,
+            description=f"High issue {i+1}",
+            suggestion="Fix it",
+        )
+        for i in range(count)
+    ]
+    reporter.add_file_result(
+        file_path=Path(filename),
+        debt_analysis=DebtAnalysisResult(
+            issues=issues,
+            quality_score=85.0,
+            file_path=Path(filename),
+            file_lines=100,
+            total_symbols=10,
+        ),
+        symbol_analysis=None,
+    )
+    return reporter
+
+
+@given(parsers.parse('a file "{filename}" with no issues'), target_fixture="reporter")
+def file_with_no_issues(reporter, filename):
+    """Add a file with no issues to reporter."""
+    from pathlib import Path
+
+    reporter.add_file_result(
+        file_path=Path(filename),
+        debt_analysis=DebtAnalysisResult(
+            issues=[],
+            quality_score=100.0,
+            file_path=Path(filename),
+            file_lines=100,
+            total_symbols=10,
+        ),
+        symbol_analysis=None,
+    )
+    return reporter
+
+
+@when("I generate a report", target_fixture="report")
+def generate_report(reporter):
+    """Generate report from reporter."""
+    return reporter.generate_report()
+
+
+@when("I format the report as console", target_fixture="formatted_output")
+def format_as_console(report):
+    """Format report as console output."""
+    formatter = ConsoleFormatter()
+    return formatter.format(report)
+
+
+@when("I format the report as markdown", target_fixture="formatted_output")
+def format_as_markdown(report):
+    """Format report as markdown."""
+    formatter = MarkdownFormatter()
+    return formatter.format(report)
+
+
+@when("I format the report as JSON", target_fixture="formatted_output")
+def format_as_json(report):
+    """Format report as JSON."""
+    formatter = JSONFormatter()
+    return formatter.format(report)
+
+
+@then(parsers.parse("the report should show {count:d} files analyzed"))
+def report_shows_files_analyzed(report, count):
+    """Check files analyzed count."""
+    assert report.total_files == count
+
+
+@then(parsers.parse("the report should show {count:d} total issues"))
+def report_shows_total_issues(report, count):
+    """Check total issues count."""
+    assert report.total_issues == count
+
+
+@then(parsers.parse("the report should show {count:d} CRITICAL issues"))
+def report_shows_critical_issues(report, count):
+    """Check CRITICAL issues count."""
+    assert report.critical_issues == count
+
+
+@then(parsers.parse("the report should show {count:d} HIGH issues"))
+def report_shows_high_issues(report, count):
+    """Check HIGH issues count."""
+    assert report.high_issues == count
+
+
+@then(parsers.parse("the average quality score should be {score:f}"))
+def average_quality_score_equals(report, score):
+    """Check average quality score."""
+    assert report.average_quality_score == score
+
+
+@then(parsers.parse('the output should contain "{text}"'))
+def output_contains(formatted_output, text):
+    """Check that output contains text."""
+    assert text in formatted_output
+
+
+@then("the output should be valid JSON")
+def output_is_valid_json(formatted_output):
+    """Check that output is valid JSON."""
+    import json
+
+    json.loads(formatted_output)  # Should not raise
+
+
+@then(parsers.parse('the JSON should contain "{key}": {value:d}'))
+def json_contains_key_value(formatted_output, key, value):
+    """Check that JSON contains key-value pair."""
+    import json
+
+    data = json.loads(formatted_output)
+    assert data[key] == value
