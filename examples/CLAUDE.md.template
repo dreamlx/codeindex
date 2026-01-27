@@ -1,84 +1,129 @@
-# CLAUDE.md Template for codeindex Projects
-
-Copy this template to your project's root as `CLAUDE.md` to help AI coders use your code index effectively.
-
----
-
 # CLAUDE.md
 
-## Project Overview
+This file provides guidance to Claude Code when working with this project.
 
-[Brief description of your project]
+## 📖 项目导航指南
 
-## Code Index
+### ⚠️ 重要：本项目使用 codeindex 生成了 README_AI.md 索引
 
-This project uses [codeindex](https://github.com/dreamlx/codeindex) for AI-friendly documentation.
+本项目已使用 [codeindex](https://github.com/dreamlx/codeindex) 工具为所有目录生成了 `README_AI.md` 文件。这些文件是理解项目架构的最佳入口，包含了自动提取的符号信息、依赖关系和模块说明。
 
-### Reading the Index
+### 🧭 推荐工作流
 
-**Progressive Loading Strategy** (recommended for large codebases):
+#### 1️⃣ 理解项目架构（优先阅读 README_AI.md）
 
-1. **Overview First**
-   ```
-   Read: README_AI.md (root) or PROJECT_INDEX.md
-   Purpose: Understand project structure, find relevant modules
-   ```
-
-2. **Locate Module**
-   ```
-   Read: [Module]/README_AI.md
-   Purpose: Find specific files and key classes
-   ```
-
-3. **Deep Dive**
-   ```
-   Read: Specific source files
-   Purpose: Understand implementation details
-   ```
-
-### Index File Locations
+在开始任何代码分析前，请按以下顺序阅读：
 
 ```
-YourProject/
-├── README_AI.md          # Root index (overview)
-├── src/
-│   ├── README_AI.md      # src index
-│   ├── auth/
-│   │   └── README_AI.md  # auth module index
-│   └── api/
-│       └── README_AI.md  # api module index
+1. /README_AI.md           # 项目整体概览和目录结构
+2. /src/README_AI.md       # 核心源码目录架构
+3. /tests/README_AI.md     # 测试结构（如果存在）
+4. 相关子目录的 README_AI.md  # 具体模块详情
 ```
 
-### Key Modules
+**示例场景：**
+- 用户问："这个项目是做什么的？" → 先读 `/README_AI.md`
+- 用户问："认证模块在哪里？" → 先读 `/src/README_AI.md`，找到 auth 相关目录，再读 `/src/auth/README_AI.md`
+- 用户问："如何运行测试？" → 先读 `/tests/README_AI.md`，了解测试结构
 
-| Module | Purpose | Key Files |
-|--------|---------|-----------|
-| `src/auth` | Authentication | AuthService, JWTHandler |
-| `src/api` | REST endpoints | Controllers |
-| `src/models` | Data models | User, Order |
+#### 2️⃣ 定位具体代码（精确导航）
 
-## Build Commands
+**优先使用 Serena MCP 工具（如果可用）：**
+
+```python
+# ✅ 推荐：查找符号定义
+find_symbol(name_path_pattern="ClassName")
+
+# ✅ 推荐：查找符号引用
+find_referencing_symbols(
+    name_path="function_name",
+    relative_path="src/module/file.py"
+)
+
+# ✅ 推荐：获取文件符号概览
+get_symbols_overview(
+    relative_path="src/module/file.py",
+    depth=1
+)
+```
+
+**备选方案：使用 Read 工具**
+
+```python
+# 当 Serena MCP 不可用时
+Read(file_path="src/module/README_AI.md")  # 先读目录索引
+Read(file_path="src/module/file.py")       # 再读具体文件
+```
+
+**❌ 避免的做法：**
+- 直接用 Glob/Grep 搜索源码（低效且无结构化信息）
+- 不看 README_AI.md 就直接读源代码文件
+- 忽略已有的符号索引信息
+
+#### 3️⃣ 修改代码（保持索引同步）
+
+修改代码后，请重新生成 README_AI.md：
 
 ```bash
-# Install dependencies
-[your install command]
+# 重新扫描整个项目
+codeindex scan-all --fallback
 
-# Run tests
-[your test command]
-
-# Build
-[your build command]
+# 或只扫描修改的目录
+codeindex scan src/module --fallback
 ```
 
-## Development Workflow
+**注意：不要手动编辑 README_AI.md 文件，它们会被自动覆盖。**
 
-[Your development guidelines]
+### 📁 特殊文件说明
+
+| 文件 | 用途 | 何时使用 |
+|------|------|----------|
+| `README_AI.md` | AI生成的目录索引文件 | 理解任何目录的架构和组件 |
+| `PROJECT_SYMBOLS.md` | 全局符号索引（如果存在） | 查找符号定义位置 |
+| `.codeindex.yaml` | codeindex 配置文件 | 了解扫描规则和排除模式 |
+
+### 🔄 工作流总结
+
+```
+用户提问
+    ↓
+读 README_AI.md (理解架构)
+    ↓
+find_symbol (精确定位)
+    ↓
+Read 源码文件 (查看实现)
+    ↓
+find_referencing (分析依赖)
+```
+
+## 🛠️ 项目特定配置
+
+<!-- 在下方添加你的项目特定说明 -->
+
+### 项目结构
+
+<!-- 示例：
+- `src/api/` - REST API 端点
+- `src/models/` - 数据模型
+- `src/services/` - 业务逻辑
+-->
+
+### 关键组件
+
+<!-- 示例：
+- `UserService` - 用户管理服务（src/services/user_service.py）
+- `DatabaseConnection` - 数据库连接管理（src/db/connection.py）
+-->
+
+### 开发规范
+
+<!-- 示例：
+- 代码风格：遵循 PEP 8
+- 测试：使用 pytest
+- 提交规范：Conventional Commits
+-->
 
 ---
 
-## Tips for AI Coders
-
-1. **Don't read entire codebase** - Use README_AI.md files to navigate
-2. **Each README_AI.md ≤ 50KB** - Safe to load into context
-3. **Check module index first** - Before reading source files
-4. **Regenerate after changes** - Run `codeindex scan-all --fallback` after major refactoring
+*此文件由 [codeindex](https://github.com/dreamlx/codeindex) 自动生成。*
+*更新索引：`codeindex scan-all --fallback`*
