@@ -207,3 +207,13 @@ The test suite is organized into eleven main test modules that mirror the core c
 - BDD assertion steps for issue severity, categories, descriptions, suggestions, and quality scores
 - BDD assertion steps using flexible fixture resolution to handle both analysis_result and symbol_overload_result fixtures
 - BDD steps for total symbol count validation and metric value verification
+
+---
+
+## Recent Changes
+
+**Commit `bdd6e65`**: test(tech-debt): add 22 TDD tests for reporting
+
+Changed files:
+- `test_tech_debt_formatters.py`
+- `test_tech_debt_reporter.py`
