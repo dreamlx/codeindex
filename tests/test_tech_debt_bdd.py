@@ -9,8 +9,9 @@ from codeindex.parser import ParseResult, Symbol
 from codeindex.symbol_scorer import SymbolImportanceScorer
 from codeindex.tech_debt import DebtSeverity, TechDebtDetector
 
-# Load all scenarios from the feature file
+# Load all scenarios from the feature files
 scenarios("features/tech_debt_detection.feature")
+scenarios("features/symbol_overload_detection.feature")
 
 
 # Background steps
@@ -139,9 +140,17 @@ def quality_score_above_80(analysis_result):
 
 
 @then("it should report a CRITICAL issue")
-def report_critical_issue(analysis_result):
+def report_critical_issue(request):
     """Check that a CRITICAL issue was reported."""
-    critical_issues = [i for i in analysis_result.issues if i.severity == DebtSeverity.CRITICAL]
+    # Handle both analysis_result and symbol_overload_result fixtures
+    if "symbol_overload_result" in request.fixturenames:
+        result = request.getfixturevalue("symbol_overload_result")
+        issues = result["issues"]
+    else:
+        result = request.getfixturevalue("analysis_result")
+        issues = result.issues
+
+    critical_issues = [i for i in issues if i.severity == DebtSeverity.CRITICAL]
     assert len(critical_issues) >= 1
 
 
@@ -153,9 +162,17 @@ def report_high_issue(analysis_result):
 
 
 @then(parsers.parse('the issue category should be "{category}"'))
-def issue_category(analysis_result, category):
+def issue_category(request, category):
     """Check that an issue with the specified category exists."""
-    categories = [i.category for i in analysis_result.issues]
+    # Handle both analysis_result and symbol_overload_result fixtures
+    if "symbol_overload_result" in request.fixturenames:
+        result = request.getfixturevalue("symbol_overload_result")
+        issues = result["issues"]
+    else:
+        result = request.getfixturevalue("analysis_result")
+        issues = result.issues
+
+    categories = [i.category for i in issues]
     assert category in categories
 
 
@@ -231,3 +248,44 @@ def critical_for_god_class(analysis_result):
         if i.severity == DebtSeverity.CRITICAL and i.category == "god_class"
     ]
     assert len(critical_god_class) >= 1
+
+
+# Symbol Overload Detection steps
+
+
+@given(parsers.parse("a PHP file with {count:d} symbols"), target_fixture="symbol_overload_data")
+def php_file_with_symbols(count):
+    """Create a PHP file with specified number of symbols."""
+    from tests.conftest import create_mock_parse_result
+
+    return {"parse_result": create_mock_parse_result(symbol_count=count)}
+
+
+@when("I analyze symbol overload", target_fixture="symbol_overload_result")
+def analyze_symbol_overload(symbol_overload_data, tech_debt_detector, symbol_scorer):
+    """Analyze symbol overload."""
+    parse_result = symbol_overload_data["parse_result"]
+    issues, analysis = tech_debt_detector.analyze_symbol_overload(parse_result, symbol_scorer)
+    return {"issues": issues, "analysis": analysis}
+
+
+@then("no massive symbol count issues should be reported")
+def no_massive_symbol_issues(symbol_overload_result):
+    """Check that no massive symbol count issues were reported."""
+    issues = symbol_overload_result["issues"]
+    massive_issues = [i for i in issues if i.category == "massive_symbol_count"]
+    assert len(massive_issues) == 0
+
+
+@then(parsers.parse("the analysis should show {count:d} total symbols"))
+def analysis_shows_total_symbols(symbol_overload_result, count):
+    """Check that analysis shows correct total symbol count."""
+    analysis = symbol_overload_result["analysis"]
+    assert analysis.total_symbols == count
+
+
+@then(parsers.parse("the metric value should be {value:d}"))
+def metric_value_equals(symbol_overload_result, value):
+    """Check that metric value matches expected."""
+    issues = symbol_overload_result["issues"]
+    assert any(i.metric_value == value for i in issues)
