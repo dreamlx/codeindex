@@ -154,9 +154,6 @@ Prompt (Writer) → AI CLI (Invoker) → README_AI.md (Writer)
 | Parse Result Aggregation | `aggregate_parse_results()` combines multiple ParseResult objects for multi-file directory analysis |
 | Unified Multi-Turn Enhancement | `execute_multi_turn_enhancement()` provides single entry point for multi-turn dialogue with auto-detection, strategy selection, execution, and fallback handling |
 
----
-
-## Recent Changes
 
 **Commit `ccecd58`**: refactor(epic4): use ai_helper in scan and scan-all commands (Story 4.1 Tasks 4.1.4-4.1.5)
 
@@ -202,3 +199,12 @@ Key changes:
 - Aggregates parse results (symbols and file_lines) for accurate super large file detection
 - Displays informative console messages for multi-turn dialogue progress and completion
 - Returns early after successful multi-turn completion to avoid duplicate processing
+
+---
+
+## Recent Changes
+
+**Commit `1d7fff0`**: feat(epic4): implement unified file size classifier (Story 4.2 Tasks 4.2.1-4.2.2)
+
+Changed files:
+- `file_classifier.py`

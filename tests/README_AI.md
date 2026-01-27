@@ -261,11 +261,17 @@ Changed files:
 Changed files:
 - `test_multi_turn_dialogue_bdd.py`
 
----
-
-## Recent Changes
 
 **Commit `07b7535`**: feat(epic4): implement AI helper module with aggregate and multi-turn functions (Story 4.1 Tasks 4.1.1-4.1.3)
 
 Changed files:
 - `test_ai_helper.py`
+
+---
+
+## Recent Changes
+
+**Commit `1d7fff0`**: feat(epic4): implement unified file size classifier (Story 4.2 Tasks 4.2.1-4.2.2)
+
+Changed files:
+- `test_file_classifier.py`
