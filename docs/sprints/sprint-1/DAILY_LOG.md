@@ -94,9 +94,95 @@ Code Quality: All ruff checks passed ✅
 - **Coverage**: 93% (exceeds target)
 - **Missing Coverage**: 5 lines (edge cases in else branches)
 
+**Story 3.1.2: Symbol Overload Detection - 100% COMPLETE**
+
+1. ✅ **SymbolOverloadAnalysis Dataclass** (Task 1)
+   - Created dataclass with 5 fields: total_symbols, filtered_symbols, filter_ratio, noise_breakdown, quality_score
+   - Complete docstrings and type hints
+   - 2 comprehensive tests
+
+2. ✅ **Symbol Count Detection** (Task 2)
+   - Implemented massive symbol count detection (>100 symbols → CRITICAL)
+   - Added MASSIVE_SYMBOL_COUNT threshold constant
+   - 4 comprehensive tests including boundary cases (100, 101)
+
+3. ✅ **Noise Ratio Detection** (Task 3)
+   - Implemented high noise ratio detection (>50% filtered → HIGH)
+   - Symbol scoring integration with SymbolImportanceScorer
+   - Filter threshold: 30.0 (standard quality cutoff)
+   - 2 comprehensive tests with realistic symbol sets
+
+4. ✅ **Noise Breakdown Analysis** (Task 4)
+   - Implemented `_analyze_noise_breakdown()` method
+   - Categories: getters_setters, private_methods, magic_methods, other
+   - Pattern detection for each category
+   - Smart suggestions based on breakdown patterns
+   - Data Class smell detection (>66% getters/setters)
+   - 1 comprehensive test with multiple symbol types
+
+5. ✅ **analyze_symbol_overload Method** (Task 5)
+   - Integrated all detection logic into main method
+   - Returns tuple: (issues list, SymbolOverloadAnalysis)
+   - Helper methods: `_format_noise_description()`, `_suggest_noise_reduction()`, `_calculate_symbol_quality_score()`
+   - Quality score calculation with penalties for high getters/setters and private methods
+
+6. ✅ **BDD Scenarios** (Task 6)
+   - Created separate feature file: `tests/features/symbol_overload_detection.feature`
+   - 2 scenarios: "Detect massive symbol count" and "Normal symbol count"
+   - Fixed pytest-bdd multi-feature issue by splitting files
+   - Updated step definitions to handle both analysis_result and symbol_overload_result fixtures
+   - Polymorphic step definitions using request.fixturenames
+
+### Test Results 📊
+
+```
+Total Tests: 47 (30 TDD file-level + 10 TDD symbol overload + 7 BDD)
+Passed: 47 ✅
+Failed: 0
+Code Quality: All ruff checks passed ✅
+```
+
+### Test Breakdown - Story 3.1.2
+
+- **SymbolOverloadAnalysis**: 2 tests
+- **Symbol Count Detection**: 4 tests
+- **Noise Ratio Detection**: 2 tests
+- **Noise Breakdown**: 1 test
+- **Integration**: 1 test
+- **BDD Scenarios**: 2 tests (massive count, normal count)
+
+### Files Created/Modified
+
+1. `src/codeindex/tech_debt.py` (481 lines, +211 lines)
+   - Added `SymbolOverloadAnalysis` dataclass
+   - Added `analyze_symbol_overload()` method
+   - Added 4 helper methods for noise analysis
+   - Added MASSIVE_SYMBOL_COUNT and HIGH_NOISE_RATIO thresholds
+
+2. `tests/test_symbol_overload.py` (260 lines, NEW)
+   - 10 TDD unit tests
+   - 4 test classes covering all functionality
+   - Realistic test scenarios (e.g., OperateGoods.class.php simulation)
+
+3. `tests/features/symbol_overload_detection.feature` (22 lines, NEW)
+   - 2 BDD scenarios
+   - Separate file to comply with pytest-bdd requirements
+
+4. `tests/test_tech_debt_bdd.py` (295 lines, +60 lines)
+   - Added 5 new step definitions for symbol overload
+   - Updated 2 step definitions to handle multiple fixture types
+   - Polymorphic fixture handling using request object
+
+### Code Metrics - Story 3.1.2
+
+- **Lines of Code**: +211 (tech_debt.py)
+- **Test Lines**: +282 (test_symbol_overload.py + BDD updates)
+- **Test-to-Code Ratio**: 1.3:1 (good)
+- **Tests**: 10 TDD + 2 BDD = 12 tests for Story 3.1.2
+
 ### In Progress 🔵
 
-- None (Story 3.1.1 fully complete)
+- None (Stories 3.1.1 and 3.1.2 both complete)
 
 ### Blockers ⛔
 
@@ -104,14 +190,14 @@ Code Quality: All ruff checks passed ✅
 
 ### Tomorrow's Plan 📅
 
-**Next Story: 3.1.2 - Symbol Overload Detection (2 days estimated)**
+**Next Story: 3.1.3 - Technical Debt Report Generation (1-2 days estimated)**
 
 Tasks:
-1. Design symbol overload detection algorithm
-2. Implement noise breakdown analysis
-3. Calculate symbol quality metrics
+1. Design report format and structure
+2. Implement report generator class
+3. Add output formatters (console, markdown, JSON)
 4. Write comprehensive tests (TDD/BDD)
-5. Integrate with TechDebtDetector
+5. Integrate with CLI
 
 Estimated completion: Day 3 (2026-01-29)
 
@@ -133,5 +219,24 @@ Estimated completion: Day 3 (2026-01-29)
 **Status**: Story 3.1.1 COMPLETE ✅
 **Time Spent**: ~4-5 hours (Day 1)
 **Quality**: Excellent (93% coverage, all tests passing)
-**Next**: Ready to start Story 3.1.2
+
+---
+
+## Definition of Done - Story 3.1.2 ✅
+
+- [x] All acceptance criteria met
+- [x] All unit tests passing (10 TDD tests)
+- [x] All BDD scenarios passing (2 scenarios)
+- [x] Ruff checks passing (no errors)
+- [x] Docstrings complete for all public APIs
+- [x] Code reviewed (self-review complete)
+- [x] Follows project conventions
+- [x] Ready for integration
+
+---
+
+**Status**: Stories 3.1.1 and 3.1.2 COMPLETE ✅
+**Time Spent**: ~6-7 hours total (Day 1)
+**Quality**: Excellent (47 tests passing, all functionality working)
+**Next**: Ready to start Story 3.1.3 - Technical Debt Report Generation
 
