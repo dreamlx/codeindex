@@ -775,27 +775,44 @@ def affected(since: str, until: str, as_json: bool):
             console.print("  codeindex list-dirs | xargs -P 4 -I {} codeindex scan {}")
 
 
-def _find_python_files(path: Path, recursive: bool) -> list[Path]:
-    """Find Python files in the given directory.
+def _find_source_files(path: Path, recursive: bool, languages: list[str] | None = None) -> list[Path]:
+    """Find source files in the given directory based on language configuration.
 
     Args:
         path: Directory path to search
         recursive: If True, search subdirectories recursively
+        languages: List of languages to include (optional, uses config if None)
 
     Returns:
-        List of Python file paths
+        List of source file paths
     """
+    # Load languages from config if not provided
+    if languages is None:
+        config = Config.load()
+        languages = config.languages
+
+    # Map languages to file extensions
+    extensions = {
+        'python': '*.py',
+        'php': '*.php',
+        'javascript': '*.js',
+        'typescript': '*.ts',
+        'java': '*.java',
+        'go': '*.go',
+        'rust': '*.rs',
+        'cpp': '*.cpp',
+        'c': '*.c',
+    }
+
     files = []
-    if recursive:
-        # Recursively find all Python files
-        for py_file in path.rglob("*.py"):
-            if py_file.is_file():
-                files.append(py_file)
-    else:
-        # Only files in the immediate directory
-        for py_file in path.glob("*.py"):
-            if py_file.is_file():
-                files.append(py_file)
+    for lang in languages:
+        ext = extensions.get(lang)
+        if ext:
+            if recursive:
+                files.extend([f for f in path.rglob(ext) if f.is_file()])
+            else:
+                files.extend([f for f in path.glob(ext) if f.is_file()])
+
     return files
 
 
@@ -808,7 +825,7 @@ def _analyze_files(
     """Analyze files and add results to reporter.
 
     Args:
-        files: List of Python files to analyze
+        files: List of source files to analyze
         detector: Technical debt detector instance
         reporter: Reporter to collect results
         show_progress: Whether to show progress messages
@@ -827,10 +844,23 @@ def _analyze_files(
                     )
                 continue
 
+            # Determine file type based on extension
+            file_ext = file_path.suffix.lower()
+            if file_ext == '.py':
+                file_type = 'python'
+            elif file_ext == '.php':
+                file_type = 'php'
+            elif file_ext == '.js':
+                file_type = 'javascript'
+            elif file_ext == '.ts':
+                file_type = 'typescript'
+            else:
+                file_type = file_ext[1:] if file_ext else 'unknown'
+
             # Create scorer context
             scoring_context = ScoringContext(
                 framework=None,
-                file_type="python",
+                file_type=file_type,
                 total_symbols=len(parse_result.symbols),
             )
             scorer = SymbolImportanceScorer(scoring_context)
@@ -922,7 +952,7 @@ def _format_and_output(
 def tech_debt(path: Path, format: str, output: Path | None, recursive: bool, quiet: bool):
     """Analyze technical debt in a directory.
 
-    Scans Python files for technical debt issues including:
+    Scans source files for technical debt issues including:
     - Super large files (>5000 lines)
     - Large files (>2000 lines)
     - God Classes (>50 methods)
@@ -939,8 +969,8 @@ def tech_debt(path: Path, format: str, output: Path | None, recursive: bool, qui
         detector = TechDebtDetector(config)
         reporter = TechDebtReporter()
 
-        # Find all Python files to analyze
-        files_to_analyze = _find_python_files(path, recursive)
+        # Find all source files to analyze
+        files_to_analyze = _find_source_files(path, recursive)
 
         # Handle empty directory
         if not files_to_analyze:
@@ -952,7 +982,7 @@ def tech_debt(path: Path, format: str, output: Path | None, recursive: bool, qui
         show_progress = not quiet and not (format == "json" and output is None)
 
         if show_progress:
-            console.print(f"[dim]Analyzing {len(files_to_analyze)} Python files...[/dim]")
+            console.print(f"[dim]Analyzing {len(files_to_analyze)} source files...[/dim]")
 
         # Parse and analyze each file
         _analyze_files(files_to_analyze, detector, reporter, show_progress)
