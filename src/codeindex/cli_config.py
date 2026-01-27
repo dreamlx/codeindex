@@ -1,0 +1,97 @@
+"""CLI commands for configuration and project status.
+
+This module provides commands for initializing configuration files,
+checking indexing status, and listing indexable directories.
+"""
+
+from pathlib import Path
+
+import click
+from rich.table import Table
+
+from .cli_common import console
+from .config import DEFAULT_CONFIG_NAME, Config
+from .scanner import find_all_directories
+
+
+@click.command()
+@click.option("--force", "-f", is_flag=True, help="Overwrite existing config")
+def init(force: bool):
+    """Initialize .codeindex.yaml configuration file."""
+    config_path = Path.cwd() / DEFAULT_CONFIG_NAME
+
+    if config_path.exists() and not force:
+        console.print(f"[yellow]Config already exists:[/yellow] {config_path}")
+        console.print("Use --force to overwrite")
+        return
+
+    created_path = Config.create_default()
+    console.print(f"[green]Created:[/green] {created_path}")
+    console.print("\nEdit this file to configure:")
+    console.print("  - ai_command: Your AI CLI command")
+    console.print("  - include/exclude: Directories to scan")
+
+
+@click.command()
+@click.option("--root", type=click.Path(exists=True, file_okay=False, path_type=Path), default=".")
+def status(root: Path):
+    """Show indexing status for the project."""
+    root = root.resolve()
+    config = Config.load()
+
+    console.print(f"[bold]Project:[/bold] {root}")
+    console.print(f"[bold]Config:[/bold] {DEFAULT_CONFIG_NAME}")
+
+    # Find all directories that should be indexed
+    dirs = find_all_directories(root, config)
+
+    if not dirs:
+        console.print("[yellow]No indexable directories found[/yellow]")
+        return
+
+    # Check which have README_AI.md
+    indexed = []
+    not_indexed = []
+
+    for d in dirs:
+        readme_path = d / config.output_file
+        if readme_path.exists():
+            indexed.append(d)
+        else:
+            not_indexed.append(d)
+
+    # Display table
+    table = Table(title="Indexing Status")
+    table.add_column("Status", style="bold")
+    table.add_column("Count")
+    table.add_column("Percentage")
+
+    total = len(dirs)
+    indexed_count = len(indexed)
+    coverage = (indexed_count / total * 100) if total > 0 else 0
+
+    table.add_row("[green]Indexed[/green]", str(indexed_count), f"{coverage:.1f}%")
+    table.add_row("[yellow]Not indexed[/yellow]", str(len(not_indexed)), f"{100-coverage:.1f}%")
+    table.add_row("Total", str(total), "100%")
+
+    console.print(table)
+
+    if not_indexed and len(not_indexed) <= 10:
+        console.print("\n[dim]Not indexed:[/dim]")
+        for d in not_indexed[:10]:
+            rel = d.relative_to(root)
+            console.print(f"  {rel}")
+
+
+@click.command()
+@click.option("--root", type=click.Path(exists=True, file_okay=False, path_type=Path), default=".")
+def list_dirs(root: Path):
+    """List all directories that would be indexed."""
+    root = root.resolve()
+    config = Config.load()
+
+    dirs = find_all_directories(root, config)
+
+    for d in dirs:
+        rel = d.relative_to(root)
+        print(rel)
