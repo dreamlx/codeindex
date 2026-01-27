@@ -90,6 +90,130 @@ class SymbolOverloadAnalysis:
     quality_score: float = 100.0
 
 
+@dataclass
+class FileReport:
+    """Report for a single file's technical debt analysis.
+
+    Attributes:
+        file_path: Path to the analyzed file
+        debt_analysis: DebtAnalysisResult for the file
+        symbol_analysis: Optional SymbolOverloadAnalysis for the file
+        total_issues: Total number of issues detected (computed property)
+    """
+
+    file_path: Path
+    debt_analysis: DebtAnalysisResult
+    symbol_analysis: SymbolOverloadAnalysis | None = None
+
+    @property
+    def total_issues(self) -> int:
+        """Calculate total number of issues."""
+        return len(self.debt_analysis.issues)
+
+
+@dataclass
+class TechDebtReport:
+    """Aggregate report for technical debt across multiple files.
+
+    Attributes:
+        file_reports: List of FileReport for each analyzed file
+        total_files: Total number of files analyzed
+        total_issues: Total number of issues across all files
+        critical_issues: Count of CRITICAL severity issues
+        high_issues: Count of HIGH severity issues
+        medium_issues: Count of MEDIUM severity issues
+        low_issues: Count of LOW severity issues
+        average_quality_score: Average quality score across all files
+    """
+
+    file_reports: list[FileReport] = field(default_factory=list)
+    total_files: int = 0
+    total_issues: int = 0
+    critical_issues: int = 0
+    high_issues: int = 0
+    medium_issues: int = 0
+    low_issues: int = 0
+    average_quality_score: float = 100.0
+
+
+class TechDebtReporter:
+    """Reporter for aggregating technical debt analysis across multiple files.
+
+    This class collects analysis results from multiple files and generates
+    aggregate reports with overall statistics.
+    """
+
+    def __init__(self):
+        """Initialize the reporter."""
+        self._file_reports: list[FileReport] = []
+
+    def add_file_result(
+        self,
+        file_path: Path,
+        debt_analysis: DebtAnalysisResult,
+        symbol_analysis: SymbolOverloadAnalysis | None = None,
+    ):
+        """Add a file analysis result to the reporter.
+
+        Args:
+            file_path: Path to the analyzed file
+            debt_analysis: DebtAnalysisResult for the file
+            symbol_analysis: Optional SymbolOverloadAnalysis for the file
+        """
+        file_report = FileReport(
+            file_path=file_path,
+            debt_analysis=debt_analysis,
+            symbol_analysis=symbol_analysis,
+        )
+        self._file_reports.append(file_report)
+
+    def generate_report(self) -> TechDebtReport:
+        """Generate aggregate report from all collected file results.
+
+        Returns:
+            TechDebtReport with aggregated statistics
+        """
+        if not self._file_reports:
+            return TechDebtReport()
+
+        # Aggregate statistics
+        total_files = len(self._file_reports)
+        total_issues = 0
+        critical_issues = 0
+        high_issues = 0
+        medium_issues = 0
+        low_issues = 0
+        total_quality_score = 0.0
+
+        for file_report in self._file_reports:
+            total_issues += file_report.total_issues
+            total_quality_score += file_report.debt_analysis.quality_score
+
+            # Count issues by severity
+            for issue in file_report.debt_analysis.issues:
+                if issue.severity == DebtSeverity.CRITICAL:
+                    critical_issues += 1
+                elif issue.severity == DebtSeverity.HIGH:
+                    high_issues += 1
+                elif issue.severity == DebtSeverity.MEDIUM:
+                    medium_issues += 1
+                elif issue.severity == DebtSeverity.LOW:
+                    low_issues += 1
+
+        average_quality_score = total_quality_score / total_files
+
+        return TechDebtReport(
+            file_reports=self._file_reports,
+            total_files=total_files,
+            total_issues=total_issues,
+            critical_issues=critical_issues,
+            high_issues=high_issues,
+            medium_issues=medium_issues,
+            low_issues=low_issues,
+            average_quality_score=average_quality_score,
+        )
+
+
 class TechDebtDetector:
     """Detector for technical debt in code.
 
