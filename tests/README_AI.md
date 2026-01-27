@@ -238,9 +238,6 @@ Changed files:
 Changed files:
 - `test_tech_debt_bdd.py`
 
----
-
-## Recent Changes
 
 **Commit `9dd8178`**: test(cli): add 12 integration tests for tech-debt command
 
@@ -251,3 +248,12 @@ Changed files:
 
 Changed files:
 - `test_super_large_detection_bdd.py`
+
+---
+
+## Recent Changes
+
+**Commit `51094c0`**: feat(epic3.2): implement multi-turn dialogue core (Story 3.2.2 WIP)
+
+Changed files:
+- `test_multi_turn_dialogue_bdd.py`

@@ -139,9 +139,6 @@ Prompt (Writer) → AI CLI (Invoker) → README_AI.md (Writer)
 | AI Enhancement Strategy Selection | `select_enhancement_strategy()` function intelligently selects one of three strategies based on file size: "standard" for normal files (<2000 lines AND <40 symbols), "hierarchical" for large files (2000-5000 lines OR 40-100 symbols), "multi_turn" for super large files (>5000 lines OR >100 symbols). Supports configurable thresholds via `AIEnhancementConfig` with defaults: super_large_lines=5000, super_large_symbols=100 |
 | Enhancement Strategy Types | `EnhancementStrategy` literal type defines three valid strategies: "standard" (default single-pass generation), "hierarchical" (two-phase with structure + detail), "multi_turn" (multi-round dialogue for super large files) |
 
----
-
-## Recent Changes
 
 **Commit `73a3c57`**: feat(epic3.2): implement super large file detection (Story 3.2.1)
 
@@ -183,3 +180,13 @@ Key changes:
 - Imported `TechDebtReport` type for type hints
 - Reduced `tech_debt()` function complexity from 80+ lines to ~15 lines
 - Improved testability and maintainability through separation of concerns
+
+---
+
+## Recent Changes
+
+**Commit `51094c0`**: feat(epic3.2): implement multi-turn dialogue core (Story 3.2.2 WIP)
+
+Changed files:
+- `ai_enhancement.py`
+- `cli.py`
