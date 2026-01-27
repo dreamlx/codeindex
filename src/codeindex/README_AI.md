@@ -174,9 +174,6 @@ Prompt (Writer) → AI CLI (Invoker) → README_AI.md (Writer)
 | Shared CLI Console | `cli_common.console` provides shared Rich console instance for consistent formatted output across all CLI modules |
 | Modular Command Registration | `cli.py` uses `main.add_command()` to register commands from submodules (e.g., `tech_debt` from `cli_tech_debt`) |
 
----
-
-## Recent Changes
 
 **Commit `9fc8ed8`**: refactor(epic4): extract cli_tech_debt module
 
@@ -236,3 +233,13 @@ Key changes:
 - Implemented `FileSizeClassifier` class with config-driven thresholds
 - Classifier uses config values for super_large thresholds (lines and symbols) with fallback defaults
 - Provides consistent classification logic for use across `TechDebtDetector` and `ai_enhancement` modules
+
+---
+
+## Recent Changes
+
+**Commit `0508856`**: refactor(epic4): extract cli_config module
+
+Changed files:
+- `cli.py`
+- `cli_config.py`
