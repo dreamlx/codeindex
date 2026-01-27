@@ -3,9 +3,9 @@
 from pathlib import Path
 
 import click
-from rich.console import Console
 from rich.table import Table
 
+from .cli_common import console
 from .config import DEFAULT_CONFIG_NAME, Config
 from .directory_tree import DirectoryTree
 from .incremental import (
@@ -34,8 +34,6 @@ from .writer import (
     generate_fallback_readme,
     write_readme,
 )
-
-console = Console()
 
 
 @click.group()
