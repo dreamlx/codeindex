@@ -244,6 +244,10 @@ class AIEnhancementConfig:
     max_concurrent: int = 2  # Max parallel AI calls
     rate_limit_delay: float = 1.0  # Seconds between AI calls
 
+    # Super large file thresholds for multi-turn dialogue (Epic 3.2)
+    super_large_lines: int = 5000  # Files >5000 lines are super large
+    super_large_symbols: int = 100  # Files >100 symbols are super large
+
     @classmethod
     def from_dict(cls, data: dict) -> "AIEnhancementConfig":
         """Create from config dict."""
@@ -255,6 +259,8 @@ class AIEnhancementConfig:
             size_threshold=data.get("size_threshold", 40 * 1024),
             max_concurrent=data.get("max_concurrent", 2),
             rate_limit_delay=data.get("rate_limit_delay", 1.0),
+            super_large_lines=data.get("super_large_lines", 5000),
+            super_large_symbols=data.get("super_large_symbols", 100),
         )
 
 
