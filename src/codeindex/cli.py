@@ -126,7 +126,8 @@ def scan(
         if write_result.success:
             size_kb = write_result.size_bytes / 1024
             truncated_msg = " [truncated]" if write_result.truncated else ""
-            console.print(f"[green]✓ Created ({level}, {size_kb:.1f}KB{truncated_msg}):[/green] {write_result.path}")
+            msg = f"[green]✓ Created ({level}, {size_kb:.1f}KB{truncated_msg}):[/green]"
+            console.print(f"{msg} {write_result.path}")
         else:
             console.print(f"[red]✗ Error:[/red] {write_result.error}")
         return
@@ -205,7 +206,11 @@ def init(force: bool):
 @click.option("--timeout", default=120, help="Timeout per directory in seconds")
 @click.option("--no-ai", is_flag=True, help="Disable AI enhancement, use SmartWriter only")
 @click.option("--fallback", is_flag=True, help="Alias for --no-ai (deprecated)")
-@click.option("--ai-all", is_flag=True, help="Enhance ALL directories with AI (overrides config strategy)")
+@click.option(
+    "--ai-all",
+    is_flag=True,
+    help="Enhance ALL directories with AI (overrides config strategy)",
+)
 @click.option("--quiet", "-q", is_flag=True, help="Minimal output")
 @click.option("--hierarchical", "-h", is_flag=True, help="Use hierarchical processing (bottom-up)")
 def scan_all(
@@ -321,7 +326,8 @@ def scan_all(
             if write_result.success:
                 size_kb = write_result.size_bytes / 1024
                 truncated = " [truncated]" if write_result.truncated else ""
-                return dir_path, True, f"[{level}] {size_kb:.1f}KB{truncated}", write_result.size_bytes
+                status_msg = f"[{level}] {size_kb:.1f}KB{truncated}"
+                return dir_path, True, status_msg, write_result.size_bytes
             else:
                 return dir_path, False, write_result.error, 0
 
@@ -365,7 +371,8 @@ def scan_all(
 
     if strategy == "none":
         if not quiet:
-            console.print(f"\n[bold]Completed: {success_count}/{len(dirs)} directories (AI disabled)[/bold]")
+            msg = f"Completed: {success_count}/{len(dirs)} directories (AI disabled)"
+            console.print(f"\n[bold]{msg}[/bold]")
         return
 
     ai_checklist = []
@@ -388,11 +395,13 @@ def scan_all(
                 ai_checklist.append((dir_path, "overview"))
             # Condition 2: oversize files
             elif size_bytes > threshold:
-                ai_checklist.append((dir_path, f"oversize ({size_bytes / 1024:.1f}KB > {threshold / 1024:.0f}KB)"))
+                reason = f"oversize ({size_bytes / 1024:.1f}KB > {threshold / 1024:.0f}KB)"
+                ai_checklist.append((dir_path, reason))
 
     if not ai_checklist:
         if not quiet:
-            console.print(f"\n[bold]Completed: {success_count}/{len(dirs)} directories (no AI enhancement needed)[/bold]")
+            msg = f"Completed: {success_count}/{len(dirs)} directories"
+            console.print(f"\n[bold]{msg} (no AI enhancement needed)[/bold]")
         return
 
     # ========== Phase 2: AI Enhancement (parallel with rate limiting) ==========
@@ -406,9 +415,17 @@ def scan_all(
             console.print(f"[dim]→ Enhancing ALL directories: {len(ai_checklist)} total[/dim]")
         else:
             console.print("\n[bold]🤖 Phase 2: AI Enhancement...[/bold]")
-            console.print(f"[dim]→ Checklist: {len(ai_checklist)} directories ({overview_count} overview, {oversize_count} oversize, {level_count} other)[/dim]")
+            checklist_msg = (
+                f"→ Checklist: {len(ai_checklist)} directories "
+                f"({overview_count} overview, {oversize_count} oversize, {level_count} other)"
+            )
+            console.print(f"[dim]{checklist_msg}[/dim]")
 
-        console.print(f"[dim]→ Max concurrent: {config.ai_enhancement.max_concurrent}, delay: {config.ai_enhancement.rate_limit_delay}s[/dim]")
+        rate_msg = (
+            f"→ Max concurrent: {config.ai_enhancement.max_concurrent}, "
+            f"delay: {config.ai_enhancement.rate_limit_delay}s"
+        )
+        console.print(f"[dim]{rate_msg}[/dim]")
 
     # Rate limiting state
     semaphore = threading.Semaphore(config.ai_enhancement.max_concurrent)
@@ -453,7 +470,8 @@ def scan_all(
                         if write_result.success:
                             new_size = write_result.path.stat().st_size
                             old_size = phase1_results[dir_path][2]
-                            return dir_path, True, f"AI enhanced ({old_size / 1024:.0f}KB → {new_size / 1024:.0f}KB)"
+                            msg = f"AI enhanced ({old_size / 1024:.0f}KB → {new_size / 1024:.0f}KB)"
+                            return dir_path, True, msg
 
                 return dir_path, False, "AI failed, keeping SmartWriter version"
 
@@ -463,7 +481,8 @@ def scan_all(
     # Phase 2: Parallel AI enhancement with rate limiting
     ai_success_count = 0
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=config.ai_enhancement.max_concurrent) as executor:
+    max_workers = config.ai_enhancement.max_concurrent
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {executor.submit(enhance_with_ai, d, r): (d, r) for d, r in ai_checklist}
 
         for future in concurrent.futures.as_completed(futures):
@@ -477,7 +496,11 @@ def scan_all(
                     console.print(f"[yellow]![/yellow] {dir_path.name}: {msg}")
 
     if not quiet:
-        console.print(f"\n[bold]Completed: {success_count}/{len(dirs)} directories, {ai_success_count}/{len(ai_checklist)} AI enhanced[/bold]")
+        msg = (
+            f"Completed: {success_count}/{len(dirs)} directories, "
+            f"{ai_success_count}/{len(ai_checklist)} AI enhanced"
+        )
+        console.print(f"\n[bold]{msg}[/bold]")
 
 
 @main.command()
@@ -680,7 +703,8 @@ def symbols(root: Path, output: str, quiet: bool):
     output_path = indexer.generate_index(output)
 
     console.print(f"[green]✓ Created:[/green] {output_path}")
-    console.print(f"[dim]Indexed {stats['symbols']} symbols from {stats['directories']} directories[/dim]")
+    index_msg = f"Indexed {stats['symbols']} symbols from {stats['directories']} directories"
+    console.print(f"[dim]{index_msg}[/dim]")
 
 
 @main.command()
