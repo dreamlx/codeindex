@@ -52,13 +52,21 @@ def main():
 @click.option("--quiet", "-q", is_flag=True, help="Minimal output")
 @click.option("--timeout", default=120, help="AI CLI timeout in seconds")
 @click.option("--parallel", "-p", type=int, help="Override parallel workers (from config)")
+@click.option(
+    "--strategy",
+    type=click.Choice(["auto", "standard", "multi_turn"]),
+    default="auto",
+    help="AI enhancement strategy (auto=detect, standard=single prompt, "
+    "multi_turn=3-round dialogue)",
+)
 def scan(
     path: Path,
     dry_run: bool,
     fallback: bool,
     quiet: bool,
     timeout: int,
-    parallel: int | None
+    parallel: int | None,
+    strategy: str,
 ):
     """
     Scan a directory and generate README_AI.md.
@@ -97,6 +105,84 @@ def scan(
     total_symbols = sum(len(r.symbols) for r in parse_results)
     if not quiet:
         console.print(f"  [dim]→ Extracted {total_symbols} symbols[/dim]")
+
+    # Detect if super large file and select strategy (Epic 3.2)
+    actual_strategy = strategy
+    if strategy == "auto" and not fallback:
+        from codeindex.ai_enhancement import is_super_large_file
+
+        # Aggregate all parse results into single ParseResult for detection
+        all_symbols = []
+        total_lines = 0
+        for pr in parse_results:
+            all_symbols.extend(pr.symbols)
+            total_lines += pr.file_lines
+
+        # Create aggregated parse result for detection
+        from codeindex.parser import ParseResult
+
+        aggregated = ParseResult(path=path, file_lines=total_lines, symbols=all_symbols)
+
+        detection = is_super_large_file(aggregated, config)
+        if detection.is_super_large:
+            actual_strategy = "multi_turn"
+            if not quiet:
+                console.print(
+                    f"  [yellow]⚠ Super large file detected: {detection.reason}[/yellow]"
+                )
+                console.print("  [dim]→ Using multi-turn dialogue strategy...[/dim]")
+
+    # Execute multi-turn dialogue if strategy selected (Epic 3.2)
+    if actual_strategy == "multi_turn" and not fallback:
+        from codeindex.ai_enhancement import multi_turn_ai_enhancement
+
+        # Create aggregated parse result for multi-turn dialogue
+        all_symbols = []
+        total_lines = 0
+        for pr in parse_results:
+            all_symbols.extend(pr.symbols)
+            total_lines += pr.file_lines
+
+        from codeindex.parser import ParseResult
+
+        aggregated = ParseResult(path=path, file_lines=total_lines, symbols=all_symbols)
+
+        if not quiet:
+            console.print("  [bold cyan]→ Starting multi-turn dialogue...[/bold cyan]")
+
+        result_mt = multi_turn_ai_enhancement(
+            parse_result=aggregated,
+            config=config,
+            ai_command=config.ai_command,
+            timeout_per_round=timeout,
+        )
+
+        if result_mt.success:
+            # Write final README from Round 3
+            if not quiet:
+                console.print("  [dim]→ Writing README_AI.md...[/dim]")
+            write_result = write_readme(path, result_mt.final_readme, config.output_file)
+
+            if write_result.success:
+                if not quiet:
+                    duration_msg = f"{result_mt.total_time:.1f}s"
+                    console.print(
+                        f"[green]✓ Multi-turn complete ({duration_msg}):[/green] "
+                        f"{write_result.path}"
+                    )
+                else:
+                    print(write_result.path)
+            else:
+                console.print(f"[red]✗ Write error:[/red] {write_result.error}")
+            return
+        else:
+            # Multi-turn failed, fall back to standard enhancement
+            if not quiet:
+                console.print(
+                    f"[yellow]⚠ Multi-turn failed: {result_mt.error}[/yellow]"
+                )
+                console.print("  [dim]→ Falling back to standard enhancement...[/dim]")
+            # Continue to standard enhancement below
 
     # Format for prompt
     if not quiet:
@@ -454,6 +540,49 @@ def scan_all(
                 if result.files:
                     parse_results = parse_files_parallel(result.files, config, quiet=True)
 
+                # Detect if super large file and use multi-turn dialogue (Epic 3.2)
+                if parse_results:
+                    from codeindex.ai_enhancement import is_super_large_file
+                    from codeindex.parser import ParseResult
+
+                    # Aggregate parse results
+                    all_symbols = []
+                    total_lines = 0
+                    for pr in parse_results:
+                        all_symbols.extend(pr.symbols)
+                        total_lines += pr.file_lines
+
+                    aggregated = ParseResult(
+                        path=dir_path, file_lines=total_lines, symbols=all_symbols
+                    )
+
+                    detection = is_super_large_file(aggregated, config)
+                    if detection.is_super_large:
+                        # Use multi-turn dialogue for super large files
+                        from codeindex.ai_enhancement import multi_turn_ai_enhancement
+
+                        result_mt = multi_turn_ai_enhancement(
+                            parse_result=aggregated,
+                            config=config,
+                            ai_command=config.ai_command,
+                            timeout_per_round=timeout,
+                        )
+
+                        if result_mt.success:
+                            write_result = write_readme(
+                                dir_path, result_mt.final_readme, config.output_file
+                            )
+                            if write_result.success:
+                                new_size = write_result.path.stat().st_size
+                                old_size = phase1_results[dir_path][2]
+                                time_str = f"{result_mt.total_time:.1f}s"
+                                msg = (
+                                    f"Multi-turn ({old_size / 1024:.0f}KB → "
+                                    f"{new_size / 1024:.0f}KB, {time_str})"
+                                )
+                                return dir_path, True, msg
+                        # If multi-turn fails, fall through to standard enhancement
+
                 # Format prompt
                 files_info = format_files_for_prompt(parse_results)
                 symbols_info = format_symbols_for_prompt(parse_results)
@@ -775,7 +904,9 @@ def affected(since: str, until: str, as_json: bool):
             console.print("  codeindex list-dirs | xargs -P 4 -I {} codeindex scan {}")
 
 
-def _find_source_files(path: Path, recursive: bool, languages: list[str] | None = None) -> list[Path]:
+def _find_source_files(
+    path: Path, recursive: bool, languages: list[str] | None = None
+) -> list[Path]:
     """Find source files in the given directory based on language configuration.
 
     Args:
