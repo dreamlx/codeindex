@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-01-27
+
+### Added - Epic 4: Code Refactoring (Partial) 🔧
+- **AI Helper module** (`ai_helper.py`) for reusable enhancement functions
+  - `aggregate_parse_results()` - Combines multiple ParseResult objects
+  - `execute_multi_turn_enhancement()` - Unified multi-turn dialogue execution
+- **File Size Classifier** (`file_classifier.py`) for consistent file size detection
+  - `FileSizeCategory` enum with 5 classification levels
+  - `FileSizeClassifier` with configurable thresholds
+  - Unified detection logic across all modules
+- 20 new unit tests (8 ai_helper + 12 classifier) with TDD approach
+- 2 BDD feature files (16 + 22 scenarios)
+
+### Changed - Epic 4
+- **Code duplication eliminated**: ~110 lines of duplicate code removed
+- **scan and scan-all commands** now use shared `execute_multi_turn_enhancement()`
+- **tech_debt module** uses `FileSizeClassifier` instead of hard-coded constants
+- **ai_enhancement module** uses `FileSizeClassifier` for consistent detection
+- **cli.py reduced** from 1131 to 1062 lines (-69 lines, -6%)
+- All thresholds now configurable via Config (no magic numbers)
+
 ### Added - Epic 3.2: Multi-turn Dialogue for Super Large Files 🚀
 - **Super large file detection** with configurable thresholds (>5000 lines OR >100 symbols)
 - **Three-round multi-turn dialogue** for complex file documentation:
@@ -142,7 +163,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Timeout and error handling
 - Development mode installation
 
-[Unreleased]: https://github.com/yourusername/codeindex/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/yourusername/codeindex/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/yourusername/codeindex/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/yourusername/codeindex/compare/v0.1.3...v0.2.0
 [0.1.3]: https://github.com/yourusername/codeindex/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/yourusername/codeindex/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/yourusername/codeindex/compare/v0.1.0...v0.1.1
