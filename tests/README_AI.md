@@ -215,11 +215,17 @@ Changed files:
 - `test_tech_debt_formatters.py`
 - `test_tech_debt_reporter.py`
 
----
-
-## Recent Changes
 
 **Commit `e113714`**: test(tech-debt): add 5 BDD scenarios for reporting
 
 Changed files:
 - `test_tech_debt_bdd.py`
+
+---
+
+## Recent Changes
+
+**Commit `9dd8178`**: test(cli): add 12 integration tests for tech-debt command
+
+Changed files:
+- `test_cli_tech_debt.py`
