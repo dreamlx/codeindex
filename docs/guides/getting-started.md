@@ -96,6 +96,55 @@ Indexing Status
 Indexed: 3/4 (75%)
 ```
 
+### 5. Batch Scanning (v0.1.2+)
+
+Scan all directories at once with two-phase processing:
+
+```bash
+# Smart batch scanning with AI enhancement
+codeindex scan-all                # Uses config ai_enhancement strategy
+codeindex scan-all --ai-all       # Enhance ALL directories with AI
+codeindex scan-all --no-ai        # SmartWriter only (fast, no AI costs)
+
+# Traditional parallel scanning
+codeindex list-dirs | xargs -P 4 -I {} codeindex scan {}
+```
+
+**Two-phase processing** (default):
+1. Phase 1: Generate all READMEs with SmartWriter (fast)
+2. Phase 2: Selectively enhance with AI (large directories only)
+
+### 6. Symbol Indexes (v0.1.2+)
+
+Generate project-wide indexes for navigation:
+
+```bash
+# Global symbol index (all classes/functions)
+codeindex symbols
+
+# Module overview (directory structure)
+codeindex index
+
+# Analyze changes (for incremental updates)
+codeindex affected --since HEAD~5
+```
+
+### 7. Technical Debt Analysis (v0.3.0+)
+
+Detect code quality issues:
+
+```bash
+# Analyze directory
+codeindex tech-debt ./src
+
+# Different output formats
+codeindex tech-debt ./src --format markdown
+codeindex tech-debt ./src --format json
+
+# Recursive analysis
+codeindex tech-debt ./src --recursive
+```
+
 ## No AI? Use Fallback Mode
 
 If you don't have an AI CLI configured, you can generate basic documentation:

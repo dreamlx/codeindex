@@ -250,7 +250,7 @@ Config file: `.codeindex.yaml` (see `examples/.codeindex.yaml`)
 ### GitFlow 分支策略
 
 ```
-master (生产分支，v0.2.0)
+master (生产分支，v0.3.1)
 ├── develop (开发分支)
 │   ├── feature/epic3-xxx (功能分支)
 │   ├── feature/epic4-xxx (功能分支)
@@ -319,6 +319,54 @@ codeindex scan-all --fallback
 codeindex scan src/codeindex --fallback
 codeindex scan tests --fallback
 ```
+
+## 📈 版本历史和功能演进
+
+### v0.3.1 - CLI Module Split (2026-01-28)
+- **Epic 4 Story 4.3**: CLI 架构重构
+- CLI 从 1062 行拆分为 6 个专注模块（-97%）
+- 每个模块单一职责：scan, config, symbols, tech-debt
+- 零破坏性变更，所有 263 测试通过
+- 嵌套函数重构为独立辅助函数
+
+### v0.3.0 - AI Enhancement & Tech Debt (2026-01-27)
+- **Epic 4 Stories 4.1-4.2**: 代码重构和质量改进
+- AI Helper 模块：复用增强功能
+- File Size Classifier：统一文件大小检测
+- **Epic 3.2**: 超大文件多轮对话（>5000行或>100符号）
+  - 三轮对话：架构概览 → 核心组件 → 最终合成
+  - 自动检测和策略选择
+- **Epic 3.1**: 技术债务分析
+  - 复杂度指标（cyclomatic, cognitive, nesting）
+  - God Class 检测（>50 methods）
+  - 多格式输出（console/markdown/json）
+- 消除 ~110 行代码重复
+
+### v0.2.0 - Adaptive Symbols (2025-01-15)
+- **Epic 2**: 自适应符号提取
+- 7级文件大小分类（tiny→mega）
+- 动态符号限制：5-150 个/文件（基于文件大小）
+- 大文件信息覆盖率提升 280%（26% → 100%）
+- YAML 配置支持
+- 零破坏性变更（默认禁用）
+
+### v0.1.3 - Project Indexing (2025-01-15)
+- PROJECT_INDEX.json 和 PROJECT_INDEX.md
+- 代码库导航索引
+- 改进 README_AI.md 自动生成
+
+### v0.1.2 - Parallel & Incremental (2025-01-14)
+- 并行扫描支持（codeindex list-dirs）
+- --dry-run 预览 prompt
+- status 命令查看索引覆盖率
+- 增量更新分析
+
+### v0.1.0 - Initial Release (2025-01-12)
+- Python 代码解析（tree-sitter）
+- 外部 AI CLI 集成
+- 符号提取（classes, functions, imports）
+- README_AI.md 生成
+- 基础测试套件
 
 ## 🚨 常见错误和避免方法
 

@@ -14,12 +14,17 @@ codeindex automatically generates intelligent documentation (`README_AI.md`) for
 ## ✨ Features
 
 - 🚀 **AI-Powered Documentation**: Generate comprehensive README files using Claude, GPT, or any AI CLI
-- 🌳 **Tree-sitter Parsing**: Accurate symbol extraction (classes, functions, methods, imports) for Python (more languages coming)
+- 🌳 **Tree-sitter Parsing**: Accurate symbol extraction (classes, functions, methods, imports) for Python & PHP
 - ⚡ **Parallel Scanning**: Scan multiple directories concurrently for fast indexing
 - 🎯 **Smart Filtering**: Include/exclude patterns with glob support
 - 🔧 **Flexible Integration**: Works with any AI CLI tool via configurable commands
 - 📊 **Coverage Tracking**: Check which directories have been indexed
 - 🎨 **Fallback Mode**: Generate basic documentation without AI
+- 🏗️ **Modular Architecture** (v0.3.1+): Clean, maintainable 6-module CLI design
+- 🔄 **Adaptive Symbols** (v0.2.0+): Dynamic symbol extraction (5-150 per file based on size)
+- 📈 **Technical Debt Analysis** (v0.3.0+): Detect code quality issues and complexity metrics
+- 🔍 **Symbol Indexing** (v0.1.2+): Global symbol search and project-wide navigation
+- 💬 **Multi-turn Dialogue** (v0.3.0+): Advanced AI processing for super large files (>5000 lines)
 
 ---
 
@@ -173,9 +178,44 @@ Indexing Status
 Indexed: 3/4 (75%)
 ```
 
-### 6. Analyze Technical Debt
+### 6. Generate Symbol Indexes (v0.1.2+)
 
-**NEW in v0.2.1**: Detect code quality issues and technical debt patterns.
+**Global symbol index** - Find any class/function across your codebase:
+
+```bash
+# Generate PROJECT_SYMBOLS.md (global symbol index)
+codeindex symbols
+
+# Generate PROJECT_INDEX.md (module overview)
+codeindex index
+
+# Analyze git changes and affected directories
+codeindex affected --since HEAD~5 --until HEAD
+codeindex affected --json  # For scripting/CI
+```
+
+**What you get:**
+
+**PROJECT_SYMBOLS.md** provides:
+- Quick class/function lookup across all files
+- Cross-file references and imports
+- Symbol locations with line numbers
+- Grouped by directory
+
+**PROJECT_INDEX.md** provides:
+- Module overview with descriptions
+- Directory structure
+- Entry points and CLI commands
+- Generated from README_AI.md files
+
+**Affected analysis** helps with incremental updates:
+- Shows which directories changed in git commits
+- Suggests which README_AI.md files need regeneration
+- JSON output for CI/CD integration
+
+### 7. Analyze Technical Debt (v0.3.0+)
+
+**NEW in v0.3.0**: Detect code quality issues and technical debt patterns.
 
 ```bash
 # Analyze directory for technical debt
@@ -233,6 +273,32 @@ File Details
 
 ---
 
+## 🏗️ Architecture Improvements (v0.3.1)
+
+codeindex v0.3.1 features a **completely refactored CLI architecture** with specialized modules following the Single Responsibility Principle:
+
+### Modular CLI Design
+
+```
+src/codeindex/
+├── cli.py              (36 lines, -97%)  # Main entry point
+├── cli_common.py       (10 lines)        # Shared utilities
+├── cli_scan.py         (587 lines)       # Scanning operations
+├── cli_config.py       (97 lines)        # Configuration management
+├── cli_symbols.py      (226 lines)       # Symbol indexing
+└── cli_tech_debt.py    (238 lines)       # Technical debt analysis
+```
+
+### Benefits
+
+- ✅ **Easier to maintain**: Each module has a single, clear responsibility
+- ✅ **Better code organization**: 1062 lines → 36 lines in main CLI entry point
+- ✅ **100% backward compatible**: All commands and options preserved
+- ✅ **Zero breaking changes**: All 263 tests passing
+- ✅ **Extensible**: Easy to add new commands without bloating main file
+
+---
+
 ## 📖 Documentation
 
 - **[Getting Started](docs/guides/getting-started.md)** - Detailed installation and setup
@@ -281,6 +347,29 @@ indexing:
   root_level: "overview"
   module_level: "navigation"
   leaf_level: "detailed"
+
+# Adaptive symbol extraction (v0.2.0+)
+symbols:
+  adaptive_symbols:
+    enabled: true           # Enable dynamic symbol limits based on file size
+    min_symbols: 5          # Minimum symbols for tiny files
+    max_symbols: 150        # Maximum symbols for huge files
+    thresholds:             # File size thresholds (lines)
+      tiny: 100             # <100 lines → 5 symbols
+      small: 500            # 100-500 lines → 15 symbols
+      medium: 1500          # 500-1500 lines → 30 symbols
+      large: 3000           # 1500-3000 lines → 50 symbols
+      xlarge: 5000          # 3000-5000 lines → 80 symbols
+      huge: 8000            # 5000-8000 lines → 120 symbols
+      mega: null            # >8000 lines → 150 symbols
+    limits:                 # Symbol limits per category
+      tiny: 5
+      small: 15
+      medium: 30
+      large: 50
+      xlarge: 80
+      huge: 120
+      mega: 150
 
 # AI Enhancement (NEW - for scan-all command)
 ai_enhancement:
