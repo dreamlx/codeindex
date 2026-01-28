@@ -56,6 +56,71 @@ prompt_template: |
   2. Key components and their relationships
   3. Important functions/classes with brief descriptions
   4. Usage examples if applicable
+
+# Parallel processing
+parallel_workers: 8
+batch_size: 50
+
+# Smart indexing (tiered documentation)
+indexing:
+  max_readme_size: 51200     # 50KB limit per README
+  root_level: "overview"
+  module_level: "navigation"
+  leaf_level: "detailed"
+
+# Adaptive symbol extraction (v0.2.0+)
+symbols:
+  adaptive_symbols:
+    enabled: true            # Enable dynamic symbol limits
+    min_symbols: 5           # Minimum for tiny files
+    max_symbols: 150         # Maximum for huge files
+    thresholds:              # File size thresholds (lines)
+      tiny: 100
+      small: 500
+      medium: 1500
+      large: 3000
+      xlarge: 5000
+      huge: 8000
+      mega: null             # >8000 lines
+    limits:                  # Symbol limits per category
+      tiny: 5
+      small: 15
+      medium: 30
+      large: 50
+      xlarge: 80
+      huge: 120
+      mega: 150
+
+# AI Enhancement for scan-all (v0.3.0+)
+ai_enhancement:
+  strategy: "selective"      # "selective" | "all"
+  enabled: true
+  size_threshold: 40960      # >40KB triggers AI enhancement
+  max_concurrent: 2          # Max parallel AI calls
+  rate_limit_delay: 1.0      # Seconds between AI calls
+
+# Incremental updates (v0.1.2+)
+incremental:
+  enabled: true
+  thresholds:
+    skip_lines: 5            # <5 lines changed → skip
+    current_only: 50         # <50 lines → update current dir only
+    suggest_full: 200        # >200 lines → suggest full scan
+
+# Technical debt thresholds (v0.3.0+)
+tech_debt:
+  file_size:
+    large_threshold: 2000    # Lines for "large file" warning
+    super_large_threshold: 5000  # Lines for "super large file" critical
+  god_class:
+    method_threshold: 50     # Methods for "god class" detection
+  symbol_overload:
+    total_threshold: 100     # Total symbols threshold
+    noise_ratio: 0.5         # >50% low-quality symbols
+  complexity:
+    cyclomatic_threshold: 10
+    cognitive_threshold: 15
+    nesting_threshold: 4
 ```
 
 ## AI CLI Examples

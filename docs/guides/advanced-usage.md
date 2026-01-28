@@ -2,9 +2,43 @@
 
 ## Parallel Scanning
 
-### Using xargs
+### Using scan-all (v0.1.2+, Enhanced v0.3.0)
 
-Scan multiple directories in parallel with 4 workers:
+The modern way to scan entire projects with smart AI enhancement:
+
+```bash
+# Default: Selective AI enhancement (smart and cost-effective)
+codeindex scan-all
+
+# Enhance ALL directories with AI (best quality, more time/cost)
+codeindex scan-all --ai-all
+
+# No AI, just SmartWriter (fastest, no API costs)
+codeindex scan-all --no-ai
+
+# Custom timeout per directory
+codeindex scan-all --timeout 180
+
+# Custom parallel workers
+codeindex scan-all --workers 4
+```
+
+**How it works:**
+1. **Phase 1**: Generate all READMEs with SmartWriter (fast, local)
+2. **Phase 2**: Selectively enhance with AI based on strategy:
+   - `selective` (default): Only large directories (>40KB)
+   - `all`: Every directory gets AI enhancement
+   - Manual `--no-ai`: Skip Phase 2 entirely
+
+**Benefits over traditional parallel:**
+- Two-phase processing prevents duplicate work
+- Intelligent AI selection saves API costs
+- Rate limiting prevents API throttling
+- Progress tracking with Rich output
+
+### Traditional Parallel with xargs
+
+For fine-grained control, use traditional parallel scanning:
 
 ```bash
 codeindex list-dirs | xargs -P 4 -I {} codeindex scan {}
@@ -129,6 +163,228 @@ git diff --name-only abc123 | xargs -n1 dirname | sort -u | \
 # Future feature: watch and auto-regenerate
 codeindex watch ./src
 ```
+
+## Symbol Indexing (v0.1.2+)
+
+### Generate Global Symbol Index
+
+Create a searchable index of all classes and functions:
+
+```bash
+# Generate PROJECT_SYMBOLS.md
+codeindex symbols
+
+# Quiet mode (minimal output)
+codeindex symbols --quiet
+
+# Custom output filename
+codeindex symbols --output MY_SYMBOLS.md
+```
+
+**What you get:**
+- Global symbol index with file locations
+- Cross-file references
+- Grouped by directory
+- Quick class/function lookup
+
+### Generate Project Index
+
+Create a module-level overview:
+
+```bash
+# Generate PROJECT_INDEX.md
+codeindex index
+
+# Custom output
+codeindex index --output PROJECT_OVERVIEW.md
+```
+
+**What you get:**
+- Module descriptions extracted from README_AI.md
+- Entry points and CLI commands
+- Directory structure overview
+
+### Analyze Affected Directories
+
+Find which directories need updates after code changes:
+
+```bash
+# Analyze recent changes
+codeindex affected --since HEAD~5 --until HEAD
+
+# JSON output for scripting
+codeindex affected --json
+
+# Check specific commit range
+codeindex affected --since abc123 --until def456
+
+# Use in CI/CD
+codeindex affected --json | jq '.directories[]' | xargs -I {} codeindex scan {}
+```
+
+**Use cases:**
+- Incremental documentation updates
+- CI/CD integration
+- Pre-commit hooks
+- Change impact analysis
+
+## Technical Debt Analysis (v0.3.0+)
+
+### Basic Analysis
+
+Detect code quality issues in a directory:
+
+```bash
+# Console output (default)
+codeindex tech-debt ./src
+
+# Recursive analysis
+codeindex tech-debt ./src --recursive
+
+# Quiet mode
+codeindex tech-debt ./src --quiet
+```
+
+### Output Formats
+
+```bash
+# Markdown report (for documentation)
+codeindex tech-debt ./src --format markdown --output debt-report.md
+
+# JSON output (for CI/CD)
+codeindex tech-debt ./src --format json --output debt.json
+
+# Parse JSON in scripts
+codeindex tech-debt ./src --format json | \
+  jq '.files[] | select(.quality_score < 70)'
+```
+
+### CI/CD Integration
+
+Fail builds on critical issues:
+
+```bash
+#!/bin/bash
+# In your CI pipeline
+
+# Analyze codebase
+codeindex tech-debt ./src --format json --output debt.json
+
+# Check for critical issues
+CRITICAL=$(jq '[.files[].issues[] | select(.severity == "CRITICAL")] | length' debt.json)
+
+if [ "$CRITICAL" -gt 0 ]; then
+  echo "❌ Found $CRITICAL critical technical debt issues"
+  jq '.files[].issues[] | select(.severity == "CRITICAL")' debt.json
+  exit 1
+fi
+
+echo "✅ No critical technical debt issues"
+```
+
+### Quality Gates
+
+Set thresholds for acceptable debt:
+
+```bash
+# Check average quality score
+AVG_QUALITY=$(jq '[.files[].quality_score] | add / length' debt.json)
+
+if (( $(echo "$AVG_QUALITY < 70" | bc -l) )); then
+  echo "❌ Average quality score $AVG_QUALITY below threshold (70)"
+  exit 1
+fi
+```
+
+## Multi-turn Dialogue for Super Large Files (v0.3.0+)
+
+### Automatic Detection
+
+For files >5000 lines or >100 symbols, use multi-turn dialogue:
+
+```bash
+# Auto-detect and use multi-turn when needed
+codeindex scan ./huge-file --strategy auto
+
+# Force multi-turn dialogue
+codeindex scan ./huge-file --strategy multi_turn
+
+# Force standard enhancement (single AI call)
+codeindex scan ./huge-file --strategy standard
+```
+
+### How Multi-turn Works
+
+**Three-round dialogue for better quality:**
+
+1. **Round 1: Architecture Overview** (10-20 lines)
+   - High-level architecture
+   - Main responsibilities
+   - Key design patterns
+
+2. **Round 2: Core Component Analysis** (30-60 lines)
+   - Detailed component breakdown
+   - Symbol grouping by responsibility
+   - Integration points
+
+3. **Round 3: Final README Synthesis** (100+ lines)
+   - Complete documentation
+   - Combines rounds 1 + 2
+   - Usage examples and patterns
+
+**Benefits:**
+- Better quality for huge files
+- Avoids AI context limits
+- Focused analysis per round
+- Graceful fallback on failure
+
+### Configuration
+
+Configure multi-turn thresholds:
+
+```yaml
+# .codeindex.yaml
+multi_turn:
+  enabled: true
+  line_threshold: 5000      # >5000 lines triggers multi-turn
+  symbol_threshold: 100     # >100 symbols triggers multi-turn
+  timeout_per_round: 120    # Timeout for each round
+```
+
+## Adaptive Symbol Extraction (v0.2.0+)
+
+### How It Works
+
+Dynamically adjust symbol limits based on file size:
+
+- **Tiny files** (<100 lines): 5 symbols
+- **Small files** (100-500 lines): 15 symbols
+- **Medium files** (500-1500 lines): 30 symbols
+- **Large files** (1500-3000 lines): 50 symbols
+- **XLarge files** (3000-5000 lines): 80 symbols
+- **Huge files** (5000-8000 lines): 120 symbols
+- **Mega files** (>8000 lines): 150 symbols
+
+### Configuration
+
+```yaml
+# .codeindex.yaml
+symbols:
+  adaptive_symbols:
+    enabled: true
+    min_symbols: 5
+    max_symbols: 150
+    # Customize thresholds
+    thresholds:
+      small: 300       # Lower small threshold
+      mega: 10000      # Higher mega threshold
+```
+
+### Benefits
+
+- **Better coverage**: Large files get more symbols (280% improvement)
+- **Efficiency**: Small files don't waste space with truncation messages
+- **Flexible**: Fully configurable thresholds and limits
 
 ## CI/CD Integration
 
