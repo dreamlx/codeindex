@@ -270,9 +270,6 @@ Changed files:
 Changed files:
 - `test_ai_helper.py`
 
----
-
-## Recent Changes
 
 **Commit `1d7fff0`**: feat(epic4): implement unified file size classifier (Story 4.2 Tasks 4.2.1-4.2.2)
 
@@ -283,3 +280,12 @@ Changed files:
 
 Changed files:
 - `test_tech_debt_detector.py` - Updated tests to verify TechDebtDetector uses FileSizeClassifier instead of hard-coded constants for file size detection
+
+---
+
+## Recent Changes
+
+**Commit `dbf84a2`**: feat(semantic): implement SemanticExtractor foundation (Story 4.4, Task 4.4.1 Day 1)
+
+Changed files:
+- `test_semantic_extractor.py`
