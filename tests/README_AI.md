@@ -287,11 +287,17 @@ Changed files:
 Changed files:
 - `test_semantic_extractor.py`
 
----
-
-## Recent Changes
 
 **Commit `a2ee00a`**: feat(semantic): implement AI extraction mode (Story 4.4, Task 4.4.1 Day 2)
 
 Changed files:
 - `test_semantic_extractor.py`
+
+---
+
+## Recent Changes
+
+**Commit `d4fce31`**: feat(semantic): integrate SemanticExtractor into SmartWriter (Story 4.4, Task 4.4.2)
+
+Changed files:
+- `test_smart_writer_semantic.py`

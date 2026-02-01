@@ -733,11 +733,18 @@ _Markdown writer for README_AI.md files._
 - .writer
 _... and 27 more_
 
----
-
-## Recent Changes
 
 **Commit `a2ee00a`**: feat(semantic): implement AI extraction mode (Story 4.4, Task 4.4.1 Day 2)
 
 Changed files:
 - `semantic_extractor.py` (modified): Added AI extraction mode with `_build_ai_prompt()` and `_parse_ai_response()` methods. The `_ai_extract()` method now invokes external AI CLI for semantic extraction with automatic fallback to heuristic mode on failure.
+
+---
+
+## Recent Changes
+
+**Commit `d4fce31`**: feat(semantic): integrate SemanticExtractor into SmartWriter (Story 4.4, Task 4.4.2)
+
+Changed files:
+- `config.py`
+- `smart_writer.py`
