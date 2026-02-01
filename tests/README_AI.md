@@ -281,11 +281,17 @@ Changed files:
 Changed files:
 - `test_tech_debt_detector.py` - Updated tests to verify TechDebtDetector uses FileSizeClassifier instead of hard-coded constants for file size detection
 
+
+**Commit `dbf84a2`**: feat(semantic): implement SemanticExtractor foundation (Story 4.4, Task 4.4.1 Day 1)
+
+Changed files:
+- `test_semantic_extractor.py`
+
 ---
 
 ## Recent Changes
 
-**Commit `dbf84a2`**: feat(semantic): implement SemanticExtractor foundation (Story 4.4, Task 4.4.1 Day 1)
+**Commit `a2ee00a`**: feat(semantic): implement AI extraction mode (Story 4.4, Task 4.4.1 Day 2)
 
 Changed files:
 - `test_semantic_extractor.py`
