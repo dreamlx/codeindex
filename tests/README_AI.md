@@ -293,11 +293,17 @@ Changed files:
 Changed files:
 - `test_semantic_extractor.py`
 
----
-
-## Recent Changes
 
 **Commit `d4fce31`**: feat(semantic): integrate SemanticExtractor into SmartWriter (Story 4.4, Task 4.4.2)
 
 Changed files:
 - `test_smart_writer_semantic.py`
+
+---
+
+## Recent Changes
+
+**Commit `c9b1f75`**: feat(cli): enhance PROJECT_INDEX with semantic extraction (Story 4.4, Task 4.4.3)
+
+Changed files:
+- `test_project_index_semantic.py`
