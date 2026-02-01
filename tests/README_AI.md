@@ -299,11 +299,17 @@ Changed files:
 Changed files:
 - `test_smart_writer_semantic.py`
 
----
-
-## Recent Changes
 
 **Commit `c9b1f75`**: feat(cli): enhance PROJECT_INDEX with semantic extraction (Story 4.4, Task 4.4.3)
 
 Changed files:
 - `test_project_index_semantic.py`
+
+---
+
+## Recent Changes
+
+**Commit `49c53f5`**: test(story-4.4): add validation tests and report (Task 4.4.4)
+
+Changed files:
+- `test_story_4_4_integration.py`
