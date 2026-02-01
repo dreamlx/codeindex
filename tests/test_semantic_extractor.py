@@ -58,6 +58,18 @@ class TestSemanticExtractor:
         """Test creating SemanticExtractor"""
         assert extractor is not None
         assert not extractor.use_ai
+        assert extractor.ai_command is None
+
+    def test_extractor_creation_with_ai_requires_command(self):
+        """Test that AI mode requires ai_command parameter"""
+        with pytest.raises(ValueError, match="ai_command is required"):
+            SemanticExtractor(use_ai=True)
+
+    def test_extractor_creation_with_ai_and_command(self):
+        """Test creating SemanticExtractor with AI mode"""
+        extractor = SemanticExtractor(use_ai=True, ai_command="claude -p '{prompt}'")
+        assert extractor.use_ai
+        assert extractor.ai_command == "claude -p '{prompt}'"
 
     def test_extract_controller_semantic_heuristic(self, extractor):
         """
@@ -175,19 +187,88 @@ class TestSemanticExtractor:
 
 
 class TestSemanticExtractorWithAI:
-    """Test SemanticExtractor with AI mode (to be implemented later)"""
+    """Test SemanticExtractor with AI mode"""
 
     @pytest.fixture
     def ai_extractor(self):
         """Create AI-enabled SemanticExtractor"""
-        return SemanticExtractor(use_ai=True)
+        return SemanticExtractor(use_ai=True, ai_command="claude -p '{prompt}'")
 
-    @pytest.mark.skip(reason="AI mode not implemented yet in Task 4.4.1")
+    def test_build_ai_prompt(self, ai_extractor):
+        """Test AI prompt building"""
+        context = DirectoryContext(
+            path="Application/Admin/Controller",
+            files=["UserController.php", "RoleController.php"],
+            subdirs=["User", "Role"],
+            symbols=["UserController", "RoleController", "index", "edit"],
+            imports=["BaseController"]
+        )
+
+        prompt = ai_extractor._build_ai_prompt(context)
+
+        # Verify prompt contains key information
+        assert "Application/Admin/Controller" in prompt
+        assert "UserController.php" in prompt
+        assert "RoleController" in prompt
+        assert "JSON" in prompt
+        assert "description" in prompt
+        assert "purpose" in prompt
+        assert "key_components" in prompt
+
+    def test_parse_ai_response_json_block(self, ai_extractor):
+        """Test parsing AI response with JSON in code block"""
+        response = '''```json
+{
+  "description": "后台管理控制器：用户和角色管理",
+  "purpose": "处理后台管理的HTTP请求和业务逻辑",
+  "key_components": ["用户管理", "角色管理", "权限控制"]
+}
+```'''
+
+        semantic = ai_extractor._parse_ai_response(response)
+
+        assert semantic.description == "后台管理控制器：用户和角色管理"
+        assert semantic.purpose == "处理后台管理的HTTP请求和业务逻辑"
+        assert len(semantic.key_components) == 3
+        assert "用户管理" in semantic.key_components
+
+    def test_parse_ai_response_plain_json(self, ai_extractor):
+        """Test parsing AI response with plain JSON"""
+        response = '''{
+  "description": "用户管理模块",
+  "purpose": "处理用户相关业务逻辑",
+  "key_components": ["认证", "授权"]
+}'''
+
+        semantic = ai_extractor._parse_ai_response(response)
+
+        assert semantic.description == "用户管理模块"
+        assert semantic.purpose == "处理用户相关业务逻辑"
+        assert len(semantic.key_components) == 2
+
+    def test_parse_ai_response_invalid(self, ai_extractor):
+        """Test parsing invalid AI response raises error"""
+        response = "This is not JSON at all"
+
+        with pytest.raises(ValueError, match="No JSON found"):
+            ai_extractor._parse_ai_response(response)
+
+    def test_parse_ai_response_missing_description(self, ai_extractor):
+        """Test parsing AI response without description field"""
+        response = '''{
+  "purpose": "Some purpose",
+  "key_components": ["A", "B"]
+}'''
+
+        with pytest.raises(ValueError, match="Missing 'description'"):
+            ai_extractor._parse_ai_response(response)
+
+    @pytest.mark.skip(reason="AI mode integration test - requires actual AI CLI")
     def test_ai_extract_admin_module(self, ai_extractor):
         """
         Test AI extraction for Admin module
 
-        This will be implemented in Task 4.4.1 Day 2
+        This requires actual AI CLI to be available
         """
         context = DirectoryContext(
             path="Application/Admin",
