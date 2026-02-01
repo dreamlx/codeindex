@@ -20,7 +20,103 @@ from .incremental import (
     should_update_project_index,
 )
 from .scanner import find_all_directories
+from .semantic_extractor import DirectoryContext, SemanticExtractor
 from .symbol_index import GlobalSymbolIndex
+
+
+def extract_module_purpose(
+    dir_path: Path,
+    config: Config,
+    output_file: str = "README_AI.md"
+) -> str:
+    """
+    Extract module purpose/description from directory.
+
+    Args:
+        dir_path: Path to the directory
+        config: Configuration object
+        output_file: README filename to check
+
+    Returns:
+        Module purpose/description string
+    """
+    # Strategy:
+    # 1. If semantic extraction enabled, use SemanticExtractor
+    # 2. Otherwise, try to extract from README_AI.md "Purpose" section
+    # 3. Fallback to generic description
+
+    # Check if semantic extraction is enabled
+    if config.indexing.semantic.enabled:
+        try:
+            # Initialize semantic extractor
+            extractor = SemanticExtractor(
+                use_ai=config.indexing.semantic.use_ai,
+                ai_command=config.ai_command if config.indexing.semantic.use_ai else None
+            )
+
+            # Build DirectoryContext
+            files = []
+            subdirs = []
+            if dir_path.is_dir():
+                files = [f.name for f in dir_path.iterdir() if f.is_file()]
+                subdirs = [d.name for d in dir_path.iterdir() if d.is_dir()]
+
+            # Try to get symbols from README_AI.md or scan directory
+            # For now, we'll use a simplified approach without full parsing
+            symbols = []
+            imports = []
+
+            # Quick symbol extraction from filenames
+            for f in files:
+                if f.endswith(('.py', '.php', '.java', '.ts', '.js')):
+                    # Extract class/file name without extension
+                    name = f.rsplit('.', 1)[0]
+                    symbols.append(name)
+
+            context = DirectoryContext(
+                path=str(dir_path),
+                files=files,
+                subdirs=subdirs,
+                symbols=symbols,
+                imports=imports
+            )
+
+            # Extract semantic
+            semantic = extractor.extract_directory_semantic(context)
+            return semantic.description
+
+        except Exception:
+            # Fall through to README extraction
+            pass
+
+    # Try to extract from README_AI.md
+    readme_path = dir_path / output_file
+    if readme_path.exists():
+        try:
+            content = readme_path.read_text()
+            lines = content.split("\n")
+            for i, line in enumerate(lines):
+                if line.startswith("## Purpose") or line.startswith("## 目的"):
+                    # Get next non-empty line
+                    for j in range(i + 1, min(i + 5, len(lines))):
+                        if lines[j].strip() and not lines[j].startswith("#"):
+                            full_purpose = lines[j].strip()
+                            if len(full_purpose) <= 80:
+                                return full_purpose
+                            else:
+                                # Smart truncate at word boundary
+                                truncated = full_purpose[:80]
+                                last_space = truncated.rfind(" ")
+                                if last_space > 40:
+                                    return truncated[:last_space] + "..."
+                                else:
+                                    return truncated + "..."
+                    break
+        except Exception:
+            pass
+
+    # Fallback to generic description
+    return f"{dir_path.name} module"
 
 
 @click.command()
@@ -66,36 +162,9 @@ def index(root: Path, output: str):
     modules = []
     for d in sorted(indexed_dirs):
         rel_path = d.relative_to(root)
-        readme_path = d / config.output_file
 
-        # Try to extract purpose from README_AI.md (first paragraph after heading)
-        purpose = ""
-        try:
-            content = readme_path.read_text()
-            lines = content.split("\n")
-            for i, line in enumerate(lines):
-                if line.startswith("## Purpose") or line.startswith("## 目的"):
-                    # Get next non-empty line
-                    for j in range(i + 1, min(i + 5, len(lines))):
-                        if lines[j].strip() and not lines[j].startswith("#"):
-                            full_purpose = lines[j].strip()
-                            if len(full_purpose) <= 80:
-                                purpose = full_purpose
-                            else:
-                                # Smart truncate at word boundary
-                                truncated = full_purpose[:80]
-                                last_space = truncated.rfind(" ")
-                                if last_space > 40:
-                                    purpose = truncated[:last_space] + "..."
-                                else:
-                                    purpose = truncated + "..."
-                            break
-                    break
-        except Exception:
-            pass
-
-        if not purpose:
-            purpose = f"{rel_path.name} module"
+        # Extract purpose using semantic extraction or README fallback
+        purpose = extract_module_purpose(d, config, config.output_file)
 
         modules.append(f"| `{rel_path}/` | {purpose} |")
 
