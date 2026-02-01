@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from fnmatch import fnmatch
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 
 from .adaptive_selector import AdaptiveSymbolSelector
 from .config import IndexingConfig
@@ -14,6 +14,7 @@ from .framework_detect import (
     extract_thinkphp_routes,
 )
 from .parser import ParseResult, Symbol
+from .semantic_extractor import SemanticExtractor
 
 
 @dataclass
@@ -45,6 +46,17 @@ class SmartWriter:
         self.max_size = config.max_readme_size
         # Initialize adaptive symbol selector
         self.adaptive_selector = AdaptiveSymbolSelector(config.symbols.adaptive_symbols)
+
+        # Initialize semantic extractor if enabled
+        if config.semantic.enabled:
+            # Need ai_command from parent Config (will be passed separately)
+            # For now, initialize with heuristic mode
+            self.semantic_extractor = SemanticExtractor(
+                use_ai=config.semantic.use_ai,
+                ai_command=None if not config.semantic.use_ai else None  # Will be set later
+            )
+        else:
+            self.semantic_extractor = None
 
     def write_readme(
         self,
@@ -226,7 +238,10 @@ class SmartWriter:
                         continue
                     # List key classes/functions only
                     key_symbols = self._get_key_symbols(result.symbols)
-                    symbol_summary = ", ".join(s.name.split("::")[-1].split(".")[-1] for s in key_symbols[:3])
+                    symbol_summary = ", ".join(
+                        s.name.split("::")[-1].split(".")[-1]
+                        for s in key_symbols[:3]
+                    )
                     if symbol_summary:
                         lines.append(f"- **{result.path.name}** - {symbol_summary}")
                     else:
@@ -498,6 +513,64 @@ class SmartWriter:
         except Exception:
             return "Module directory"
 
+    def _extract_module_description_semantic(
+        self,
+        dir_path: Path,
+        parse_result: Optional[ParseResult] = None
+    ) -> str:
+        """
+        Extract module description using semantic extraction.
+
+        Args:
+            dir_path: Path to the directory
+            parse_result: Optional ParseResult with symbols/imports
+
+        Returns:
+            Business semantic description
+        """
+        if not self.semantic_extractor:
+            # Fallback to old method if semantic extraction disabled
+            return self._extract_module_description(dir_path)
+
+        # Build DirectoryContext from parse_result
+        from codeindex.semantic_extractor import DirectoryContext
+
+        # Get file names
+        files = []
+        if dir_path.is_dir():
+            files = [f.name for f in dir_path.iterdir() if f.is_file()]
+
+        # Get subdirectory names
+        subdirs = []
+        if dir_path.is_dir():
+            subdirs = [d.name for d in dir_path.iterdir() if d.is_dir()]
+
+        # Get symbols and imports from parse_result
+        symbols = []
+        imports = []
+        if parse_result:
+            symbols = [s.name for s in parse_result.symbols]
+            imports = [imp.module for imp in parse_result.imports]
+
+        # Create context
+        context = DirectoryContext(
+            path=str(dir_path),
+            files=files,
+            subdirs=subdirs,
+            symbols=symbols,
+            imports=imports
+        )
+
+        # Extract semantic
+        try:
+            semantic = self.semantic_extractor.extract_directory_semantic(context)
+            return semantic.description
+        except Exception:
+            # Fallback to old method on error
+            if self.config.semantic.fallback_to_heuristic:
+                return self._extract_module_description(dir_path)
+            return "Module directory"
+
     def _truncate_content(self, content: str, max_size: int) -> tuple[str, bool]:
         """Truncate content to fit within size limit."""
         content_bytes = content.encode('utf-8')
@@ -513,7 +586,11 @@ class SmartWriter:
             truncated = truncated[:last_section]
 
         # Add truncation notice
-        truncated += "\n\n---\n_Content truncated due to size limit. See individual module README files for details._\n"
+        truncated += (
+            "\n\n---\n"
+            "_Content truncated due to size limit. "
+            "See individual module README files for details._\n"
+        )
 
         return truncated, True
 
