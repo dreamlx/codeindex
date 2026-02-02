@@ -656,10 +656,16 @@ Changed files:
 Changed files:
 - `test_backward_compatibility.py`
 
----
-
-## Recent Changes
 
 **Commit `6086b72`**: test(epic6): add backward compatibility verification
 
 Changed files:
+
+---
+
+## Recent Changes
+
+**Commit `4331cb8`**: feat(epic6): enhance parser to extract PHP PHPDoc comments
+
+Changed files:
+- `test_php_comment_extraction.py`

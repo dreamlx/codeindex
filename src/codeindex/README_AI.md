@@ -783,11 +783,17 @@ Changed files:
 Changed files:
 - `route_registry.py`
 
----
-
-## Recent Changes
 
 **Commit `5aa81e0`**: feat(epic6): integrate route registry into SmartWriter
 
 Changed files:
 - `smart_writer.py`
+
+---
+
+## Recent Changes
+
+**Commit `4331cb8`**: feat(epic6): enhance parser to extract PHP PHPDoc comments
+
+Changed files:
+- `parser.py`
