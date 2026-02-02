@@ -158,10 +158,30 @@ class SymbolsConfig:
 
 @dataclass
 class GroupingConfig:
-    """Configuration for symbol grouping."""
+    """Configuration for file grouping."""
     enabled: bool = True
-    by: str = "suffix"  # suffix | function | none
-    patterns: dict[str, str] = field(default_factory=lambda: DEFAULT_INDEXING["grouping"]["patterns"].copy())
+    by: str = "suffix"  # suffix | prefix | pattern
+    patterns: dict[str, list[str]] = field(default_factory=dict)
+
+
+@dataclass
+class SemanticConfig:
+    """Configuration for semantic extraction."""
+    enabled: bool = True  # Enable semantic extraction
+    use_ai: bool = False  # Use AI mode (requires ai_command in Config)
+    fallback_to_heuristic: bool = True  # Fallback to heuristic if AI fails
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "SemanticConfig":
+        """Create from config dict."""
+        if not data:
+            return cls()
+
+        return cls(
+            enabled=data.get("enabled", True),
+            use_ai=data.get("use_ai", False),
+            fallback_to_heuristic=data.get("fallback_to_heuristic", True),
+        )
 
 
 @dataclass
@@ -170,6 +190,7 @@ class IndexingConfig:
     max_readme_size: int = 50 * 1024  # 50KB
     symbols: SymbolsConfig = field(default_factory=SymbolsConfig)
     grouping: GroupingConfig = field(default_factory=GroupingConfig)
+    semantic: SemanticConfig = field(default_factory=SemanticConfig)
     root_level: str = "overview"      # overview | navigation | detailed
     module_level: str = "navigation"
     leaf_level: str = "detailed"
@@ -181,7 +202,7 @@ class IndexingConfig:
             return cls()
 
         symbols_data = data.get("symbols", {})
-        
+
         # Load adaptive_symbols configuration
         adaptive_data = symbols_data.get("adaptive_symbols", {})
         if adaptive_data:
@@ -208,7 +229,7 @@ class IndexingConfig:
                 min_symbols=DEFAULT_ADAPTIVE_CONFIG.min_symbols,
                 max_symbols=DEFAULT_ADAPTIVE_CONFIG.max_symbols,
             )
-        
+
         symbols = SymbolsConfig(
             max_per_file=symbols_data.get("max_per_file", 15),
             include_visibility=symbols_data.get("include_visibility", ["public", "protected"]),
@@ -223,11 +244,16 @@ class IndexingConfig:
             patterns=grouping_data.get("patterns", DEFAULT_INDEXING["grouping"]["patterns"].copy()),
         )
 
+        # Load semantic configuration
+        semantic_data = data.get("semantic", {})
+        semantic = SemanticConfig.from_dict(semantic_data)
+
         levels = data.get("levels", {})
         return cls(
             max_readme_size=data.get("max_readme_size", 50 * 1024),
             symbols=symbols,
             grouping=grouping,
+            semantic=semantic,
             root_level=levels.get("root", "overview"),
             module_level=levels.get("module", "navigation"),
             leaf_level=levels.get("leaf", "detailed"),

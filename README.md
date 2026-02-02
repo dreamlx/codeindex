@@ -20,6 +20,7 @@ codeindex automatically generates intelligent documentation (`README_AI.md`) for
 - 🔧 **Flexible Integration**: Works with any AI CLI tool via configurable commands
 - 📊 **Coverage Tracking**: Check which directories have been indexed
 - 🎨 **Fallback Mode**: Generate basic documentation without AI
+- 🎯 **KISS Universal Description** (v0.4.0+): Language-agnostic, zero-assumption module descriptions
 - 🏗️ **Modular Architecture** (v0.3.1+): Clean, maintainable 6-module CLI design
 - 🔄 **Adaptive Symbols** (v0.2.0+): Dynamic symbol extraction (5-150 per file based on size)
 - 📈 **Technical Debt Analysis** (v0.3.0+): Detect code quality issues and complexity metrics
@@ -270,6 +271,51 @@ File Details
      File has 6000 lines (threshold: 5000)
      → Split into 3-5 smaller files
 ```
+
+---
+
+## 🎯 What's New in v0.4.0
+
+### KISS Universal Description Generator
+
+**Story 4.4.5** introduces a completely new approach to module descriptions - zero assumptions, zero domain knowledge, completely universal.
+
+**Before (v0.3.x):**
+```markdown
+| Admin/Controller | 后台管理模块：系统管理和配置功能 |  ← Generic, unhelpful
+| Agent/Controller | 用户管理相关的控制器目录 |        ← Can't differentiate
+| Retail/Marketing | Module directory |               ← No information
+```
+
+**After (v0.4.0):**
+```markdown
+| Admin/Controller | Admin/Controller: 36 modules (AdminJurUsers, Permission, SystemConfig, ...) |
+| Agent/Controller | Agent/Controller: 13 modules (Agent, Commission, Withdrawal, ...) |
+| Retail/Marketing | Retail/Marketing: 3 modules (BigWheel, Coupon, Lottery, ...) |
+```
+
+**Benefits:**
+- ✅ **Universal**: Works for all languages (Python, PHP, Java, Go, TypeScript, Rust...)
+- ✅ **Specific**: Lists actual module/class names instead of generic descriptions
+- ✅ **Differentiated**: Each directory description is unique
+- ✅ **Traceable**: Original symbol names preserved, easy to search
+- ✅ **Zero maintenance**: No hardcoded business domain keywords to maintain
+
+**Validation Results:**
+- PHP Project (ThinkPHP 5.0): ⭐⭐⭐⭐⭐
+- Python Project (codeindex itself): ⭐⭐⭐⭐⭐
+- Code reduction: -78 lines (-17%)
+- Test coverage: 299 passed, 1 skipped
+
+**Example: PROJECT_INDEX.md**
+```markdown
+| Path | Purpose |
+|------|---------|
+| `src/codeindex/` | src/codeindex: 28 modules (adaptive_config, ai_helper, parser, scanner, ...) |
+| `tests/` | codeindex/tests: 24 modules (test_adaptive_config, test_parser, ...) |
+```
+
+See [docs/evaluation/story-4.4.5-kiss-validation.md](docs/evaluation/story-4.4.5-kiss-validation.md) for detailed validation report.
 
 ---
 
