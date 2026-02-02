@@ -614,24 +614,38 @@ cd /path/to/codeindex
 
 If you're using **codeindex Git Hooks**, help your AI Code CLI understand how hooks work:
 
-**Let AI Code update your documentation automatically:**
+**Method 1: Let AI Code read the guide** ⭐️ (Recommended)
+
+```bash
+# In your project directory, run:
+codeindex docs show-ai-guide
+```
+
+Then tell your AI:
+```
+User: "Read the output above and update my CLAUDE.md with Git Hooks documentation"
+AI Code: [Reads the guide]
+         [Understands Git Hooks]
+         [Updates your CLAUDE.md/AGENTS.md]
+         ✅ Done!
+```
+
+**Method 2: Direct AI integration**
 
 ```
 User: "Help my AI CLI understand codeindex Git Hooks"
-AI Code: [Reads examples/ai-integration-guide.md]
-         [Updates your CLAUDE.md with Git Hooks section]
+AI Code: [User runs: codeindex docs show-ai-guide]
+         [AI reads output]
+         [Updates CLAUDE.md with Git Hooks section]
          ✅ Done! Future AI sessions will know about hooks.
 ```
 
-**Or manually integrate:**
-
-1. Ask your AI Code to read: `examples/ai-integration-guide.md`
-2. AI Code will understand Git Hooks and update your project's `CLAUDE.md` or `AGENTS.md`
-3. Future AI sessions automatically know:
-   - Git Hooks are installed
-   - How pre-commit/post-commit work
-   - Expected behaviors (auto-commits, lint checks)
-   - Troubleshooting steps
+**What the guide contains:**
+- Complete Git Hooks functionality explanation
+- Pre-commit and post-commit behaviors
+- Ready-to-use section template for your CLAUDE.md
+- Troubleshooting and common scenarios
+- Expected behaviors (auto-commits are normal!)
 
 **Why this matters**: Your AI CLI needs to know that post-commit will create auto-commits (normal behavior) and that lint failures will block commits (by design).
 

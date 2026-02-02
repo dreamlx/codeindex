@@ -8,6 +8,7 @@ codebase organized and maintainable.
 import click
 
 from .cli_config import init, list_dirs, status
+from .cli_docs import docs
 from .cli_hooks import hooks
 from .cli_scan import scan, scan_all
 from .cli_symbols import affected, index, symbols
@@ -32,6 +33,7 @@ main.add_command(symbols)
 main.add_command(affected)
 main.add_command(tech_debt)
 main.add_command(hooks)
+main.add_command(docs)
 
 
 if __name__ == "__main__":
