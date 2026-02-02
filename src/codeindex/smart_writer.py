@@ -9,11 +9,7 @@ from typing import Literal, Optional
 
 from .adaptive_selector import AdaptiveSymbolSelector
 from .config import IndexingConfig
-from .framework_detect import (
-    RouteInfo,
-    detect_framework,
-    extract_thinkphp_routes,
-)
+from .framework_detect import RouteInfo, detect_framework
 from .parser import ParseResult, Symbol
 from .semantic_extractor import SemanticExtractor
 
@@ -58,6 +54,13 @@ class SmartWriter:
             )
         else:
             self.semantic_extractor = None
+
+        # Initialize route extractor registry (Epic 6)
+        from .extractors.thinkphp import ThinkPHPRouteExtractor
+        from .route_registry import RouteExtractorRegistry
+
+        self.route_registry = RouteExtractorRegistry()
+        self.route_registry.register(ThinkPHPRouteExtractor())
 
     def write_readme(
         self,
@@ -279,15 +282,31 @@ class SmartWriter:
             "",
         ])
 
-        # ThinkPHP route table for Controller directories
-        if dir_path.name == "Controller":
-            # Infer module name from parent directory
-            module_name = dir_path.parent.name
-            routes = extract_thinkphp_routes(parse_results, module_name)
-            if routes:
-                # Epic 6, P1: Use _format_route_table with line numbers
-                route_lines = self._format_route_table(routes, "thinkphp")
-                lines.extend(route_lines)
+        # Framework route tables (Epic 6: using registry)
+        # Try all registered extractors
+        from .route_extractor import ExtractionContext
+
+        for framework_name in self.route_registry.list_frameworks():
+            extractor = self.route_registry.get(framework_name)
+            if not extractor:
+                continue
+
+            # Create extraction context
+            # Note: root_path is approximated from dir_path
+            # In a real scenario, this would be passed from the caller
+            context = ExtractionContext(
+                root_path=dir_path,  # Temporary: use current dir as root
+                current_dir=dir_path,
+                parse_results=parse_results,
+            )
+
+            # Check if this extractor can handle this directory
+            if extractor.can_extract(context):
+                routes = extractor.extract_routes(context)
+                if routes:
+                    route_lines = self._format_route_table(routes, framework_name)
+                    lines.extend(route_lines)
+                break  # Only use first matching extractor
 
         # Subdirectories (brief, just references)
         if child_dirs:
