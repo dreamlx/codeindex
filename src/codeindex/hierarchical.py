@@ -1,17 +1,15 @@
 """Bottom-up hierarchical processing for codeindex."""
 
-from pathlib import Path
-from typing import List, Dict, Set, Tuple
-from dataclasses import dataclass
-from rich.console import Console
 from collections import defaultdict
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, List, Set, Tuple
+
+from rich.console import Console
 
 from .config import Config
 from .scanner import find_all_directories, scan_directory
-from .parser import parse_directory, parse_file
-from .writer import write_readme, generate_fallback_readme, format_files_for_prompt
 from .smart_writer import SmartWriter, determine_level
-from .invoker import invoke_ai_cli, format_prompt
 
 console = Console()
 
@@ -28,7 +26,9 @@ class DirectoryInfo:
     readmes_below: Set[Path]  # README_AI.md files in subdirectories
 
 
-def build_directory_hierarchy(directories: List[Path]) -> Tuple[Dict[Path, DirectoryInfo], List[Path]]:
+def build_directory_hierarchy(
+    directories: List[Path],
+) -> Tuple[Dict[Path, DirectoryInfo], List[Path]]:
     """
     Build directory hierarchy from bottom up.
 
@@ -81,7 +81,9 @@ def build_directory_hierarchy(directories: List[Path]) -> Tuple[Dict[Path, Direc
     return dir_info, roots
 
 
-def create_processing_batches(dir_info: Dict[Path, DirectoryInfo], max_workers: int) -> List[List[Path]]:
+def create_processing_batches(
+    dir_info: Dict[Path, DirectoryInfo], max_workers: int
+) -> List[List[Path]]:
     """
     Create batches for parallel processing.
 
@@ -146,7 +148,14 @@ def process_directory_batch(
 dir_info = None
 
 
-def process_normal(path: Path, config: Config, use_fallback: bool, quiet: bool, timeout: int, root_path: Path = None) -> bool:
+def process_normal(
+    path: Path,
+    config: Config,
+    use_fallback: bool,
+    quiet: bool,
+    timeout: int,
+    root_path: Path = None,
+) -> bool:
     """Process a single directory with smart level detection."""
     # Scan directory
     if not quiet:
@@ -172,7 +181,10 @@ def process_normal(path: Path, config: Config, use_fallback: bool, quiet: bool, 
     level = determine_level(path, root_path, has_children, config.indexing)
 
     if not quiet:
-        console.print(f"  [dim]→ {path.name}: generating [{level}] README with {len(child_dirs)} subdirs...[/dim]")
+        console.print(
+            f"  [dim]→ {path.name}: generating [{level}] README "
+            f"with {len(child_dirs)} subdirs...[/dim]"
+        )
 
     # Use smart writer
     writer = SmartWriter(config.indexing)
@@ -185,12 +197,17 @@ def process_normal(path: Path, config: Config, use_fallback: bool, quiet: bool, 
     )
 
     if write_result.truncated and not quiet:
-        console.print(f"  [yellow]⚠ {path.name}: README truncated to {write_result.size_bytes // 1024}KB[/yellow]")
+        size_kb = write_result.size_bytes // 1024
+        console.print(
+            f"  [yellow]⚠ {path.name}: README truncated to {size_kb}KB[/yellow]"
+        )
 
     return write_result.success
 
 
-def process_with_children(path: Path, config: Config, use_fallback: bool, quiet: bool, timeout: int) -> bool:
+def process_with_children(
+    path: Path, config: Config, use_fallback: bool, quiet: bool, timeout: int
+) -> bool:
     """Process a directory that has children, aggregating their information."""
     # This would be similar process_normal but with child aggregation
     return process_normal(path, config, use_fallback, quiet, timeout)
@@ -225,7 +242,7 @@ def scan_directories_hierarchical(
 
     for dir_path in directories:
         scan_result = scan_directory(dir_path, config)
-        dir_path_has_files = bool(scan_result.files)
+        _ = bool(scan_result.files)  # Check if directory has files
 
         # Update dir_info after it's built
         # (This would need restructuring in real implementation)
@@ -263,7 +280,9 @@ def scan_directories_hierarchical(
             level = dir_info[batch[0]].level if batch else 0
             console.print(f"\n[bold]Level {level} - Batch {i+1}/{len(batches)}[/bold]")
 
-        results = process_directory_batch(batch, config, use_fallback, quiet, timeout, root_path=root)
+        results = process_directory_batch(
+            batch, config, use_fallback, quiet, timeout, root_path=root
+        )
 
         for path, success in results.items():
             if success:
@@ -287,7 +306,8 @@ def generate_enhanced_fallback_readme(
     Generate enhanced fallback README that includes child directory summaries.
     """
     from datetime import datetime
-    from .writer import format_symbols_for_prompt, format_imports_for_prompt
+
+    from .writer import format_imports_for_prompt, format_symbols_for_prompt
 
     output_path = dir_path / output_file
 
@@ -333,7 +353,7 @@ def generate_enhanced_fallback_readme(
                         if line and not line.startswith('#'):
                             description = line[:100]
                             break
-                except:
+                except Exception:
                     pass
 
             lines.append(f"- **{child_name}** - {description}")

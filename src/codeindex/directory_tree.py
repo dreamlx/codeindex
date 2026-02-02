@@ -4,9 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-from .config import Config, IndexingConfig
-from .scanner import find_all_directories, scan_directory
-
+from .config import Config
 
 LevelType = Literal["overview", "navigation", "detailed"]
 
@@ -48,7 +46,7 @@ class DirectoryTree:
 
     def _build_tree(self):
         """Build the directory tree from root."""
-        from .scanner import should_exclude, get_language_extensions
+        from .scanner import get_language_extensions, should_exclude
 
         # Get valid extensions for this config
         valid_extensions = get_language_extensions(self.config.languages)
