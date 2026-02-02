@@ -752,3 +752,12 @@ _Markdown writer for README_AI.md files._
 - .tech_debt
 - .tech_debt_formatters
 _... and 29 more_
+
+---
+
+## Recent Changes
+
+**Commit `f71f84a`**: feat(epic6): add line_number and description fields to RouteInfo (P1, Task 1.1)
+
+Changed files:
+- `framework_detect.py`
