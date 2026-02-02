@@ -610,9 +610,36 @@ cd /path/to/codeindex
 ./skills/install.sh
 ```
 
+### For Git Hooks Users (v0.5.0+)
+
+If you're using **codeindex Git Hooks**, help your AI Code CLI understand how hooks work:
+
+**Let AI Code update your documentation automatically:**
+
+```
+User: "Help my AI CLI understand codeindex Git Hooks"
+AI Code: [Reads examples/ai-integration-guide.md]
+         [Updates your CLAUDE.md with Git Hooks section]
+         ✅ Done! Future AI sessions will know about hooks.
+```
+
+**Or manually integrate:**
+
+1. Ask your AI Code to read: `examples/ai-integration-guide.md`
+2. AI Code will understand Git Hooks and update your project's `CLAUDE.md` or `AGENTS.md`
+3. Future AI sessions automatically know:
+   - Git Hooks are installed
+   - How pre-commit/post-commit work
+   - Expected behaviors (auto-commits, lint checks)
+   - Troubleshooting steps
+
+**Why this matters**: Your AI CLI needs to know that post-commit will create auto-commits (normal behavior) and that lint failures will block commits (by design).
+
 ### Full Documentation
 
 - **User Guide**: [docs/guides/claude-code-integration.md](docs/guides/claude-code-integration.md)
+- **Git Hooks Guide**: [docs/guides/git-hooks-integration.md](docs/guides/git-hooks-integration.md)
+- **AI Integration**: [examples/ai-integration-guide.md](examples/ai-integration-guide.md)
 - **Template File**: [examples/CLAUDE.md.template](examples/CLAUDE.md.template)
 - **Skills Documentation**: [skills/README.md](skills/README.md)
 

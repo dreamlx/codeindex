@@ -898,6 +898,845 @@ A: Yes! Add `http_method` field to `RouteInfo` and update table format.
 
 ---
 
+## 🪝 Git Hooks Management (v0.5.0+)
+
+### Quick Reference
+
+codeindex provides **built-in Git Hooks management** for automating code quality checks and documentation updates.
+
+**For detailed development guide**: See `docs/development/git-hooks-architecture.md`
+**For user integration guide**: See `docs/guides/git-hooks-integration.md`
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Git Hooks System                         │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌───────────────┐      ┌──────────────┐                   │
+│  │  HookManager  │─────▶│ Hook Scripts │                   │
+│  │               │      │  Generation  │                   │
+│  │ - install()   │      └──────────────┘                   │
+│  │ - uninstall() │                                          │
+│  │ - status()    │      ┌──────────────┐                   │
+│  └───────────────┘      │    Backup    │                   │
+│         │               │   & Restore  │                   │
+│         │               └──────────────┘                   │
+│         ▼                                                    │
+│  .git/hooks/                                                │
+│    ├── pre-commit       (L1: lint, L2: debug detection)    │
+│    ├── post-commit      (auto-update README_AI.md)         │
+│    └── pre-push         (placeholder)                       │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Why This Architecture?
+
+1. **Centralized Management**: `HookManager` class handles all hook operations
+2. **Template-Based**: Generate hook scripts from templates, not hardcoded
+3. **Safety First**: Automatic backup before overwriting custom hooks
+4. **Marker-Based Detection**: Use `# codeindex-managed hook` to identify our hooks
+5. **CLI Integration**: Click commands for user-friendly management
+
+---
+
+### Step-by-Step: Creating a Hook Management System
+
+#### Step 1: Define Hook Status (RED)
+
+**Test First** (`tests/test_cli_hooks.py`):
+
+```python
+"""Tests for Git Hooks CLI module."""
+import os
+from pathlib import Path
+from unittest.mock import patch
+
+from codeindex.cli_hooks import (
+    HookManager,
+    HookStatus,
+    backup_existing_hook,
+    detect_existing_hooks,
+    generate_hook_script,
+)
+
+
+class TestHookManager:
+    """Test HookManager class."""
+
+    def test_init_with_repo_path(self, tmp_path):
+        """Should initialize with given repository path."""
+        repo_path = tmp_path / "test_repo"
+        repo_path.mkdir()
+        (repo_path / ".git").mkdir()
+
+        manager = HookManager(repo_path)
+
+        assert manager.repo_path == repo_path
+        assert manager.hooks_dir == repo_path / ".git" / "hooks"
+
+    def test_get_hook_status_not_exists(self, tmp_path):
+        """Should return NOT_INSTALLED when hook doesn't exist."""
+        repo_path = tmp_path / "test_repo"
+        repo_path.mkdir()
+        (repo_path / ".git" / "hooks").mkdir(parents=True)
+
+        manager = HookManager(repo_path)
+        status = manager.get_hook_status("pre-commit")
+
+        assert status == HookStatus.NOT_INSTALLED
+
+    def test_get_hook_status_exists_codeindex(self, tmp_path):
+        """Should return INSTALLED when codeindex hook exists."""
+        repo_path = tmp_path / "test_repo"
+        hooks_dir = repo_path / ".git" / "hooks"
+        hooks_dir.mkdir(parents=True)
+
+        # Create hook with codeindex marker
+        hook_file = hooks_dir / "pre-commit"
+        hook_file.write_text("#!/bin/bash\n# codeindex-managed hook\necho 'test'")
+        hook_file.chmod(0o755)
+
+        manager = HookManager(repo_path)
+        status = manager.get_hook_status("pre-commit")
+
+        assert status == HookStatus.INSTALLED
+
+    def test_get_hook_status_exists_custom(self, tmp_path):
+        """Should return CUSTOM when non-codeindex hook exists."""
+        repo_path = tmp_path / "test_repo"
+        hooks_dir = repo_path / ".git" / "hooks"
+        hooks_dir.mkdir(parents=True)
+
+        # Create custom hook without codeindex marker
+        hook_file = hooks_dir / "pre-commit"
+        hook_file.write_text("#!/bin/bash\necho 'custom hook'")
+        hook_file.chmod(0o755)
+
+        manager = HookManager(repo_path)
+        status = manager.get_hook_status("pre-commit")
+
+        assert status == HookStatus.CUSTOM
+```
+
+**Run Tests** (should FAIL ❌):
+```bash
+pytest tests/test_cli_hooks.py -v
+# NameError: name 'HookStatus' is not defined
+```
+
+#### Step 2: Implement HookManager (GREEN)
+
+**Implementation** (`src/codeindex/cli_hooks.py`):
+
+```python
+"""Git Hooks management module for codeindex.
+
+Epic 6, P3.1: Automate Git Hooks installation and management.
+
+This module provides:
+- HookManager: Manage Git hooks installation/uninstall
+- Hook script generation with templates
+- Backup and restore existing hooks
+- Detect and merge with existing hooks
+"""
+
+import shutil
+from datetime import datetime
+from enum import Enum
+from pathlib import Path
+from typing import Optional
+
+import click
+
+from .cli_common import console
+
+
+class HookStatus(Enum):
+    """Status of a Git hook."""
+
+    NOT_INSTALLED = "not_installed"
+    INSTALLED = "installed"  # codeindex-managed
+    CUSTOM = "custom"  # User's custom hook
+
+
+class HookManager:
+    """Manage Git hooks for codeindex."""
+
+    CODEINDEX_MARKER = "# codeindex-managed hook"
+    SUPPORTED_HOOKS = ["pre-commit", "post-commit", "pre-push"]
+
+    def __init__(self, repo_path: Optional[Path] = None):
+        """
+        Initialize HookManager.
+
+        Args:
+            repo_path: Path to Git repository. If None, uses current directory.
+        """
+        if repo_path is None:
+            repo_path = self._find_git_repo()
+
+        self.repo_path = Path(repo_path)
+        self.hooks_dir = self.repo_path / ".git" / "hooks"
+
+        if not (self.repo_path / ".git").exists():
+            raise ValueError(f"Not a git repository: {repo_path}")
+
+        # Create hooks directory if it doesn't exist
+        self.hooks_dir.mkdir(parents=True, exist_ok=True)
+
+    def _find_git_repo(self) -> Path:
+        """Find git repository by walking up directory tree."""
+        current = Path.cwd()
+        while current != current.parent:
+            if (current / ".git").exists():
+                return current
+            current = current.parent
+        raise ValueError("Not in a git repository")
+
+    def get_hook_status(self, hook_name: str) -> HookStatus:
+        """
+        Get status of a hook.
+
+        Args:
+            hook_name: Name of hook (e.g., "pre-commit")
+
+        Returns:
+            HookStatus indicating current state
+        """
+        hook_file = self.hooks_dir / hook_name
+
+        if not hook_file.exists():
+            return HookStatus.NOT_INSTALLED
+
+        content = hook_file.read_text()
+        if self.CODEINDEX_MARKER in content:
+            return HookStatus.INSTALLED
+
+        return HookStatus.CUSTOM
+
+    def install_hook(
+        self, hook_name: str, backup: bool = True, force: bool = False
+    ) -> bool:
+        """
+        Install a hook.
+
+        Args:
+            hook_name: Name of hook to install
+            backup: Whether to backup existing hook
+            force: Overwrite existing codeindex hook
+
+        Returns:
+            True if successful
+        """
+        hook_file = self.hooks_dir / hook_name
+        status = self.get_hook_status(hook_name)
+
+        # Skip if already installed (unless force)
+        if status == HookStatus.INSTALLED and not force:
+            return False
+
+        # Backup existing custom hook
+        if status == HookStatus.CUSTOM and backup:
+            backup_existing_hook(hook_file)
+
+        # Generate and write hook script
+        script = generate_hook_script(hook_name)
+        hook_file.write_text(script)
+        hook_file.chmod(0o755)
+
+        return True
+
+    def uninstall_hook(
+        self, hook_name: str, restore_backup: bool = True
+    ) -> bool:
+        """
+        Uninstall a hook.
+
+        Args:
+            hook_name: Name of hook to uninstall
+            restore_backup: Whether to restore backup
+
+        Returns:
+            True if successful
+        """
+        hook_file = self.hooks_dir / hook_name
+        status = self.get_hook_status(hook_name)
+
+        # Only uninstall codeindex hooks
+        if status != HookStatus.INSTALLED:
+            return False
+
+        # Remove hook file
+        hook_file.unlink()
+
+        # Restore backup if exists
+        if restore_backup:
+            backup_file = self.hooks_dir / f"{hook_name}.backup"
+            if backup_file.exists():
+                shutil.move(backup_file, hook_file)
+                hook_file.chmod(0o755)
+
+        return True
+
+    def list_all_hooks(self) -> dict:
+        """
+        List status of all supported hooks.
+
+        Returns:
+            Dict mapping hook name to HookStatus
+        """
+        return {
+            hook: self.get_hook_status(hook) for hook in self.SUPPORTED_HOOKS
+        }
+```
+
+**Run Tests** (should PASS ✅):
+```bash
+pytest tests/test_cli_hooks.py -v
+# test_init_with_repo_path PASSED
+# test_get_hook_status_not_exists PASSED
+# test_get_hook_status_exists_codeindex PASSED
+# test_get_hook_status_exists_custom PASSED
+```
+
+#### Step 3: Generate Hook Scripts
+
+**Hook scripts are shell scripts**. Use template approach:
+
+```python
+def generate_hook_script(
+    hook_name: str, config: Optional[dict] = None
+) -> str:
+    """
+    Generate hook script content.
+
+    Args:
+        hook_name: Name of hook (e.g., "pre-commit")
+        config: Optional configuration for customization
+
+    Returns:
+        Hook script as string
+    """
+    config = config or {}
+
+    if hook_name == "pre-commit":
+        return _generate_pre_commit_script(config)
+    elif hook_name == "post-commit":
+        return _generate_post_commit_script(config)
+    elif hook_name == "pre-push":
+        return _generate_pre_push_script(config)
+    else:
+        raise ValueError(f"Unsupported hook: {hook_name}")
+
+
+def _generate_pre_commit_script(config: dict) -> str:
+    """Generate pre-commit hook script."""
+    lint_enabled = config.get("lint_enabled", True)
+
+    script = """#!/bin/zsh
+# codeindex-managed hook
+# Pre-commit hook for codeindex
+# L1: Lint check (ruff)
+# L2: Forbid debug code (print/breakpoint)
+
+set -e
+
+# Colors
+RED='\\033[0;31m'
+GREEN='\\033[0;32m'
+YELLOW='\\033[0;33m'
+NC='\\033[0m' # No Color
+
+# Try to activate virtual environment if exists
+REPO_ROOT=$(git rev-parse --show-toplevel)
+if [ -f "$REPO_ROOT/.venv/bin/activate" ]; then
+    source "$REPO_ROOT/.venv/bin/activate"
+elif [ -f "$REPO_ROOT/venv/bin/activate" ]; then
+    source "$REPO_ROOT/venv/bin/activate"
+fi
+
+echo "🔍 Running pre-commit checks..."
+
+# Get staged Python files
+STAGED_PY_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\\.py$' || true)
+
+if [ -z "$STAGED_PY_FILES" ]; then
+    echo "${GREEN}✓ No Python files to check${NC}"
+    exit 0
+fi
+
+echo "   Checking files: $(echo $STAGED_PY_FILES | wc -w | tr -d ' ') Python files"
+"""
+
+    if lint_enabled:
+        script += """
+# ============================================
+# L1: Ruff lint check
+# ============================================
+echo "\\n${YELLOW}[L1] Running ruff lint...${NC}"
+
+# Try venv ruff first, then system ruff
+RUFF_CMD=""
+if [ -f "$REPO_ROOT/.venv/bin/ruff" ]; then
+    RUFF_CMD="$REPO_ROOT/.venv/bin/ruff"
+elif command -v ruff &> /dev/null; then
+    RUFF_CMD="ruff"
+else
+    echo "${RED}✗ ruff not found. Install with: pip install ruff${NC}"
+    exit 1
+fi
+
+# Check only staged files
+STAGED_FILES_ARRAY=()
+while IFS= read -r file; do
+    if [ -f "$file" ]; then
+        STAGED_FILES_ARRAY+=("$file")
+    fi
+done < <(git diff --cached --name-only --diff-filter=ACM | grep '\\.py$' || true)
+
+if [ ${#STAGED_FILES_ARRAY[@]} -eq 0 ]; then
+    echo "${GREEN}✓ No files to lint${NC}"
+else
+    if ! $RUFF_CMD check "${STAGED_FILES_ARRAY[@]}"; then
+        echo "\\n${RED}✗ Lint errors found. Fix them before committing.${NC}"
+        echo "   Run: ruff check --fix src/"
+        exit 1
+    fi
+    echo "${GREEN}✓ Lint check passed${NC}"
+fi
+"""
+
+    script += """
+# ============================================
+# L2: Debug code detection
+# ============================================
+echo "\\n${YELLOW}[L2] Checking for debug code...${NC}"
+
+DEBUG_PATTERNS=(
+    'print\\s*\\('           # print() statements
+    'breakpoint\\s*\\('      # breakpoint() calls
+    'pdb\\.set_trace\\s*\\('  # pdb debugger
+    'import\\s+pdb'         # pdb import
+    'from\\s+pdb\\s+import'  # from pdb import
+)
+
+FOUND_DEBUG=0
+for file in $STAGED_PY_FILES; do
+    # Skip CLI files and modules that use print() for legitimate output
+    if [[ "$file" == *"/cli"* ]] || [[ "$file" == *"/cli_"* ]] || \\
+       [[ "$file" == *"hierarchical.py"* ]] || \\
+       [[ "$file" == *"directory_tree.py"* ]] || \\
+       [[ "$file" == *"adaptive_selector.py"* ]]; then
+        continue
+    fi
+
+    # Get only staged content (not working directory)
+    STAGED_CONTENT=$(git show ":$file" 2>/dev/null || true)
+
+    if [ -z "$STAGED_CONTENT" ]; then
+        continue
+    fi
+
+    for pattern in $DEBUG_PATTERNS; do
+        # Find matches with line numbers
+        MATCHES=$(echo "$STAGED_CONTENT" | grep -n -E "$pattern" || true)
+        if [ -n "$MATCHES" ]; then
+            if [ $FOUND_DEBUG -eq 0 ]; then
+                echo "${RED}✗ Debug code found:${NC}"
+                FOUND_DEBUG=1
+            fi
+            echo "   ${file}:"
+            echo "$MATCHES" | while read line; do
+                echo "      $line"
+            done
+        fi
+    done
+done
+
+if [ $FOUND_DEBUG -eq 1 ]; then
+    echo "\\n${RED}✗ Remove debug code before committing.${NC}"
+    echo "   Tip: Use logging module instead of print()"
+    exit 1
+fi
+
+echo "${GREEN}✓ No debug code found${NC}"
+
+echo "\\n${GREEN}✓ All pre-commit checks passed!${NC}"
+exit 0
+"""
+
+    return script
+```
+
+#### Step 4: Add CLI Commands
+
+**Register commands** (`src/codeindex/cli.py`):
+
+```python
+from .cli_hooks import hooks
+
+main.add_command(hooks)
+```
+
+**CLI commands** (`src/codeindex/cli_hooks.py`):
+
+```python
+@click.group()
+def hooks():
+    """Manage Git hooks for codeindex."""
+    pass
+
+
+@hooks.command()
+@click.option(
+    "--all",
+    "install_all",
+    is_flag=True,
+    help="Install all supported hooks",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Overwrite existing codeindex hooks",
+)
+@click.argument("hook_name", required=False)
+def install(hook_name: Optional[str], install_all: bool, force: bool):
+    """Install Git hooks for codeindex."""
+    try:
+        manager = HookManager()
+
+        # Determine hooks to install
+        if install_all:
+            hooks_to_install = manager.SUPPORTED_HOOKS
+        elif hook_name:
+            hooks_to_install = [hook_name]
+        else:
+            console.print(
+                "[yellow]Usage:[/yellow] codeindex hooks install <hook-name> or --all"
+            )
+            raise click.Abort()
+
+        console.print("\n[bold]Installing Git Hooks[/bold]\n")
+
+        installed_count = 0
+        backed_up = []
+
+        for hook in hooks_to_install:
+            status = manager.get_hook_status(hook)
+
+            if status == HookStatus.INSTALLED and not force:
+                console.print(f"  [dim]→ {hook}: already installed (use --force to reinstall)[/dim]")
+                continue
+
+            if status == HookStatus.CUSTOM:
+                backed_up.append(f"{hook} → {hook}.backup")
+
+            result = manager.install_hook(hook, backup=True, force=force)
+
+            if result:
+                console.print(f"  [green]✓[/green] {hook}: installed")
+                installed_count += 1
+
+        console.print()
+
+        if backed_up:
+            console.print("[yellow]Backups created:[/yellow]")
+            for backup in backed_up:
+                console.print(f"  {backup}")
+            console.print()
+
+        console.print(
+            f"[green]✓[/green] Successfully installed {installed_count} hook(s)\n"
+        )
+
+    except ValueError as e:
+        console.print(f"[red]✗[/red] Error: {e}", style="red")
+        raise click.Abort()
+
+
+@hooks.command()
+def status():
+    """Show status of Git hooks."""
+    try:
+        manager = HookManager()
+        statuses = manager.list_all_hooks()
+
+        console.print("\n[bold]Git Hooks Status[/bold]\n")
+
+        # Status indicators
+        status_icons = {
+            HookStatus.INSTALLED: "[green]✓[/green]",
+            HookStatus.CUSTOM: "[yellow]⚠[/yellow]",
+            HookStatus.NOT_INSTALLED: "[dim]○[/dim]",
+        }
+
+        status_labels = {
+            HookStatus.INSTALLED: "[green]installed[/green]",
+            HookStatus.CUSTOM: "[yellow]custom[/yellow]",
+            HookStatus.NOT_INSTALLED: "[dim]not installed[/dim]",
+        }
+
+        for hook_name in manager.SUPPORTED_HOOKS:
+            status = statuses[hook_name]
+            icon = status_icons[status]
+            label = status_labels[status]
+            console.print(f"  {icon} {hook_name}: {label}")
+
+        console.print()
+
+        installed_count = sum(
+            1 for s in statuses.values() if s == HookStatus.INSTALLED
+        )
+        if installed_count > 0:
+            console.print(f"→ {installed_count} codeindex hook(s) installed\n")
+
+    except ValueError as e:
+        console.print(f"[red]✗[/red] Error: {e}", style="red")
+        raise click.Abort()
+```
+
+#### Step 5: Verify Integration
+
+**Test the CLI**:
+
+```bash
+# Check status
+codeindex hooks status
+# Output:
+#   ○ pre-commit: not installed
+#   ○ post-commit: not installed
+#   ○ pre-push: not installed
+
+# Install all hooks
+codeindex hooks install --all
+# Output:
+#   ✓ pre-commit: installed
+#   ✓ post-commit: installed
+#   ✓ pre-push: installed
+#   ✓ Successfully installed 3 hook(s)
+
+# Check status again
+codeindex hooks status
+# Output:
+#   ✓ pre-commit: installed
+#   ✓ post-commit: installed
+#   ✓ pre-push: installed
+#   → 3 codeindex hook(s) installed
+```
+
+---
+
+### Testing Strategy
+
+**Required Tests (Minimum 15 tests)**:
+
+1. **HookManager Tests** (10 tests):
+   - `test_init_with_repo_path` - Initialize with path
+   - `test_init_detects_git_repo` - Auto-detect repo
+   - `test_get_hook_status_not_exists` - Hook doesn't exist
+   - `test_get_hook_status_exists_codeindex` - Codeindex hook exists
+   - `test_get_hook_status_exists_custom` - Custom hook exists
+   - `test_install_hook` - Install new hook
+   - `test_install_hook_with_backup` - Backup existing hook
+   - `test_uninstall_hook` - Uninstall hook
+   - `test_uninstall_hook_restores_backup` - Restore backup
+   - `test_list_all_hooks_status` - List all hooks
+
+2. **Hook Generation Tests** (3 tests):
+   - `test_generate_pre_commit_hook` - Generate pre-commit
+   - `test_generate_post_commit_hook` - Generate post-commit
+   - `test_generate_hook_with_config` - Customize with config
+
+3. **Backup & Restore Tests** (2 tests):
+   - `test_backup_existing_hook` - Create backup
+   - `test_backup_with_existing_backup` - Handle existing backup
+
+4. **Detection Tests** (2 tests):
+   - `test_detect_existing_hooks` - Detect all hooks
+   - `test_detect_ignores_samples` - Ignore .sample files
+
+**Test Example** (`tests/test_cli_hooks.py`):
+
+```python
+def test_install_hook_with_backup(self, tmp_path):
+    """Should backup existing custom hook before installing."""
+    repo_path = tmp_path / "test_repo"
+    hooks_dir = repo_path / ".git" / "hooks"
+    hooks_dir.mkdir(parents=True)
+
+    # Create existing custom hook
+    hook_file = hooks_dir / "pre-commit"
+    hook_file.write_text("#!/bin/bash\necho 'old hook'")
+
+    manager = HookManager(repo_path)
+    result = manager.install_hook("pre-commit", backup=True)
+
+    assert result is True
+    assert (hooks_dir / "pre-commit.backup").exists()
+    assert (hooks_dir / "pre-commit").exists()
+```
+
+---
+
+### Key Implementation Patterns
+
+#### Pattern 1: Marker-Based Detection
+
+Use a unique marker to identify managed hooks:
+
+```python
+CODEINDEX_MARKER = "# codeindex-managed hook"
+
+def get_hook_status(self, hook_name: str) -> HookStatus:
+    hook_file = self.hooks_dir / hook_name
+    if not hook_file.exists():
+        return HookStatus.NOT_INSTALLED
+
+    content = hook_file.read_text()
+    if self.CODEINDEX_MARKER in content:
+        return HookStatus.INSTALLED  # ← Our hook
+
+    return HookStatus.CUSTOM  # ← User's custom hook
+```
+
+**Why?** Allows distinguishing our hooks from user's custom hooks.
+
+#### Pattern 2: Automatic Backup
+
+Always backup before overwriting:
+
+```python
+def backup_existing_hook(hook_file: Path) -> Path:
+    """Create timestamped backup of existing hook."""
+    backup_path = hook_file.with_suffix(".backup")
+
+    # If backup exists, add timestamp
+    if backup_path.exists():
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = hook_file.parent / f"{hook_file.name}.backup.{timestamp}"
+
+    shutil.copy2(hook_file, backup_path)
+    return backup_path
+```
+
+**Why?** User's custom hooks are precious, never lose them.
+
+#### Pattern 3: Template-Based Generation
+
+Generate scripts from templates, not hardcoded:
+
+```python
+def generate_hook_script(hook_name: str, config: dict = None) -> str:
+    if hook_name == "pre-commit":
+        return _generate_pre_commit_script(config)
+    elif hook_name == "post-commit":
+        return _generate_post_commit_script(config)
+    # ...
+```
+
+**Why?** Easy to customize, test, and maintain.
+
+#### Pattern 4: Shell Script Best Practices
+
+**Set error handling**:
+```bash
+set -e  # Exit on error
+```
+
+**Use colors**:
+```bash
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'  # No Color
+echo "${GREEN}✓ Success${NC}"
+```
+
+**Activate venv if exists**:
+```bash
+REPO_ROOT=$(git rev-parse --show-toplevel)
+if [ -f "$REPO_ROOT/.venv/bin/activate" ]; then
+    source "$REPO_ROOT/.venv/bin/activate"
+fi
+```
+
+---
+
+### Common Pitfalls
+
+**❌ Problem 1: Hook not executable**
+
+Hooks must be executable (+x permission):
+
+```python
+# ✅ Correct
+hook_file.write_text(script)
+hook_file.chmod(0o755)  # ← Make executable
+```
+
+**❌ Problem 2: Infinite loop (post-commit)**
+
+Post-commit hook can trigger itself:
+
+```bash
+# ✅ Prevent loop
+LAST_COMMIT_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD)
+NON_DOC_FILES=$(echo "$LAST_COMMIT_FILES" | \
+    grep -v "README_AI.md" | grep -v "PROJECT_INDEX.md" || true)
+if [ -z "$NON_DOC_FILES" ]; then
+    exit 0  # Only doc files changed, skip
+fi
+```
+
+**❌ Problem 3: Detecting staged vs working files**
+
+Only check staged content, not working directory:
+
+```bash
+# ✅ Get staged content only
+STAGED_CONTENT=$(git show ":$file" 2>/dev/null || true)
+```
+
+**❌ Problem 4: Long lines in shell scripts**
+
+Ruff checks Python files for line length, but shell scripts too:
+
+```bash
+# ❌ Too long (>100 chars)
+LEVEL=$(echo "$ANALYSIS" | python3 -c "import sys, json; print(json.load(sys.stdin).get('level', 'skip'))")
+
+# ✅ Split with line continuation
+LEVEL=$(echo "$ANALYSIS" | python3 -c \
+    "import sys, json; print(json.load(sys.stdin).get('level', 'skip'))" \
+    2>/dev/null || echo "skip")
+```
+
+---
+
+### Q&A
+
+**Q: Why use shell scripts instead of Python?**
+A: Git hooks must be shell scripts (no .py extension). Shell scripts are standard.
+
+**Q: How to test shell scripts?**
+A: Test the Python code that generates them. Don't test shell syntax.
+
+**Q: Can users customize hooks?**
+A: Future: support `.codeindex.yaml` configuration. Current: edit `.git/hooks/pre-commit` manually.
+
+**Q: What if user has existing hooks?**
+A: We detect them (`HookStatus.CUSTOM`) and create automatic backups.
+
+**Q: How to handle multiple hooks managers?**
+A: Our marker (`# codeindex-managed hook`) ensures we only manage our own hooks. Other tools use their own markers.
+
+**Q: Post-commit creates extra commits. Is this okay?**
+A: Yes! Git supports this pattern. We prevent infinite loops by checking file types.
+
+---
+
 ## 🛠️ 开发工作流
 
 ### TDD 开发流程（必须遵守）
