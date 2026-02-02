@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0-beta1] - 2026-02-02
+
+### Added - Epic 6, P3.1: Git Hooks Integration
+- **Git Hooks Management CLI** - Comprehensive hook management system
+  - `codeindex hooks install` - Install hooks with automatic backup
+  - `codeindex hooks uninstall` - Uninstall with optional backup restore
+  - `codeindex hooks status` - Show hook installation status
+- **Pre-commit Hook** - Quality checks before commit
+  - L1: Ruff lint check (auto-detects venv or system ruff)
+  - L2: Debug code detection (print/breakpoint/pdb)
+  - Smart file filtering (skips CLI files)
+- **Post-commit Hook** - Automatic documentation updates
+  - Smart change analysis (`codeindex affected`)
+  - Automatic README_AI.md updates
+  - Infinite loop prevention (skips doc-only commits)
+- **Backup & Safety**
+  - Automatic backup of existing custom hooks
+  - Restore backups on uninstall
+  - Timestamped backups for multiple versions
+- **Integration Documentation**
+  - Comprehensive user guide (docs/guides/git-hooks-integration.md)
+  - Quick start, troubleshooting, FAQ
+  - CI/CD integration examples
+
+### Fixed
+- Code style compliance in hierarchical.py and symbol_index.py
+  - Fixed line length violations (E501)
+  - Fixed unused variable (F841)
+  - Fixed bare except (E722)
+
+### Tests
+- Added 19 new tests for Git Hooks management (394 total)
+- All tests passing
+
 ## [0.4.0] - 2026-02-02
 
 ### Changed - Story 4.4.5: KISS Universal Description Generator ⭐
