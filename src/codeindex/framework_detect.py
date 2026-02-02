@@ -141,12 +141,16 @@ def extract_thinkphp_routes(
             # Build route URL
             url = f"/{module_name.lower()}/{controller_name}/{method_name}"
 
-            routes.append(RouteInfo(
-                url=url,
-                controller=controller_class,
-                action=method_name,
-                method_signature=symbol.signature,
-            ))
+            routes.append(
+                RouteInfo(
+                    url=url,
+                    controller=controller_class,
+                    action=method_name,
+                    method_signature=symbol.signature,
+                    line_number=symbol.line_start,  # Epic 6, P1: Line number support
+                    file_path=result.path.name,  # File location
+                )
+            )
 
     return routes
 
