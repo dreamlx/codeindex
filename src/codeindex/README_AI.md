@@ -759,11 +759,17 @@ _... and 29 more_
 Changed files:
 - `framework_detect.py`
 
----
-
-## Recent Changes
 
 **Commit `a09851d`**: feat(epic6): ThinkPHP route extractor fills line numbers (P1, Task 1.2)
 
 Changed files:
 - `framework_detect.py`
+
+---
+
+## Recent Changes
+
+**Commit `16e9158`**: feat(epic6): add route table display formatting with line numbers
+
+Changed files:
+- `smart_writer.py`

@@ -631,3 +631,12 @@ _Tests for ThinkPHP route extraction with line numbers (Epic 6, P1, Task 1.2)._
 - pytest_bdd
 - tempfile
 - yaml
+
+---
+
+## Recent Changes
+
+**Commit `16e9158`**: feat(epic6): add route table display formatting with line numbers
+
+Changed files:
+- `test_route_table_display.py`
