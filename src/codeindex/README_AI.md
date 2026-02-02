@@ -777,11 +777,17 @@ Changed files:
 Changed files:
 - `route_extractor.py`
 
----
-
-## Recent Changes
 
 **Commit `7577104`**: feat(epic6): add RouteExtractorRegistry
 
 Changed files:
 - `route_registry.py`
+
+---
+
+## Recent Changes
+
+**Commit `5aa81e0`**: feat(epic6): integrate route registry into SmartWriter
+
+Changed files:
+- `smart_writer.py`

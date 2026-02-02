@@ -644,11 +644,17 @@ Changed files:
 Changed files:
 - `test_route_extractor.py`
 
----
-
-## Recent Changes
 
 **Commit `7577104`**: feat(epic6): add RouteExtractorRegistry
 
 Changed files:
 - `test_route_registry.py`
+
+---
+
+## Recent Changes
+
+**Commit `5aa81e0`**: feat(epic6): integrate route registry into SmartWriter
+
+Changed files:
+- `test_backward_compatibility.py`
