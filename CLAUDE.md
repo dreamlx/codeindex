@@ -220,6 +220,684 @@ Config file: `.codeindex.yaml` (see `examples/.codeindex.yaml`)
 - `languages`: Currently only `python` supported
 - `output_file`: Default `README_AI.md`
 
+---
+
+## 🛣️ Framework Route Extraction (v0.5.0+)
+
+### Architecture Overview
+
+codeindex uses a **plugin-based architecture** for framework route extraction. New frameworks can be added without modifying core code.
+
+**Core Components**:
+
+```
+src/codeindex/
+├── route_extractor.py          # Abstract base class + data structures
+│   ├── RouteExtractor (ABC)    # Base class for all extractors
+│   ├── ExtractionContext       # Context passed to extractors
+│   └── (RouteInfo in framework_detect.py)
+│
+├── route_registry.py           # Extractor registration and discovery
+│   └── RouteExtractorRegistry  # Auto-discovers and manages extractors
+│
+└── extractors/                 # Framework-specific implementations
+    ├── __init__.py             # Exports all extractors
+    ├── thinkphp.py            # ✅ ThinkPHP extractor (reference impl)
+    ├── laravel.py             # 🔄 TODO: Laravel extractor
+    └── fastapi.py             # 🔄 TODO: FastAPI extractor
+```
+
+**Data Flow**:
+
+```
+SmartWriter._generate_detailed()
+    ↓
+RouteExtractorRegistry.extract_routes(context)
+    ↓
+For each registered extractor:
+    if extractor.can_extract(context):
+        routes = extractor.extract_routes(context)
+    ↓
+_format_route_table(routes)
+    ↓
+README_AI.md (with route table)
+```
+
+### How to Add a New Framework Extractor
+
+Follow this **TDD process** to add support for a new web framework:
+
+---
+
+#### Step 1: Create Test File First (RED)
+
+**File**: `tests/extractors/test_myframework.py`
+
+```python
+"""Tests for MyFramework route extractor."""
+
+from pathlib import Path
+
+from codeindex.extractors.myframework import MyFrameworkRouteExtractor
+from codeindex.parser import ParseResult, Symbol
+from codeindex.route_extractor import ExtractionContext
+
+
+class TestMyFrameworkRouteExtractor:
+    """Test MyFramework route extractor."""
+
+    def test_framework_name(self):
+        """Should return correct framework name."""
+        extractor = MyFrameworkRouteExtractor()
+        assert extractor.framework_name == "myframework"
+
+    def test_can_extract_from_controllers_directory(self):
+        """Should extract only from controllers directory."""
+        extractor = MyFrameworkRouteExtractor()
+
+        # Should extract from controllers/
+        context = ExtractionContext(
+            root_path=Path("/project"),
+            current_dir=Path("/project/controllers"),
+            parse_results=[],
+        )
+        assert extractor.can_extract(context) is True
+
+        # Should NOT extract from other directories
+        context = ExtractionContext(
+            root_path=Path("/project"),
+            current_dir=Path("/project/models"),
+            parse_results=[],
+        )
+        assert extractor.can_extract(context) is False
+
+    def test_extract_routes_with_line_numbers(self):
+        """Should extract routes with line numbers."""
+        extractor = MyFrameworkRouteExtractor()
+
+        parse_results = [
+            ParseResult(
+                path=Path("UserController.py"),
+                symbols=[
+                    Symbol(
+                        name="UserController",
+                        kind="class",
+                        signature="class UserController:",
+                        docstring="",
+                        line_start=1,
+                        line_end=50,
+                    ),
+                    Symbol(
+                        name="index",
+                        kind="method",
+                        signature="def index(self, request):",
+                        docstring="Get user list",
+                        line_start=10,
+                        line_end=15,
+                    ),
+                ],
+            )
+        ]
+
+        context = ExtractionContext(
+            root_path=Path("/project"),
+            current_dir=Path("/project/controllers"),
+            parse_results=parse_results,
+        )
+
+        routes = extractor.extract_routes(context)
+
+        assert len(routes) == 1
+        assert routes[0].url == "/users"
+        assert routes[0].controller == "UserController"
+        assert routes[0].action == "index"
+        assert routes[0].line_number == 10
+        assert routes[0].file_path == "UserController.py"
+
+    def test_extract_description_from_docstring(self):
+        """Should extract description from method docstring."""
+        extractor = MyFrameworkRouteExtractor()
+
+        parse_results = [
+            ParseResult(
+                path=Path("UserController.py"),
+                symbols=[
+                    Symbol(
+                        name="UserController",
+                        kind="class",
+                        signature="class UserController:",
+                        docstring="",
+                        line_start=1,
+                        line_end=50,
+                    ),
+                    Symbol(
+                        name="index",
+                        kind="method",
+                        signature="def index(self, request):",
+                        docstring="Get user list with pagination",
+                        line_start=10,
+                        line_end=15,
+                    ),
+                ],
+            )
+        ]
+
+        context = ExtractionContext(
+            root_path=Path("/project"),
+            current_dir=Path("/project/controllers"),
+            parse_results=parse_results,
+        )
+
+        routes = extractor.extract_routes(context)
+
+        assert len(routes) == 1
+        assert routes[0].description == "Get user list with pagination"
+
+    def test_truncate_long_descriptions(self):
+        """Should truncate descriptions longer than 60 characters."""
+        extractor = MyFrameworkRouteExtractor()
+
+        long_desc = "This is a very long description that exceeds 60 chars limit"
+
+        parse_results = [
+            ParseResult(
+                path=Path("UserController.py"),
+                symbols=[
+                    Symbol(
+                        name="UserController",
+                        kind="class",
+                        signature="class UserController:",
+                        docstring="",
+                        line_start=1,
+                        line_end=50,
+                    ),
+                    Symbol(
+                        name="index",
+                        kind="method",
+                        signature="def index(self, request):",
+                        docstring=long_desc,
+                        line_start=10,
+                        line_end=15,
+                    ),
+                ],
+            )
+        ]
+
+        context = ExtractionContext(
+            root_path=Path("/project"),
+            current_dir=Path("/project/controllers"),
+            parse_results=parse_results,
+        )
+
+        routes = extractor.extract_routes(context)
+
+        assert len(routes) == 1
+        assert len(routes[0].description) <= 63  # 60 + "..."
+        assert routes[0].description.endswith("...")
+
+    def test_handle_empty_file(self):
+        """Should return empty list for files with no routes."""
+        extractor = MyFrameworkRouteExtractor()
+
+        context = ExtractionContext(
+            root_path=Path("/project"),
+            current_dir=Path("/project/controllers"),
+            parse_results=[],
+        )
+
+        routes = extractor.extract_routes(context)
+
+        assert len(routes) == 0
+
+    def test_skip_private_methods(self):
+        """Should skip private methods (starting with _)."""
+        # Framework-specific test - implement based on your rules
+        pass
+```
+
+**Run the test** (it should fail):
+
+```bash
+pytest tests/extractors/test_myframework.py -v
+# Expected: ImportError or test failures ❌
+```
+
+---
+
+#### Step 2: Create Extractor Implementation (GREEN)
+
+**File**: `src/codeindex/extractors/myframework.py`
+
+```python
+"""MyFramework route extractor.
+
+MyFramework routing convention:
+- URL: /controller/action
+- Example: /users/index -> UserController.index()
+"""
+
+from ..framework_detect import RouteInfo
+from ..route_extractor import ExtractionContext, RouteExtractor
+
+
+class MyFrameworkRouteExtractor(RouteExtractor):
+    """
+    Route extractor for MyFramework.
+
+    MyFramework uses convention-based routing where:
+    - Controllers are in controllers/ directory
+    - URL pattern: /{controller}/{action}
+    - Only public methods are routes
+    - Methods starting with _ are excluded
+    """
+
+    @property
+    def framework_name(self) -> str:
+        """Return framework name."""
+        return "myframework"
+
+    def can_extract(self, context: ExtractionContext) -> bool:
+        """
+        Check if routes should be extracted from this directory.
+
+        Routes are extracted only from controllers/ directories.
+
+        Args:
+            context: Extraction context
+
+        Returns:
+            True if current directory is a controllers directory
+        """
+        return context.current_dir.name == "controllers"
+
+    def extract_routes(self, context: ExtractionContext) -> list[RouteInfo]:
+        """
+        Extract routes from MyFramework controllers.
+
+        Args:
+            context: Extraction context with parse results
+
+        Returns:
+            List of RouteInfo objects for each public method in controllers
+        """
+        routes = []
+
+        for result in context.parse_results:
+            if result.error:
+                continue
+
+            # Find controller class
+            controller_class = None
+            for symbol in result.symbols:
+                if symbol.kind == "class" and symbol.name.endswith("Controller"):
+                    controller_class = symbol.name
+                    break
+
+            if not controller_class:
+                continue
+
+            # Extract controller name (remove "Controller" suffix)
+            controller_name = controller_class.replace("Controller", "").lower()
+
+            # Find public methods (actions)
+            for symbol in result.symbols:
+                if symbol.kind != "method":
+                    continue
+
+                # Skip private methods (starting with _)
+                method_name = symbol.name.split("::")[-1]
+                if method_name.startswith("_"):
+                    continue
+
+                # Build route URL: /controller/action
+                url = f"/{controller_name}/{method_name}"
+
+                routes.append(
+                    RouteInfo(
+                        url=url,
+                        controller=controller_class,
+                        action=method_name,
+                        method_signature=symbol.signature,
+                        line_number=symbol.line_start,
+                        file_path=result.path.name,
+                        description=self._extract_description(symbol),
+                    )
+                )
+
+        return routes
+
+    def _extract_description(self, symbol) -> str:
+        """
+        Extract description from symbol docstring.
+
+        Limits description to 60 characters for table display.
+
+        Args:
+            symbol: Symbol with docstring
+
+        Returns:
+            Cleaned description (max 60 chars + "...")
+        """
+        if not symbol.docstring:
+            return ""
+
+        description = symbol.docstring.strip()
+
+        # Limit length for table display
+        if len(description) > 60:
+            return description[:60] + "..."
+
+        return description
+```
+
+**Run the tests** (they should pass):
+
+```bash
+pytest tests/extractors/test_myframework.py -v
+# Expected: All tests pass ✅
+```
+
+---
+
+#### Step 3: Register Extractor
+
+**File**: `src/codeindex/extractors/__init__.py`
+
+```python
+"""Framework route extractors."""
+
+from .myframework import MyFrameworkRouteExtractor  # ← Add this
+from .thinkphp import ThinkPHPRouteExtractor
+
+__all__ = [
+    "MyFrameworkRouteExtractor",  # ← Add this
+    "ThinkPHPRouteExtractor",
+]
+```
+
+**That's it!** The extractor is automatically discovered and registered.
+
+---
+
+#### Step 4: Verify Integration
+
+**Run all tests**:
+
+```bash
+# All tests should pass
+pytest
+```
+
+**Test with real project**:
+
+```bash
+# Scan a MyFramework controller directory
+codeindex scan /path/to/myframework/controllers
+
+# Check README_AI.md for route table
+cat /path/to/myframework/controllers/README_AI.md
+```
+
+Expected output:
+
+```markdown
+## Routes (MyFramework)
+
+| URL | Controller | Action | Location | Description |
+|-----|------------|--------|----------|-------------|
+| `/users/index` | UserController | index | `UserController.py:10` | Get user list with pagination |
+```
+
+---
+
+### Testing Guidelines
+
+**Required Test Coverage** (minimum 7 tests):
+
+1. ✅ `test_framework_name()` - Verify framework identifier
+2. ✅ `test_can_extract_from_*()` - Directory detection logic
+3. ✅ `test_extract_routes_with_line_numbers()` - Basic extraction
+4. ✅ `test_extract_description_from_docstring()` - Description extraction
+5. ✅ `test_truncate_long_descriptions()` - 60-char limit
+6. ✅ `test_handle_empty_file()` - Empty/no routes case
+7. ✅ `test_skip_*()` - Framework-specific filtering rules
+
+**Test Structure Template**:
+
+```python
+class TestMyFrameworkRouteExtractor:
+    """Test MyFramework route extractor."""
+
+    # 1. Basic properties
+    def test_framework_name(self): ...
+
+    # 2. Directory detection
+    def test_can_extract_from_**(self): ...
+
+    # 3. Route extraction
+    def test_extract_routes_with_line_numbers(self): ...
+    def test_extract_multiple_routes(self): ...
+
+    # 4. Description handling
+    def test_extract_description_from_docstring(self): ...
+    def test_truncate_long_descriptions(self): ...
+    def test_handle_empty_description(self): ...
+
+    # 5. Edge cases
+    def test_handle_empty_file(self): ...
+    def test_handle_parse_error(self): ...
+
+    # 6. Framework-specific rules
+    def test_skip_private_methods(self): ...
+    def test_filter_magic_methods(self): ...
+```
+
+---
+
+### Existing Extractors Reference
+
+#### ThinkPHP Extractor
+
+**File**: `src/codeindex/extractors/thinkphp.py`
+
+**Routing Convention**:
+- URL pattern: `/{module}/{controller}/{action}`
+- Example: `/admin/user/index` → `Admin\Controller\UserController::index()`
+
+**Directory Structure**:
+```
+Application/
+└── Admin/                    # Module
+    └── Controller/          # ← Detected by can_extract()
+        └── UserController.php
+```
+
+**Key Logic**:
+- Detects from `Application/{Module}/Controller/` structure
+- Filters: Only `public` methods
+- Excludes: Magic methods (`__*`), internal methods (`_*`)
+- Description: From PHPDoc comments
+
+**See Tests**: `tests/extractors/test_thinkphp.py` (9 tests)
+
+---
+
+### Route Display Format
+
+Routes are displayed in README_AI.md as markdown tables:
+
+```markdown
+## Routes (MyFramework)
+
+| URL | Controller | Action | Location | Description |
+|-----|------------|--------|----------|-------------|
+| `/users` | UserController | index | `UserController.py:10` | Get user list |
+| `/users/create` | UserController | create | `UserController.py:20` | Create new user |
+| `/posts` | PostController | index | `PostController.py:15` | List all posts with pagination support and filteri... |
+```
+
+**Table Columns**:
+
+| Column | Content | Example |
+|--------|---------|---------|
+| **URL** | Route path | `/users/index` |
+| **Controller** | Controller class name | `UserController` |
+| **Action** | Method/action name | `index` |
+| **Location** | Clickable `file:line` | `UserController.py:10` |
+| **Description** | From docstring (max 60 chars) | `Get user list` |
+
+**Formatting** (handled by `SmartWriter._format_route_table()`):
+- Up to 30 routes displayed
+- Remaining routes shown as: `| ... | _N more routes_ | | | |`
+- URLs wrapped in backticks: `` `{route.url}` ``
+- Locations wrapped in backticks: `` `{route.location}` ``
+
+---
+
+### Framework Detection (Optional)
+
+If your framework needs custom detection logic, update:
+
+**File**: `src/codeindex/framework_detect.py`
+
+```python
+def detect_framework(path: Path) -> str | None:
+    """Detect web framework from directory structure."""
+
+    # Add your framework detection
+    if (path / "myframework.conf").exists():
+        return "myframework"
+
+    if (path / "config" / "myframework.yaml").exists():
+        return "myframework"
+
+    # ... existing detection ...
+```
+
+**Note**: Most extractors don't need this. The `can_extract()` method is usually sufficient.
+
+---
+
+### Important Implementation Notes
+
+**1. No Manual Registration Required**
+
+Extractors are **auto-discovered** via `RouteExtractorRegistry`:
+
+```python
+# In route_registry.py
+for name, obj in inspect.getmembers(extractors_module):
+    if inspect.isclass(obj) and issubclass(obj, RouteExtractor):
+        # Automatically registered!
+```
+
+**2. Description Length Limit**
+
+**Always truncate** to 60 chars:
+
+```python
+if len(description) > 60:
+    return description[:60] + "..."
+```
+
+**Why?** Markdown tables break with very long text.
+
+**3. Error Handling**
+
+**Always check** `result.error`:
+
+```python
+for result in context.parse_results:
+    if result.error:
+        continue  # ← Skip files with parse errors
+```
+
+**4. Performance Considerations**
+
+- Keep extraction logic **fast** (runs on every scan)
+- Avoid heavy computation in `can_extract()`
+- Don't make external API calls
+
+**5. TDD is Required**
+
+- **Write tests first** (RED)
+- **Implement to pass** (GREEN)
+- **Refactor and verify** (REFACTOR)
+
+**6. Symbol Name Format**
+
+Python methods may include class prefix:
+
+```python
+# symbol.name could be:
+"index"                    # Simple name
+"UserController::index"    # With class prefix
+
+# Safe extraction:
+method_name = symbol.name.split("::")[-1]
+```
+
+---
+
+### Common Patterns
+
+#### Pattern 1: Convention-Based Routing (ThinkPHP, Django)
+
+```python
+def extract_routes(self, context):
+    # Build URL from directory structure + method name
+    url = f"/{module}/{controller}/{action}"
+```
+
+#### Pattern 2: Decorator-Based Routing (FastAPI, Flask)
+
+```python
+# Need to parse decorators from AST
+# @app.get("/users")
+# def get_users():
+#     ...
+
+# Will require enhanced parser support
+```
+
+#### Pattern 3: Explicit Route Definitions (Laravel)
+
+```python
+# Parse routes/*.php files
+# Route::get('/users', [UserController::class, 'index']);
+
+# Different approach - parse route definition files
+```
+
+---
+
+### Need Help?
+
+**Reference Materials**:
+- **Example Implementation**: `src/codeindex/extractors/thinkphp.py`
+- **Example Tests**: `tests/extractors/test_thinkphp.py`
+- **Base Class**: `src/codeindex/route_extractor.py`
+- **Route Display**: `src/codeindex/smart_writer.py::_format_route_table()`
+
+**Common Questions**:
+
+**Q: How do I test my extractor?**
+A: See Step 1 - write comprehensive tests first (TDD)
+
+**Q: My framework uses decorators for routing. How do I parse them?**
+A: Current parser doesn't extract decorators. You may need to enhance `parser.py` or parse raw file content.
+
+**Q: Routes don't appear in README_AI.md. Why?**
+A: Check:
+1. Is `can_extract()` returning `True`?
+2. Are routes being extracted? (debug with print statements)
+3. Is the extractor exported in `__init__.py`?
+
+**Q: Can I filter routes by HTTP method (GET/POST)?**
+A: Yes! Add `http_method` field to `RouteInfo` and update table format.
+
+---
+
 ## 🛠️ 开发工作流
 
 ### TDD 开发流程（必须遵守）

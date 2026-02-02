@@ -26,6 +26,11 @@ codeindex automatically generates intelligent documentation (`README_AI.md`) for
 - 📈 **Technical Debt Analysis** (v0.3.0+): Detect code quality issues and complexity metrics
 - 🔍 **Symbol Indexing** (v0.1.2+): Global symbol search and project-wide navigation
 - 💬 **Multi-turn Dialogue** (v0.3.0+): Advanced AI processing for super large files (>5000 lines)
+- 🛣️ **Framework Route Extraction** (v0.5.0+): Auto-detect and extract routes from web frameworks
+  - **ThinkPHP**: Convention-based routing with line numbers and PHPDoc descriptions
+  - **Laravel**: (Coming soon) Explicit route definitions
+  - **FastAPI**: (Coming soon) Decorator-based routes
+  - **Django**: (Coming soon) URL patterns
 
 ---
 
@@ -124,6 +129,12 @@ codeindex scan ./src/auth --dry-run
 # Generate without AI (fallback mode)
 codeindex scan ./src/auth --fallback
 ```
+
+**💡 Pro Tip**: When scanning web framework directories (like `Application/Admin/Controller` for ThinkPHP), codeindex automatically:
+- ✅ Detects the framework
+- ✅ Extracts routes with line numbers
+- ✅ Includes method descriptions from PHPDoc/docstrings
+- ✅ Generates route tables in README_AI.md
 
 ### 4. Batch Processing
 
@@ -271,6 +282,85 @@ File Details
      File has 6000 lines (threshold: 5000)
      → Split into 3-5 smaller files
 ```
+
+### 8. Framework Route Extraction (v0.5.0+)
+
+**NEW in v0.5.0**: Automatically detect and extract routes from web frameworks with line numbers and descriptions.
+
+codeindex automatically identifies web frameworks and extracts route information when scanning Controller/View directories. Routes are displayed as beautiful markdown tables in your `README_AI.md` files.
+
+#### Supported Frameworks
+
+| Framework | Language | Status | Features |
+|-----------|----------|--------|----------|
+| **ThinkPHP** | PHP | ✅ Stable | Line numbers, PHPDoc descriptions, module-based routing |
+| **Laravel** | PHP | 🔄 Coming v0.6.0 | Named routes, route groups, middleware |
+| **FastAPI** | Python | 🔄 Coming v0.6.0 | Path operations, dependencies, tags |
+| **Django** | Python | 🔄 Coming v0.6.0 | URL patterns, namespaces, view classes |
+
+#### Example Output
+
+**ThinkPHP Controller** (`Application/Admin/Controller/UserController.php`):
+
+```php
+class UserController {
+    /**
+     * Get user list with pagination
+     */
+    public function index() {
+        // ...
+    }
+
+    /**
+     * 创建新用户
+     */
+    public function create() {
+        // ...
+    }
+}
+```
+
+**Generated Route Table** in `README_AI.md`:
+
+```markdown
+## Routes (ThinkPHP)
+
+| URL | Controller | Action | Location | Description |
+|-----|------------|--------|----------|-------------|
+| `/admin/user/index` | UserController | index | `UserController.php:12` | Get user list with pagination |
+| `/admin/user/create` | UserController | create | `UserController.php:20` | 创建新用户 |
+```
+
+#### How It Works
+
+1. **Auto-Detection**: Scans directory structure to detect web frameworks
+2. **Symbol Extraction**: Parses controllers/views using tree-sitter
+3. **Route Inference**: Applies framework-specific routing conventions
+4. **Documentation Extraction**: Extracts docstrings/PHPDoc comments
+5. **Table Generation**: Formats as markdown table in README_AI.md
+
+**Features:**
+- ✅ **Line Numbers**: Clickable `file:line` locations
+- ✅ **Descriptions**: From PHPDoc/docstrings (auto-truncated to 60 chars)
+- ✅ **Multi-language**: Supports Chinese and English descriptions
+- ✅ **Smart Filtering**: Only public methods, excludes magic methods
+- ✅ **Zero Configuration**: Just scan, routes auto-appear
+
+#### Usage
+
+```bash
+# Routes are automatically extracted when scanning
+codeindex scan-all
+
+# Or scan specific controller directory
+codeindex scan ./Application/Admin/Controller
+```
+
+No configuration needed! Routes are detected and extracted automatically.
+
+#### For Developers
+
+Want to add support for your favorite framework? See [CLAUDE.md](CLAUDE.md#framework-route-extraction) for the complete developer guide on creating custom route extractors.
 
 ---
 
