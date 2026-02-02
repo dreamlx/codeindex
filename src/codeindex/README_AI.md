@@ -801,9 +801,6 @@ Changed files:
 Changed files:
 - `smart_writer.py`
 
----
-
-## Recent Changes
 
 **Commit `5a36043`**: feat(epic6): add Git Hooks management CLI
 
@@ -815,3 +812,13 @@ Changed files:
 - `hierarchical.py`
 - `scanner.py`
 - `symbol_index.py`
+
+---
+
+## Recent Changes
+
+**Commit `492f3f4`**: feat: add 'codeindex docs show-ai-guide' command
+
+Changed files:
+- `cli.py`
+- `cli_docs.py`
