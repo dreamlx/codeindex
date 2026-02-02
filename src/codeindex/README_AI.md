@@ -789,11 +789,17 @@ Changed files:
 Changed files:
 - `smart_writer.py`
 
----
-
-## Recent Changes
 
 **Commit `4331cb8`**: feat(epic6): enhance parser to extract PHP PHPDoc comments
 
 Changed files:
 - `parser.py`
+
+---
+
+## Recent Changes
+
+**Commit `05b5e0d`**: feat(epic6): add Description column to route table display
+
+Changed files:
+- `smart_writer.py`
