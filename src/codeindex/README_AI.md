@@ -771,11 +771,17 @@ Changed files:
 Changed files:
 - `smart_writer.py`
 
----
-
-## Recent Changes
 
 **Commit `6a8d3ae`**: feat(epic6): add RouteExtractor abstract base class
 
 Changed files:
 - `route_extractor.py`
+
+---
+
+## Recent Changes
+
+**Commit `7577104`**: feat(epic6): add RouteExtractorRegistry
+
+Changed files:
+- `route_registry.py`

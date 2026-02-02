@@ -638,11 +638,17 @@ _Tests for ThinkPHP route extraction with line numbers (Epic 6, P1, Task 1.2)._
 Changed files:
 - `test_route_table_display.py`
 
----
-
-## Recent Changes
 
 **Commit `6a8d3ae`**: feat(epic6): add RouteExtractor abstract base class
 
 Changed files:
 - `test_route_extractor.py`
+
+---
+
+## Recent Changes
+
+**Commit `7577104`**: feat(epic6): add RouteExtractorRegistry
+
+Changed files:
+- `test_route_registry.py`
