@@ -753,11 +753,17 @@ _Markdown writer for README_AI.md files._
 - .tech_debt_formatters
 _... and 29 more_
 
+
+**Commit `f71f84a`**: feat(epic6): add line_number and description fields to RouteInfo (P1, Task 1.1)
+
+Changed files:
+- `framework_detect.py`
+
 ---
 
 ## Recent Changes
 
-**Commit `f71f84a`**: feat(epic6): add line_number and description fields to RouteInfo (P1, Task 1.1)
+**Commit `a09851d`**: feat(epic6): ThinkPHP route extractor fills line numbers (P1, Task 1.2)
 
 Changed files:
 - `framework_detect.py`
