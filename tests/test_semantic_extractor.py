@@ -324,8 +324,17 @@ class TestBDDScenarios:
         retail_semantic = extractor.extract_directory_semantic(retail_context)
 
         # Assertions
+        # 1. Different descriptions (differentiation)
         assert admin_semantic.description != retail_semantic.description
+
+        # 2. Not generic
         assert admin_semantic.description != "Business module"
         assert retail_semantic.description != "Business module"
-        assert "Admin" not in admin_semantic.description or "后台" in admin_semantic.description
-        assert "Retail" not in retail_semantic.description or "零售" in retail_semantic.description
+
+        # 3. KISS format: path + pattern + symbols
+        assert "Application/Admin" in admin_semantic.description
+        assert "Application/Retail" in retail_semantic.description
+
+        # 4. Contains actual symbols (not translations)
+        assert ("Role" in admin_semantic.description or "User" in admin_semantic.description)
+        assert ("Product" in retail_semantic.description or "Cart" in retail_semantic.description)
