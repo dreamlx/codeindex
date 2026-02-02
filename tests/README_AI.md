@@ -650,11 +650,16 @@ Changed files:
 Changed files:
 - `test_route_registry.py`
 
----
-
-## Recent Changes
 
 **Commit `5aa81e0`**: feat(epic6): integrate route registry into SmartWriter
 
 Changed files:
 - `test_backward_compatibility.py`
+
+---
+
+## Recent Changes
+
+**Commit `6086b72`**: test(epic6): add backward compatibility verification
+
+Changed files:
