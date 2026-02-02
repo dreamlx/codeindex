@@ -795,11 +795,23 @@ Changed files:
 Changed files:
 - `parser.py`
 
----
-
-## Recent Changes
 
 **Commit `05b5e0d`**: feat(epic6): add Description column to route table display
 
 Changed files:
 - `smart_writer.py`
+
+---
+
+## Recent Changes
+
+**Commit `5a36043`**: feat(epic6): add Git Hooks management CLI
+
+Changed files:
+- `adaptive_selector.py`
+- `cli.py`
+- `cli_hooks.py`
+- `directory_tree.py`
+- `hierarchical.py`
+- `scanner.py`
+- `symbol_index.py`
