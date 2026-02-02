@@ -10,6 +10,7 @@ from typing import Literal, Optional
 from .adaptive_selector import AdaptiveSymbolSelector
 from .config import IndexingConfig
 from .framework_detect import (
+    RouteInfo,
     detect_framework,
     extract_thinkphp_routes,
 )
@@ -284,17 +285,9 @@ class SmartWriter:
             module_name = dir_path.parent.name
             routes = extract_thinkphp_routes(parse_results, module_name)
             if routes:
-                lines.extend([
-                    "## Routes (ThinkPHP)",
-                    "",
-                    "| URL | Controller | Action |",
-                    "|-----|------------|--------|",
-                ])
-                for route in routes[:30]:  # Limit to 30 routes
-                    lines.append(f"| `{route.url}` | {route.controller} | {route.action} |")
-                if len(routes) > 30:
-                    lines.append(f"| ... | _{len(routes) - 30} more_ | |")
-                lines.extend(["", ""])
+                # Epic 6, P1: Use _format_route_table with line numbers
+                route_lines = self._format_route_table(routes, "thinkphp")
+                lines.extend(route_lines)
 
         # Subdirectories (brief, just references)
         if child_dirs:
@@ -410,6 +403,57 @@ class SmartWriter:
             lines.append("")
 
         return "\n".join(lines)
+
+    def _format_route_table(
+        self, routes: list[RouteInfo], framework: str = "thinkphp"
+    ) -> list[str]:
+        """
+        Format route information as Markdown table with line numbers.
+
+        Args:
+            routes: List of RouteInfo objects
+            framework: Framework name for title (e.g., "thinkphp", "laravel")
+
+        Returns:
+            List of markdown lines for the route table
+
+        Epic 6, P1: Line number support
+        """
+        if not routes:
+            return []
+
+        # Format framework name with proper casing
+        framework_display = {
+            "thinkphp": "ThinkPHP",
+            "laravel": "Laravel",
+            "django": "Django",
+            "fastapi": "FastAPI",
+        }.get(framework.lower(), framework.title())
+
+        lines = [
+            f"## Routes ({framework_display})",
+            "",
+            "| URL | Controller | Action | Location |",
+            "|-----|------------|--------|----------|",
+        ]
+
+        # Display up to 30 routes
+        for route in routes[:30]:
+            # Use route.location property (handles file:line format)
+            location = f"`{route.location}`" if route.location else ""
+
+            lines.append(
+                f"| `{route.url}` | {route.controller} | "
+                f"{route.action} | {location} |"
+            )
+
+        # Show "more" indicator if there are additional routes
+        if len(routes) > 30:
+            remaining = len(routes) - 30
+            lines.append(f"| ... | _{remaining} more routes_ | | |")
+
+        lines.extend(["", ""])
+        return lines
 
     def _group_files(self, results: list[ParseResult]) -> dict[str, list[ParseResult]]:
         """Group files by suffix pattern."""
