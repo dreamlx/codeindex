@@ -102,7 +102,31 @@ class ThinkPHPRouteExtractor(RouteExtractor):
                         method_signature=symbol.signature,
                         line_number=symbol.line_start,
                         file_path=result.path.name,
+                        description=self._extract_description(symbol),
                     )
                 )
 
         return routes
+
+    def _extract_description(self, symbol) -> str:
+        """
+        Extract description from symbol docstring.
+
+        Limits description to 60 characters for table display.
+
+        Args:
+            symbol: Symbol with docstring
+
+        Returns:
+            Cleaned description (max 60 chars + "...")
+        """
+        if not symbol.docstring:
+            return ""
+
+        description = symbol.docstring.strip()
+
+        # Limit length for table display
+        if len(description) > 60:
+            return description[:60] + "..."
+
+        return description
