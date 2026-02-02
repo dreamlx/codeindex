@@ -9,10 +9,7 @@ from typing import Literal, Optional
 
 from .adaptive_selector import AdaptiveSymbolSelector
 from .config import IndexingConfig
-from .framework_detect import (
-    detect_framework,
-    extract_thinkphp_routes,
-)
+from .framework_detect import RouteInfo, detect_framework
 from .parser import ParseResult, Symbol
 from .semantic_extractor import SemanticExtractor
 
@@ -57,6 +54,13 @@ class SmartWriter:
             )
         else:
             self.semantic_extractor = None
+
+        # Initialize route extractor registry (Epic 6)
+        from .extractors.thinkphp import ThinkPHPRouteExtractor
+        from .route_registry import RouteExtractorRegistry
+
+        self.route_registry = RouteExtractorRegistry()
+        self.route_registry.register(ThinkPHPRouteExtractor())
 
     def write_readme(
         self,
@@ -278,23 +282,31 @@ class SmartWriter:
             "",
         ])
 
-        # ThinkPHP route table for Controller directories
-        if dir_path.name == "Controller":
-            # Infer module name from parent directory
-            module_name = dir_path.parent.name
-            routes = extract_thinkphp_routes(parse_results, module_name)
-            if routes:
-                lines.extend([
-                    "## Routes (ThinkPHP)",
-                    "",
-                    "| URL | Controller | Action |",
-                    "|-----|------------|--------|",
-                ])
-                for route in routes[:30]:  # Limit to 30 routes
-                    lines.append(f"| `{route.url}` | {route.controller} | {route.action} |")
-                if len(routes) > 30:
-                    lines.append(f"| ... | _{len(routes) - 30} more_ | |")
-                lines.extend(["", ""])
+        # Framework route tables (Epic 6: using registry)
+        # Try all registered extractors
+        from .route_extractor import ExtractionContext
+
+        for framework_name in self.route_registry.list_frameworks():
+            extractor = self.route_registry.get(framework_name)
+            if not extractor:
+                continue
+
+            # Create extraction context
+            # Note: root_path is approximated from dir_path
+            # In a real scenario, this would be passed from the caller
+            context = ExtractionContext(
+                root_path=dir_path,  # Temporary: use current dir as root
+                current_dir=dir_path,
+                parse_results=parse_results,
+            )
+
+            # Check if this extractor can handle this directory
+            if extractor.can_extract(context):
+                routes = extractor.extract_routes(context)
+                if routes:
+                    route_lines = self._format_route_table(routes, framework_name)
+                    lines.extend(route_lines)
+                break  # Only use first matching extractor
 
         # Subdirectories (brief, just references)
         if child_dirs:
@@ -410,6 +422,60 @@ class SmartWriter:
             lines.append("")
 
         return "\n".join(lines)
+
+    def _format_route_table(
+        self, routes: list[RouteInfo], framework: str = "thinkphp"
+    ) -> list[str]:
+        """
+        Format route information as Markdown table with line numbers.
+
+        Args:
+            routes: List of RouteInfo objects
+            framework: Framework name for title (e.g., "thinkphp", "laravel")
+
+        Returns:
+            List of markdown lines for the route table
+
+        Epic 6, P1: Line number support
+        """
+        if not routes:
+            return []
+
+        # Format framework name with proper casing
+        framework_display = {
+            "thinkphp": "ThinkPHP",
+            "laravel": "Laravel",
+            "django": "Django",
+            "fastapi": "FastAPI",
+        }.get(framework.lower(), framework.title())
+
+        lines = [
+            f"## Routes ({framework_display})",
+            "",
+            "| URL | Controller | Action | Location | Description |",
+            "|-----|------------|--------|----------|-------------|",
+        ]
+
+        # Display up to 30 routes
+        for route in routes[:30]:
+            # Use route.location property (handles file:line format)
+            location = f"`{route.location}`" if route.location else ""
+
+            # Get description (already truncated to 60 chars in extractor)
+            description = route.description if route.description else ""
+
+            lines.append(
+                f"| `{route.url}` | {route.controller} | "
+                f"{route.action} | {location} | {description} |"
+            )
+
+        # Show "more" indicator if there are additional routes
+        if len(routes) > 30:
+            remaining = len(routes) - 30
+            lines.append(f"| ... | _{remaining} more routes_ | | | |")
+
+        lines.extend(["", ""])
+        return lines
 
     def _group_files(self, results: list[ParseResult]) -> dict[str, list[ParseResult]]:
         """Group files by suffix pattern."""

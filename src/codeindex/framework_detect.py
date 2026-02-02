@@ -4,8 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-from .parser import ParseResult, Symbol
-
+from .parser import ParseResult
 
 FrameworkType = Literal["thinkphp", "laravel", "unknown"]
 
@@ -17,6 +16,23 @@ class RouteInfo:
     controller: str
     action: str
     method_signature: str = ""
+    line_number: int = 0           # Line number where method is defined
+    file_path: str = ""            # File path relative to project root
+    description: str = ""          # Method description (from docstring/comment)
+
+    @property
+    def location(self) -> str:
+        """
+        Format location as file:line for easy navigation.
+
+        Returns:
+            file:line if line_number > 0, otherwise just file path
+        """
+        if not self.file_path:
+            return ""
+        if self.line_number > 0:
+            return f"{self.file_path}:{self.line_number}"
+        return self.file_path
 
 
 @dataclass
@@ -125,12 +141,16 @@ def extract_thinkphp_routes(
             # Build route URL
             url = f"/{module_name.lower()}/{controller_name}/{method_name}"
 
-            routes.append(RouteInfo(
-                url=url,
-                controller=controller_class,
-                action=method_name,
-                method_signature=symbol.signature,
-            ))
+            routes.append(
+                RouteInfo(
+                    url=url,
+                    controller=controller_class,
+                    action=method_name,
+                    method_signature=symbol.signature,
+                    line_number=symbol.line_start,  # Epic 6, P1: Line number support
+                    file_path=result.path.name,  # File location
+                )
+            )
 
     return routes
 
@@ -158,7 +178,11 @@ def extract_thinkphp_models(
             # Check if it's a model class
             if not symbol.name.endswith("Model"):
                 # Also check if extends Model
-                if "extends Model" not in symbol.signature and "extends BaseModel" not in symbol.signature:
+                is_model_subclass = (
+                    "extends Model" in symbol.signature
+                    or "extends BaseModel" in symbol.signature
+                )
+                if not is_model_subclass:
                     continue
 
             # Extract model name

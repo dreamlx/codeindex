@@ -344,23 +344,76 @@ def _get_language(file_path: Path) -> str:
     return FILE_EXTENSIONS.get(suffix)
 
 def _extract_php_docstring(node, source_bytes: bytes) -> str:
-    """Extract docstring from PHPDoc/DocComment."""
+    """
+    Extract docstring from PHPDoc/DocComment.
+
+    For PHP, the comment is often a sibling node (previous sibling)
+    rather than a child node.
+    """
+    # First check children (for class-level comments)
     for child in node.children:
         if child.type == "comment":
             text = _get_node_text(child, source_bytes)
-            # Check if it's a DocComment (/** ... */)
             if text.startswith("/**"):
-                # Extract content between /** and */
-                lines = text.split("\n")
-                content = []
-                for line in lines[1:-1]:  # Skip first and last line
-                    line = line.strip()
-                    if line.startswith("*"):
-                        line = line[1:].strip()
-                    if line:
-                        content.append(line)
-                return " ".join(content)
+                return _parse_phpdoc_text(text)
+
+    # Check previous sibling (for method-level comments)
+    if node.prev_sibling and node.prev_sibling.type == "comment":
+        text = _get_node_text(node.prev_sibling, source_bytes)
+        if text.startswith("/**"):
+            return _parse_phpdoc_text(text)
+
     return ""
+
+
+def _parse_phpdoc_text(text: str) -> str:
+    """
+    Parse PHPDoc comment text and extract description.
+
+    Extracts the first non-annotation line(s) from PHPDoc.
+    Skips @param, @return, @throws, etc.
+
+    Args:
+        text: Raw PHPDoc comment text (/** ... */)
+
+    Returns:
+        Cleaned description text
+    """
+    # Handle single-line PHPDoc: /** Description */
+    if "\n" not in text:
+        # Remove /** and */
+        content = text.strip()
+        if content.startswith("/**"):
+            content = content[3:]
+        if content.endswith("*/"):
+            content = content[:-2]
+        content = content.strip()
+        # Skip if it's only annotations
+        if content.startswith("@"):
+            return ""
+        return content
+
+    # Handle multi-line PHPDoc
+    lines = text.split("\n")
+    description_lines = []
+
+    for line in lines[1:-1]:  # Skip first (/**) and last (*/) lines
+        line = line.strip()
+        # Remove leading * and whitespace
+        if line.startswith("*"):
+            line = line[1:].strip()
+
+        # Skip empty lines
+        if not line:
+            continue
+
+        # Skip annotation lines (@param, @return, etc.)
+        if line.startswith("@"):
+            break  # Stop at first annotation
+
+        description_lines.append(line)
+
+    return " ".join(description_lines)
 
 def _parse_php_function(node, source_bytes: bytes, class_name: str = "") -> Symbol:
     """Parse a PHP function definition node (standalone function, not method)."""

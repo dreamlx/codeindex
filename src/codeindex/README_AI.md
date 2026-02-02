@@ -752,3 +752,73 @@ _Markdown writer for README_AI.md files._
 - .tech_debt
 - .tech_debt_formatters
 _... and 29 more_
+
+
+**Commit `f71f84a`**: feat(epic6): add line_number and description fields to RouteInfo (P1, Task 1.1)
+
+Changed files:
+- `framework_detect.py`
+
+
+**Commit `a09851d`**: feat(epic6): ThinkPHP route extractor fills line numbers (P1, Task 1.2)
+
+Changed files:
+- `framework_detect.py`
+
+
+**Commit `16e9158`**: feat(epic6): add route table display formatting with line numbers
+
+Changed files:
+- `smart_writer.py`
+
+
+**Commit `6a8d3ae`**: feat(epic6): add RouteExtractor abstract base class
+
+Changed files:
+- `route_extractor.py`
+
+
+**Commit `7577104`**: feat(epic6): add RouteExtractorRegistry
+
+Changed files:
+- `route_registry.py`
+
+
+**Commit `5aa81e0`**: feat(epic6): integrate route registry into SmartWriter
+
+Changed files:
+- `smart_writer.py`
+
+
+**Commit `4331cb8`**: feat(epic6): enhance parser to extract PHP PHPDoc comments
+
+Changed files:
+- `parser.py`
+
+
+**Commit `05b5e0d`**: feat(epic6): add Description column to route table display
+
+Changed files:
+- `smart_writer.py`
+
+
+**Commit `5a36043`**: feat(epic6): add Git Hooks management CLI
+
+Changed files:
+- `adaptive_selector.py`
+- `cli.py`
+- `cli_hooks.py`
+- `directory_tree.py`
+- `hierarchical.py`
+- `scanner.py`
+- `symbol_index.py`
+
+---
+
+## Recent Changes
+
+**Commit `492f3f4`**: feat: add 'codeindex docs show-ai-guide' command
+
+Changed files:
+- `cli.py`
+- `cli_docs.py`

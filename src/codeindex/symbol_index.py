@@ -8,7 +8,6 @@ from pathlib import Path
 from .config import Config
 from .directory_tree import DirectoryTree
 from .parallel import parse_files_parallel
-from .parser import ParseResult, Symbol
 from .scanner import scan_directory
 
 
@@ -167,7 +166,11 @@ class GlobalSymbolIndex:
         groups = defaultdict(list)
 
         # Get grouping patterns from config
-        patterns = self.config.indexing.grouping.patterns if self.config.indexing.grouping.enabled else {}
+        patterns = (
+            self.config.indexing.grouping.patterns
+            if self.config.indexing.grouping.enabled
+            else {}
+        )
 
         for sym in self.symbols:
             if sym.kind != "class":
