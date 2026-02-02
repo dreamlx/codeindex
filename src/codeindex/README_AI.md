@@ -765,11 +765,17 @@ Changed files:
 Changed files:
 - `framework_detect.py`
 
----
-
-## Recent Changes
 
 **Commit `16e9158`**: feat(epic6): add route table display formatting with line numbers
 
 Changed files:
 - `smart_writer.py`
+
+---
+
+## Recent Changes
+
+**Commit `6a8d3ae`**: feat(epic6): add RouteExtractor abstract base class
+
+Changed files:
+- `route_extractor.py`
