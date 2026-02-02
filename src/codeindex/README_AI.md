@@ -746,11 +746,17 @@ Changed files:
 - `config.py`
 - `smart_writer.py`
 
----
-
-## Recent Changes
 
 **Commit `c9b1f75`**: feat(cli): enhance PROJECT_INDEX with semantic extraction (Story 4.4, Task 4.4.3)
 
 Changed files:
 - `cli_symbols.py`
+
+---
+
+## Recent Changes
+
+**Commit `51a21a4`**: refactor(story-4.4.5): implement KISS universal description generator
+
+Changed files:
+- `semantic_extractor.py`

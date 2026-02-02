@@ -305,11 +305,17 @@ Changed files:
 Changed files:
 - `test_project_index_semantic.py`
 
----
-
-## Recent Changes
 
 **Commit `49c53f5`**: test(story-4.4): add validation tests and report (Task 4.4.4)
 
 Changed files:
 - `test_story_4_4_integration.py`
+
+---
+
+## Recent Changes
+
+**Commit `51a21a4`**: refactor(story-4.4.5): implement KISS universal description generator
+
+Changed files:
+- `test_semantic_extractor.py`
