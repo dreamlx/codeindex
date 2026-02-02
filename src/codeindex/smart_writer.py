@@ -452,8 +452,8 @@ class SmartWriter:
         lines = [
             f"## Routes ({framework_display})",
             "",
-            "| URL | Controller | Action | Location |",
-            "|-----|------------|--------|----------|",
+            "| URL | Controller | Action | Location | Description |",
+            "|-----|------------|--------|----------|-------------|",
         ]
 
         # Display up to 30 routes
@@ -461,15 +461,18 @@ class SmartWriter:
             # Use route.location property (handles file:line format)
             location = f"`{route.location}`" if route.location else ""
 
+            # Get description (already truncated to 60 chars in extractor)
+            description = route.description if route.description else ""
+
             lines.append(
                 f"| `{route.url}` | {route.controller} | "
-                f"{route.action} | {location} |"
+                f"{route.action} | {location} | {description} |"
             )
 
         # Show "more" indicator if there are additional routes
         if len(routes) > 30:
             remaining = len(routes) - 30
-            lines.append(f"| ... | _{remaining} more routes_ | | |")
+            lines.append(f"| ... | _{remaining} more routes_ | | | |")
 
         lines.extend(["", ""])
         return lines
