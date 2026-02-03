@@ -38,19 +38,37 @@ class SmartWriter:
     - detailed: Leaf level, full symbol information
     """
 
-    def __init__(self, config: IndexingConfig):
-        self.config = config
-        self.max_size = config.max_readme_size
+    def __init__(self, config: IndexingConfig, docstring_processor=None):
+        """
+        Initialize SmartWriter.
+
+        Args:
+            config: Indexing configuration (can also accept full Config object)
+            docstring_processor: Optional DocstringProcessor for AI-powered
+                                 docstring extraction (Epic 9)
+        """
+        # Handle both IndexingConfig and full Config
+        if hasattr(config, 'indexing'):
+            # Full Config object passed - extract indexing config
+            self.config = config.indexing
+        else:
+            # IndexingConfig passed directly
+            self.config = config
+
+        self.max_size = self.config.max_readme_size
+
         # Initialize adaptive symbol selector
-        self.adaptive_selector = AdaptiveSymbolSelector(config.symbols.adaptive_symbols)
+        self.adaptive_selector = AdaptiveSymbolSelector(
+            self.config.symbols.adaptive_symbols
+        )
 
         # Initialize semantic extractor if enabled
-        if config.semantic.enabled:
+        if self.config.semantic.enabled:
             # Need ai_command from parent Config (will be passed separately)
             # For now, initialize with heuristic mode
             self.semantic_extractor = SemanticExtractor(
-                use_ai=config.semantic.use_ai,
-                ai_command=None if not config.semantic.use_ai else None  # Will be set later
+                use_ai=self.config.semantic.use_ai,
+                ai_command=None if not self.config.semantic.use_ai else None
             )
         else:
             self.semantic_extractor = None
@@ -61,6 +79,9 @@ class SmartWriter:
 
         self.route_registry = RouteExtractorRegistry()
         self.route_registry.register(ThinkPHPRouteExtractor())
+
+        # Initialize docstring processor (Epic 9)
+        self.docstring_processor = docstring_processor
 
     def write_readme(
         self,
@@ -317,6 +338,27 @@ class SmartWriter:
             for child in sorted(child_dirs):
                 lines.append(f"- [{child.name}/]({child.name}/README_AI.md)")
             lines.extend(["", ""])
+
+        # Process docstrings with AI if processor available (Epic 9)
+        if self.docstring_processor:
+            for result in parse_results:
+                if result.error or not result.symbols:
+                    continue
+
+                # Get AI-enhanced docstrings for this file
+                try:
+                    normalized = self.docstring_processor.process_file(
+                        result.path, result.symbols
+                    )
+
+                    # Update symbol docstrings with AI-enhanced descriptions
+                    for symbol in result.symbols:
+                        if symbol.name in normalized:
+                            symbol.docstring = normalized[symbol.name]
+                except Exception:
+                    # If AI processing fails, continue with raw docstrings
+                    # (backward compatible fallback)
+                    pass
 
         # Detailed file listing with symbols
         if parse_results:

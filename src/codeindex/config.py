@@ -319,6 +319,55 @@ class IncrementalConfig:
 
 
 @dataclass
+class DocstringConfig:
+    """Configuration for docstring extraction (Epic 9).
+
+    Supports AI-powered docstring extraction and normalization.
+
+    Modes:
+    - off: No docstring processing (default, backward compatible)
+    - hybrid: Simple extraction + selective AI (cost-effective, <$1 per 250 dirs)
+    - all-ai: AI processes everything (highest quality, higher cost)
+    """
+
+    mode: str = "off"  # off | hybrid | all-ai
+    ai_command: str = ""  # AI CLI command (defaults to global ai_command)
+    cost_limit: float = 1.0  # Maximum cost in USD
+
+    @classmethod
+    def from_dict(cls, data: dict, global_ai_command: str = "") -> "DocstringConfig":
+        """Create from config dict.
+
+        Args:
+            data: Docstrings config dict
+            global_ai_command: Global AI command to inherit if not specified
+
+        Returns:
+            DocstringConfig instance
+        """
+        if not data:
+            return cls()
+
+        mode = data.get("mode", "off")
+
+        # Validate mode
+        valid_modes = ("off", "hybrid", "all-ai")
+        if mode not in valid_modes:
+            raise ValueError(
+                f"Invalid docstring mode: {mode}. Must be one of {valid_modes}"
+            )
+
+        # Inherit global ai_command if not specified
+        ai_command = data.get("ai_command", "") or global_ai_command
+
+        return cls(
+            mode=mode,
+            ai_command=ai_command,
+            cost_limit=data.get("cost_limit", 1.0),
+        )
+
+
+@dataclass
 class Config:
     """Configuration for codeindex."""
 
@@ -331,6 +380,7 @@ class Config:
     incremental: IncrementalConfig = field(default_factory=IncrementalConfig)
     indexing: IndexingConfig = field(default_factory=IndexingConfig)
     ai_enhancement: AIEnhancementConfig = field(default_factory=AIEnhancementConfig)
+    docstrings: DocstringConfig = field(default_factory=DocstringConfig)  # Epic 9
     parallel_workers: int = DEFAULT_PARALLEL_WORKERS
     batch_size: int = DEFAULT_BATCH_SIZE
 
@@ -346,9 +396,12 @@ class Config:
         with open(path) as f:
             data = yaml.safe_load(f) or {}
 
+        # Parse global ai_command first (needed for docstrings inheritance)
+        ai_command = data.get("ai_command", DEFAULT_AI_COMMAND)
+
         return cls(
             version=data.get("version", 1),
-            ai_command=data.get("ai_command", DEFAULT_AI_COMMAND),
+            ai_command=ai_command,
             include=data.get("include", DEFAULT_INCLUDE.copy()),
             exclude=data.get("exclude", DEFAULT_EXCLUDE.copy()),
             languages=data.get("languages", DEFAULT_LANGUAGES.copy()),
@@ -356,9 +409,24 @@ class Config:
             incremental=IncrementalConfig.from_dict(data.get("incremental", {})),
             indexing=IndexingConfig.from_dict(data.get("indexing", {})),
             ai_enhancement=AIEnhancementConfig.from_dict(data.get("ai_enhancement", {})),
+            docstrings=DocstringConfig.from_dict(
+                data.get("docstrings", {}), global_ai_command=ai_command
+            ),
             parallel_workers=data.get("parallel_workers", DEFAULT_PARALLEL_WORKERS),
             batch_size=data.get("batch_size", DEFAULT_BATCH_SIZE),
         )
+
+    @classmethod
+    def from_yaml(cls, path: Path) -> "Config":
+        """Load config from YAML file (alias for load()).
+
+        Args:
+            path: Path to YAML config file
+
+        Returns:
+            Config instance
+        """
+        return cls.load(path)
 
     @staticmethod
     def create_default(path: Optional[Path] = None) -> Path:
