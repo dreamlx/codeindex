@@ -29,12 +29,29 @@ exclude:
   - "**/build/**"
   - "**/dist/**"
 
-# Supported languages (V1: python only)
+# Supported languages
 languages:
   - python
+  - php     # PHP support added in v0.3+
 
 # Output file name
 output_file: README_AI.md
+
+# Docstring extraction (Epic 9, v0.4+)
+# AI-powered docstring extraction and normalization for multi-language support
+docstrings:
+  # Mode: off | hybrid | all-ai
+  #   off:    No docstring processing (default, backward compatible)
+  #   hybrid: Simple extraction + selective AI (cost-effective, <$1 per 250 dirs)
+  #   all-ai: AI processes everything (highest quality, higher cost)
+  mode: hybrid
+
+  # AI CLI command (optional, inherits from global ai_command if not specified)
+  # ai_command: 'claude -p "{prompt}" --allowedTools "Read"'
+
+  # Cost limit in USD (default: 1.0)
+  # Prevents runaway costs during large scans
+  cost_limit: 1.0
 
 # Symbol extraction settings
 symbols:

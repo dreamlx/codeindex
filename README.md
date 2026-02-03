@@ -31,6 +31,11 @@ codeindex automatically generates intelligent documentation (`README_AI.md`) for
   - **Laravel**: (Coming soon) Explicit route definitions
   - **FastAPI**: (Coming soon) Decorator-based routes
   - **Django**: (Coming soon) URL patterns
+- 📝 **AI Docstring Extraction** (v0.4.0+, Epic 9): Multi-language documentation normalization
+  - **Hybrid mode**: Selective AI processing (<$1 per 250 directories)
+  - **All-AI mode**: Maximum quality for critical projects
+  - **Language support**: PHP (PHPDoc + inline comments), Python (coming soon)
+  - **Mixed language**: Normalize Chinese + English comments to clean English
 
 ---
 

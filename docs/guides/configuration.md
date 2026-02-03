@@ -111,6 +111,12 @@ ai_enhancement:
   max_concurrent: 2          # Max parallel AI calls
   rate_limit_delay: 1.0      # Seconds between AI calls
 
+# Docstring extraction (v0.4.0+, Epic 9)
+docstrings:
+  mode: "hybrid"             # "off" | "hybrid" | "all-ai"
+  ai_command: ""             # Optional, inherits from global if not specified
+  cost_limit: 1.0            # Maximum cost in USD
+
 # Incremental updates (v0.1.2+)
 incremental:
   enabled: true
@@ -180,10 +186,161 @@ exclude:
   - "**/migrations/**"
 ```
 
+## Docstring Extraction (v0.4.0+, Epic 9)
+
+AI-powered docstring extraction for multi-language projects with mixed documentation styles.
+
+### Why Use Docstring Extraction?
+
+**Problem**: Many projects have inconsistent or mixed-language documentation:
+- PHP projects with Chinese + English comments mixed in PHPDoc
+- Legacy code with minimal or cryptic comments
+- Inconsistent documentation standards across team members
+
+**Solution**: AI normalizes all docstrings into clear, consistent English descriptions.
+
+### Configuration
+
+```yaml
+docstrings:
+  # Mode: off | hybrid | all-ai
+  mode: hybrid
+
+  # AI CLI command (optional, inherits from global if not specified)
+  # ai_command: 'claude -p "{prompt}" --allowedTools "Read"'
+
+  # Cost limit in USD (prevents runaway costs)
+  cost_limit: 1.0
+```
+
+### Modes Explained
+
+#### `off` (Default)
+- **No AI processing** - Uses raw docstrings as-is
+- **Cost**: $0
+- **Best for**: Projects with consistent English documentation
+- **Backward compatible**: Default mode for all existing configs
+
+#### `hybrid` (Recommended)
+- **Selective AI** - Only processes complex or mixed-language docstrings
+- **Cost**: <$1 for typical 250-directory projects
+- **Decision logic**:
+  - Simple English one-liners → No AI (free)
+  - Structured docs (`@param`, `@return`) → AI processes
+  - Mixed language (Chinese + English) → AI processes
+  - Long/complex comments → AI processes
+- **Best for**: Most projects, cost-effective quality improvement
+
+#### `all-ai`
+- **AI processes everything** - Maximum quality and consistency
+- **Cost**: Higher (all docstrings processed)
+- **Best for**: Critical documentation or multilingual projects
+- **Use case**: High-value codebases needing professional docs
+
+### CLI Usage
+
+Override config mode via CLI:
+
+```bash
+# Use hybrid mode (overrides config)
+codeindex scan src/ --docstring-mode hybrid
+
+# Use all-ai mode with cost tracking
+codeindex scan-all --docstring-mode all-ai --show-cost
+
+# Disable docstring processing
+codeindex scan src/ --docstring-mode off
+
+# Show token usage and estimated cost
+codeindex scan-all --docstring-mode hybrid --show-cost
+```
+
+### Cost Estimation
+
+**Hybrid mode** (recommended):
+- Typical project: 250 directories, 1926 symbols
+- AI calls: ~100-200 symbols (only complex ones)
+- Tokens: ~50,000 tokens
+- Cost: ~$0.15 @ $3 per 1M tokens
+
+**All-AI mode**:
+- Same project: All 1926 symbols processed
+- Tokens: ~500,000 tokens
+- Cost: ~$1.50
+
+**Formula**: Cost ≈ (tokens / 1,000,000) × $3
+
+### Supported Languages
+
+- **PHP**: PHPDoc (`/** */`), inline comments (`//`)
+- **Python**: Docstrings, comments (coming soon)
+- **JavaScript/TypeScript**: JSDoc (planned)
+
+### Example Use Cases
+
+#### PHP Project with Mixed Language Comments
+
+**Before** (raw docstring):
+```php
+/**
+ * 获取用户列表 Get user list
+ * @param int $page 页码 Page number
+ * @param int $limit 每页数量 Items per page
+ * @return array 用户数据 User data
+ */
+function getUserList($page, $limit) { ... }
+```
+
+**After** (AI-normalized with `hybrid` mode):
+```
+Retrieves paginated user list with configurable page size
+```
+
+#### Legacy Code with Cryptic Comments
+
+**Before**:
+```php
+// get usr
+function getU($id) { ... }
+```
+
+**After** (AI-enhanced):
+```
+Retrieves user by ID from database
+```
+
+### Performance
+
+- **Batch processing**: 1 AI call per file (not per symbol)
+- **Parallel safe**: Works with `--parallel` option
+- **Smart caching**: AI results cached during scan session
+- **Graceful fallback**: If AI fails, uses raw docstrings
+
+### Tips
+
+1. **Start with `hybrid`**: Best cost/quality tradeoff
+2. **Use `--show-cost`**: Monitor token usage during development
+3. **Set `cost_limit`**: Prevents accidental overspending
+4. **Test first**: Run `scan` on single directory before `scan-all`
+
+### Integration with SmartWriter
+
+Docstring processing happens **before** README generation:
+1. Parse file → Extract raw docstrings
+2. Process with AI (if mode != "off") → Get normalized descriptions
+3. Generate README → Use normalized descriptions
+
+### Backward Compatibility
+
+- **Default mode**: `off` (no changes to existing behavior)
+- **No config changes required**: Existing configs work without modification
+- **Opt-in**: Only active when `mode` is set to `hybrid` or `all-ai`
+
 ## Language Configuration
 
 Currently supported:
 - `python` - Full support with tree-sitter
+- `php` - Full support with PHPDoc extraction (v0.4.0+)
 
 Coming soon:
 - `typescript` / `javascript`
