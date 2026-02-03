@@ -103,14 +103,6 @@ symbols:
                              #     * README_AI.md (directory symbols)
                              #     * Serena MCP find_symbol() (precise lookup)
 
-# AI Enhancement for scan-all (v0.3.0+)
-ai_enhancement:
-  strategy: "selective"      # "selective" | "all"
-  enabled: true
-  size_threshold: 40960      # >40KB triggers AI enhancement
-  max_concurrent: 2          # Max parallel AI calls
-  rate_limit_delay: 1.0      # Seconds between AI calls
-
 # Docstring extraction (v0.4.0+, Epic 9)
 docstrings:
   mode: "hybrid"             # "off" | "hybrid" | "all-ai"
@@ -425,13 +417,13 @@ Optional improvements available:
    - Better handling of large files (26% → 100% coverage)
    - Add `symbols.adaptive_symbols` section
 
-2. **AI Enhancement Control** (v0.3.0)
-   - Fine-tune AI usage and cost
-   - Add `ai_enhancement` section
-
-3. **Tech Debt Thresholds** (v0.3.0)
+2. **Tech Debt Thresholds** (v0.3.0)
    - Customize complexity detection
    - Add `tech_debt` section
+
+3. **Docstring Extraction** (v0.4.0)
+   - AI-powered multi-language documentation normalization
+   - Add `docstrings` section
 
 4. **Git Hooks** (v0.5.0-beta1)
    - Automated code quality checks
@@ -473,11 +465,6 @@ include:
 symbols:
   adaptive_symbols:
     enabled: true
-
-# + Add AI enhancement control (cost optimization)
-ai_enhancement:
-  strategy: "selective"
-  size_threshold: 40960
 
 # + Add tech debt thresholds (custom rules)
 tech_debt:

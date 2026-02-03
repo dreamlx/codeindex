@@ -25,7 +25,6 @@ codeindex automatically generates intelligent documentation (`README_AI.md`) for
 - 🔄 **Adaptive Symbols** (v0.2.0+): Dynamic symbol extraction (5-150 per file based on size)
 - 📈 **Technical Debt Analysis** (v0.3.0+): Detect code quality issues and complexity metrics
 - 🔍 **Symbol Indexing** (v0.1.2+): Global symbol search and project-wide navigation
-- 💬 **Multi-turn Dialogue** (v0.3.0+): Advanced AI processing for super large files (>5000 lines)
 - 🛣️ **Framework Route Extraction** (v0.5.0+): Auto-detect and extract routes from web frameworks
   - **ThinkPHP**: Convention-based routing with line numbers and PHPDoc descriptions
   - **Laravel**: (Coming soon) Explicit route definitions
@@ -98,16 +97,6 @@ languages:
 
 # Output filename
 output_file: "README_AI.md"
-
-# AI Enhancement Settings (NEW)
-ai_enhancement:
-  strategy: "selective"     # "selective" | "all"
-  enabled: true
-  size_threshold: 40960     # >40KB triggers AI enhancement
-
-  # Parallel processing settings
-  max_concurrent: 2         # Maximum parallel AI calls
-  rate_limit_delay: 1.0     # Seconds between AI calls
 ```
 
 **Other AI CLI examples:**
@@ -144,37 +133,21 @@ codeindex scan ./src/auth --fallback
 ### 4. Batch Processing
 
 ```bash
-# Two-phase processing with AI enhancement (NEW)
-codeindex scan-all                # Uses ai_enhancement strategy from config
-codeindex scan-all --ai-all       # Enhance ALL directories with AI
-codeindex scan-all --no-ai        # Use SmartWriter only (no AI)
+# Scan all directories (generates SmartWriter READMEs)
+codeindex scan-all
 
-# Traditional batch processing
+# Traditional batch processing (for AI-enhanced docs)
 codeindex list-dirs | xargs -P 4 -I {} codeindex scan {}
 codeindex list-dirs | parallel -j 4 codeindex scan {}
 ```
 
-#### AI Enhancement Strategies
-
-| Command | Behavior | Use Case |
-|---------|----------|----------|
-| `scan-all` | Uses config `ai_enhancement.strategy` | Smart and efficient |
-| `scan-all --ai-all` | Enhances ALL directories with AI | Best quality, more time |
-| `scan-all --no-ai` | SmartWriter only | Fast, no AI costs |
-
-**Example output with AI enhancement:**
+**Example output:**
 ```
-📝 Phase 1: Generating READMEs (SmartWriter)...
+📝 Generating READMEs (SmartWriter)...
 ✓ Application ( 50KB)
 ✓ Admin ( 20KB)
 ✓ api ( 15KB)
-→ Phase 1 complete: 3 directories
-
-🤖 Phase 2: AI Enhancement...
-→ Checklist: 3 directories (1 overview, 2 oversize)
-✓ Application: AI enhanced (50KB → 22KB)
-✓ api: AI enhanced (15KB → 7KB)
-→ Completed: 3 directories, 2 AI enhanced
+→ Completed: 3/3 directories
 ```
 
 ### 5. Check Status
@@ -520,16 +493,6 @@ symbols:
       xlarge: 80
       huge: 120
       mega: 150
-
-# AI Enhancement (NEW - for scan-all command)
-ai_enhancement:
-  strategy: "selective"      # "selective" | "all"
-  enabled: true
-  size_threshold: 40960      # >40KB triggers AI
-
-  # Rate limiting and concurrency
-  max_concurrent: 2          # Max parallel AI calls
-  rate_limit_delay: 1.0      # Delay between calls
 
 # Incremental updates
 incremental:
