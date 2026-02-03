@@ -437,13 +437,22 @@ src/codeindex/
 
 ## 📖 Documentation
 
+### User Guides
 - **[Getting Started](docs/guides/getting-started.md)** - Detailed installation and setup
 - **[Configuration Guide](docs/guides/configuration.md)** - All config options explained
+- **[Configuration Changelog](docs/guides/configuration-changelog.md)** - Version-by-version config changes
 - **[Advanced Usage](docs/guides/advanced-usage.md)** - Parallel scanning, custom prompts
+- **[Git Hooks Integration](docs/guides/git-hooks-integration.md)** - Automated code quality checks
+
+### Developer Guides
 - **[Contributing](docs/guides/contributing.md)** - Development setup and guidelines
-- **[Roadmap](docs/planning/roadmap/2025-Q1.md)** - Future plans and milestones
+- **[Requirements Workflow](docs/development/requirements-workflow.md)** - Planning, issues, and development process
+- **[CLAUDE.md](CLAUDE.md)** - Quick reference for AI Code and developers
 - **[Architecture](docs/architecture/)** - Design decisions and ADRs
-- **[Changelog](CHANGELOG.md)** - Version history
+
+### Planning
+- **[Strategic Roadmap](docs/planning/ROADMAP.md)** - Long-term vision and priorities
+- **[Changelog](CHANGELOG.md)** - Version history and breaking changes
 
 ---
 

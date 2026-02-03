@@ -91,6 +91,18 @@ symbols:
       huge: 120
       mega: 150
 
+  # Global symbol index (v0.5.0+)
+  project_symbols:
+    enabled: false           # Disable PROJECT_SYMBOLS.md generation
+                             # RECOMMENDED for large projects (>100 files)
+                             # Reasons:
+                             #   - Can become very large (>400KB for 250+ dirs)
+                             #   - Limited value for AI-assisted development
+                             #   - Better alternatives exist:
+                             #     * PROJECT_INDEX.md (module navigation)
+                             #     * README_AI.md (directory symbols)
+                             #     * Serena MCP find_symbol() (precise lookup)
+
 # AI Enhancement for scan-all (v0.3.0+)
 ai_enhancement:
   strategy: "selective"      # "selective" | "all"

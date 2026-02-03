@@ -1,0 +1,74 @@
+# codeindex configuration example
+version: 1
+
+# AI CLI command template
+# {prompt} will be replaced with the actual prompt
+#
+# Examples for different AI CLIs:
+#   claude -p "{prompt}" --allowedTools "Read"
+#   opencode run "{prompt}"
+#   gemini "{prompt}"
+#   ollama run llama3 "{prompt}"
+
+ai_command: 'claude -p "{prompt}" --allowedTools "Read"'
+
+# Directories to scan (relative to project root)
+include:
+  - src/
+  - lib/
+  - tests/      # Include tests for better understanding
+  - examples/   # Include examples for usage reference
+
+# Patterns to exclude
+exclude:
+  - "**/__pycache__/**"
+  - "**/node_modules/**"
+  - "**/.git/**"
+  - "**/venv/**"
+  - "**/.venv/**"
+  - "**/build/**"
+  - "**/dist/**"
+
+# Supported languages (V1: python only)
+languages:
+  - python
+
+# Output file name
+output_file: README_AI.md
+
+# Symbol extraction settings
+symbols:
+  # Adaptive symbol extraction (v0.2.0+)
+  # Dynamically adjusts symbol limits based on file size
+  adaptive_symbols:
+    enabled: true           # Enable dynamic symbol limits
+    min_symbols: 5          # Minimum for tiny files (<100 lines)
+    max_symbols: 150        # Maximum for huge files (>8000 lines)
+    thresholds:             # File size thresholds (lines)
+      tiny: 100             # <100 lines → 5 symbols
+      small: 500            # 100-500 lines → 15 symbols
+      medium: 1500          # 500-1500 lines → 30 symbols
+      large: 3000           # 1500-3000 lines → 50 symbols
+      xlarge: 5000          # 3000-5000 lines → 80 symbols
+      huge: 8000            # 5000-8000 lines → 120 symbols
+      mega: null            # >8000 lines → 150 symbols
+    limits:                 # Symbol limits per category
+      tiny: 5
+      small: 15
+      medium: 30
+      large: 50
+      xlarge: 80
+      huge: 120
+      mega: 150
+
+  # Global symbol index (PROJECT_SYMBOLS.md)
+  # RECOMMENDATION: Disable for large projects (>100 files)
+  # Reasons:
+  #   - Can become very large (>400KB for 250+ directories)
+  #   - Limited value for AI-assisted development
+  #   - Better alternatives exist:
+  #     * PROJECT_INDEX.md provides module navigation (26KB typical)
+  #     * Each README_AI.md contains directory-specific symbols
+  #     * Serena MCP's find_symbol() for precise symbol lookup
+  project_symbols:
+    enabled: false          # Disable PROJECT_SYMBOLS.md generation
