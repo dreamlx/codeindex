@@ -701,10 +701,15 @@ Changed files:
 Changed files:
 - `test_php_docstring_extraction.py`
 
+
+**Commit `7f8d78d`**: feat: complete SmartWriter integration with DocstringProcessor (Story 9.3)
+
+Changed files:
+
 ---
 
 ## Recent Changes
 
-**Commit `7f8d78d`**: feat: complete SmartWriter integration with DocstringProcessor (Story 9.3)
+**Commit `421e902`**: feat: add CLI options for docstring extraction (Story 9.3 complete)
 
 Changed files:
