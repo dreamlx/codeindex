@@ -46,7 +46,46 @@
 
 ## 🗓️ Version Roadmap
 
-### v0.6.0 - Java Language Support (Target: 2026-03-15)
+### v0.6.0 - AI-Powered Docstring Extraction (Target: 2026-02-15)
+
+**Theme**: Universal documentation comment understanding with AI
+
+**Epic**: Epic 9 - AI-Powered Docstring Extraction
+
+**Priority Change Rationale**:
+- 🔥 **User has real PHP project** (251 dirs, 1926 symbols) requiring immediate value
+- 🎯 **Fast validation** (1-2 weeks) of AI-powered architecture
+- 🏗️ **Foundation for Java** - Reusable AI processor for all languages
+- 💡 **KISS principle** - No complex parsers, AI handles everything
+
+**Key Features**:
+- 🔥 **Priority 1**: AI-powered docstring processor (hybrid + all-AI modes)
+- 🔥 **Priority 1**: PHP docstring extraction (PHPDoc, inline comments, mixed language)
+- ✅ **Priority 2**: Configuration & CLI options
+- ✅ **Priority 2**: Cost optimization (batch processing, selective AI)
+- ✅ **Priority 3**: Real PHP project validation
+
+**Success Criteria**:
+- [ ] Extract docstrings from 80%+ of PHP methods
+- [ ] AI cost <$1 per 250-directory scan (hybrid mode)
+- [ ] Quality: ⭐⭐ → ⭐⭐⭐⭐⭐ (README_AI.md descriptions)
+- [ ] Universal architecture reusable for Java/TypeScript/Go
+
+**Technical Approach**:
+- **NO traditional parsers** (PHPDocParser, JavaDocParser) - KISS principle
+- **AI understands all formats** naturally (structured, unstructured, mixed language)
+- **Batch processing** (1 AI call per file, not per comment)
+- **Hybrid mode** (simple extraction + selective AI for cost efficiency)
+
+**Documentation**:
+- User guide: Docstring extraction modes
+- Developer guide: Extending to other languages
+
+**See**: `docs/planning/epic9-docstring-extraction.md`
+
+---
+
+### v0.7.0 - Java Language Support (Target: 2026-03-31)
 
 **Theme**: Enterprise Java ecosystem support
 
@@ -55,15 +94,16 @@
 **Key Features**:
 - ✅ **Priority 1**: Java parser (tree-sitter-java)
 - ✅ **Priority 1**: Spring Framework route extraction
+- ✅ **Priority 1**: JavaDoc extraction (reuse Epic 9 AI processor)
 - ✅ **Priority 2**: Maven/Gradle project detection
 - ✅ **Priority 2**: Java symbol scoring (interface, abstract, etc.)
-- ✅ **Priority 3**: JavaDoc extraction and parsing
 
 **Success Criteria**:
 - [ ] Parse 95%+ valid Java code
 - [ ] Extract Spring @RestController routes with 100% accuracy
 - [ ] Handle large Java projects (>100k LOC) efficiently
 - [ ] Generate useful README_AI.md for Java modules
+- [ ] Reuse AI docstring processor from Epic 9 (zero extra work)
 
 **Technical Debt**:
 - Refactor parser abstraction for multi-language
@@ -77,39 +117,40 @@
 
 ---
 
-### v0.7.0 - Multi-Language Foundation (Target: 2026-04-30)
+### v0.8.0 - Multi-Language Foundation (Target: 2026-05-31)
 
 **Theme**: TypeScript, Go, Rust support
 
 **Key Features**:
-- TypeScript/JavaScript parser
-- Go parser (focus on standard library patterns)
-- Rust parser (crates, modules, traits)
+- TypeScript/JavaScript parser + JSDoc extraction (AI-powered)
+- Go parser + doc comment extraction (AI-powered)
+- Rust parser + doc comment extraction (AI-powered)
 - FastAPI route extraction (Python)
 - Django URL extraction (Python)
+- Laravel route extraction (PHP)
 
 **Success Criteria**:
-- [ ] 4 languages fully supported (Python, Java, TypeScript, Go)
-- [ ] Consistent quality across all languages
+- [ ] 5 languages fully supported (Python, PHP, Java, TypeScript, Go)
+- [ ] Consistent AI-powered docstring extraction across all languages
 - [ ] Language-agnostic symbol importance scoring
 
 **See**: Planning TBD
 
 ---
 
-### v0.8.0 - Advanced Framework Intelligence (Target: 2026-06-15)
+### v0.9.0 - Advanced Framework Intelligence (Target: 2026-07-31)
 
 **Theme**: Framework-aware code understanding
 
 **Key Features**:
-- Laravel route extraction (PHP)
 - Express.js route extraction (TypeScript)
 - Spring Boot @Service, @Repository mapping
 - Business logic pattern recognition
 - API endpoint dependency graph
+- Cross-framework API comparison
 
 **Success Criteria**:
-- [ ] 6+ frameworks supported
+- [ ] 8+ frameworks supported
 - [ ] Business context extraction (auth, payment, orders)
 - [ ] API documentation auto-generation
 

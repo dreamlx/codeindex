@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planning
+- **Epic 9: AI-Powered Docstring Extraction** (v0.6.0)
+  - Created comprehensive Epic planning document (docs/planning/epic9-docstring-extraction.md)
+  - 5 user stories with acceptance criteria and technical design
+  - Implementation timeline (2 weeks: 2026-02-03 to 2026-02-15)
+  - Cost analysis: <$1 per 250-directory scan (hybrid mode)
+  - Real PHP project validation plan (251 dirs, 1926 symbols)
+- **Strategic Roadmap Update**
+  - Moved PHP docstring extraction to v0.6.0 (was Java in original plan)
+  - Moved Java Language Support to v0.7.0 (will reuse Epic 9 AI processor)
+  - Priority change rationale: User has real PHP project for immediate validation
+  - Multi-language foundation planned for v0.8.0 (TypeScript, Go, Rust)
+
+### Documentation
+- **Requirements Workflow Guide** (580 lines)
+  - Extracted from CLAUDE.md to separate document
+  - Complete dual-track system (Planning Docs + GitHub Issues)
+  - 5-step workflow with detailed examples
+  - Issue templates (epic.md, feature.md, bug.md, enhancement.md)
+- **CLAUDE.md Optimization** (707 → 546 lines, -23%)
+  - Reduced Requirements section from 208 to 40 lines (-81%)
+  - Added link to detailed requirements-workflow.md
+  - Updated version to v0.5.0
+  - Improved readability as quick reference
+- **README.md Enhancement**
+  - Added documentation navigation section
+  - Categorized guides: User Guides, Developer Guides, Planning
+  - Added links to new documents
+
+### Configuration
+- **PROJECT_SYMBOLS.md Control** (v0.5.0+)
+  - Added `symbols.project_symbols.enabled: false` configuration
+  - Recommended for large projects (>100 files)
+  - Rationale: 419KB file (100K tokens) with limited value
+  - Better alternatives: PROJECT_INDEX.md + README_AI.md + Serena MCP find_symbol()
+  - Updated configuration.md, configuration-changelog.md, examples/.codeindex.yaml
+
 ## [0.5.0] - 2026-02-03
 
 ### Configuration Changes
