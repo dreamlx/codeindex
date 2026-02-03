@@ -103,7 +103,7 @@ symbols:
                              #     * README_AI.md (directory symbols)
                              #     * Serena MCP find_symbol() (precise lookup)
 
-# Docstring extraction (v0.4.0+, Epic 9)
+# Docstring extraction (v0.6.0+, Epic 9)
 docstrings:
   mode: "hybrid"             # "off" | "hybrid" | "all-ai"
   ai_command: ""             # Optional, inherits from global if not specified
@@ -178,7 +178,7 @@ exclude:
   - "**/migrations/**"
 ```
 
-## Docstring Extraction (v0.4.0+, Epic 9)
+## Docstring Extraction (v0.6.0+, Epic 9)
 
 AI-powered docstring extraction for multi-language projects with mixed documentation styles.
 
@@ -332,7 +332,7 @@ Docstring processing happens **before** README generation:
 
 Currently supported:
 - `python` - Full support with tree-sitter
-- `php` - Full support with PHPDoc extraction (v0.4.0+)
+- `php` - Full support with PHPDoc extraction (v0.6.0+)
 
 Coming soon:
 - `typescript` / `javascript`
@@ -399,13 +399,14 @@ grep "^version:" .codeindex.yaml
 
 | codeindex Version | Config Version | Compatible | Migration Needed? |
 |-------------------|----------------|------------|-------------------|
-| v0.5.0-beta1      | 1              | ✅ Yes     | No                |
+| v0.6.0            | 1              | ⚠️ Partial  | **Yes** - Remove `ai_enhancement` section |
+| v0.5.0            | 1              | ✅ Yes     | No                |
 | v0.4.0            | 1              | ✅ Yes     | No                |
 | v0.3.0-0.3.1      | 1              | ✅ Yes     | No                |
 | v0.2.0            | 1              | ✅ Yes     | No                |
 | v0.1.x            | 1              | ✅ Yes     | No                |
 
-**Bottom line**: All versions 100% backward compatible. No migration required.
+**Breaking Change in v0.6.0**: `ai_enhancement` configuration section removed. See `docs/guides/migration-v0.6.md` for migration guide.
 
 ### Upgrade Benefits by Version
 
@@ -421,7 +422,7 @@ Optional improvements available:
    - Customize complexity detection
    - Add `tech_debt` section
 
-3. **Docstring Extraction** (v0.4.0)
+3. **Docstring Extraction** (v0.6.0)
    - AI-powered multi-language documentation normalization
    - Add `docstrings` section
 

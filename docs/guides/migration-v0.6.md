@@ -1,8 +1,8 @@
-# Migration Guide: v0.3.x → v0.4.0
+# Migration Guide: v0.5.x → v0.6.0
 
 ## ⚠️ Breaking Change Overview
 
-**v0.4.0 completely removes the AI Enhancement feature** (multi-turn dialogue, Phase 2 processing). This is a **breaking change** that requires configuration updates.
+**v0.6.0 completely removes the AI Enhancement feature** (multi-turn dialogue, Phase 2 processing). This is a **breaking change** that requires configuration updates.
 
 ---
 
@@ -46,7 +46,7 @@ Based on real-world PHP project testing:
 | Feature | Status | Notes |
 |---------|--------|-------|
 | SmartWriter | ✅ Kept | Core structured README generation |
-| Docstring Extraction | ✅ Kept | Epic 9 (v0.4.0+) |
+| Docstring Extraction | ✅ Kept | Epic 9 (v0.6.0+) |
 | FileSizeClassifier | ✅ Kept | Used by tech_debt (hardcoded thresholds) |
 | All 415 tests | ✅ Pass | 3 skipped |
 
@@ -101,7 +101,7 @@ incremental:
 
 ### Step 2: Update Your Workflow
 
-**Before (v0.3.x):**
+**Before (v0.5.x):**
 
 ```bash
 # Two-phase processing
@@ -113,7 +113,7 @@ codeindex scan-all --no-ai        # SmartWriter only
 codeindex scan ./src --strategy multi_turn
 ```
 
-**After (v0.4.0):**
+**After (v0.6.0):**
 
 ```bash
 # SmartWriter only (fast, structured)
@@ -180,14 +180,14 @@ But there's **no special AI processing** for super large files anymore. Use:
 
 ### Q: I want the old behavior back. Can I downgrade?
 
-**A:** Yes, you can stay on v0.3.1:
+**A:** Yes, you can stay on v0.5.0:
 
 ```bash
-# Downgrade to v0.3.1 (last version with AI Enhancement)
+# Downgrade to v0.5.0 (last version with AI Enhancement)
 pip install codeindex==0.3.1
 ```
 
-However, we recommend trying v0.4.0:
+However, we recommend trying v0.6.0:
 - **Faster**: No Phase 2 processing overhead
 - **More information**: SmartWriter preserves routes, signatures, dependencies
 - **Simpler**: KISS principle applied
@@ -211,7 +211,7 @@ This is **different** from AI Enhancement:
 
 ## Comparison: Before vs After
 
-### Before (v0.3.x with AI Enhancement)
+### Before (v0.5.x with AI Enhancement)
 
 ```bash
 codeindex scan-all
@@ -229,7 +229,7 @@ codeindex scan-all
 ❌ Lost: Routes table, method signatures, dependencies
 ```
 
-### After (v0.4.0 without AI Enhancement)
+### After (v0.6.0 without AI Enhancement)
 
 ```bash
 codeindex scan-all
@@ -278,7 +278,7 @@ Include:
 
 ---
 
-## Benefits of v0.4.0
+## Benefits of v0.6.0
 
 1. **Information Preservation**: SmartWriter keeps all structured data
    - ✅ Routes tables (ThinkPHP, Laravel, FastAPI)
@@ -304,8 +304,8 @@ Include:
 - **Documentation**: `docs/guides/configuration.md`
 - **Examples**: `examples/.codeindex.yaml`
 - **Issues**: https://github.com/anthropics/codeindex/issues
-- **Changelog**: `CHANGELOG.md` (v0.4.0 section)
+- **Changelog**: `CHANGELOG.md` (v0.6.0 section)
 
 ---
 
-**Last Updated**: 2026-02-04 (v0.4.0 release)
+**Last Updated**: 2026-02-04 (v0.6.0 release)
