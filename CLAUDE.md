@@ -210,6 +210,216 @@ codeindex scan src/codeindex --fallback
 codeindex scan tests --fallback
 ```
 
+### Requirements & Planning Workflow
+
+**Dual-Track System**: GitHub Issues + Planning Documents
+
+#### Planning Documents (Long-term Vision)
+
+**Location**: `docs/planning/`
+
+**Structure**:
+```
+docs/planning/
+├── ROADMAP.md                    # Strategic roadmap (1-2 years)
+├── epic7-java-support.md         # Epic: Detailed design
+├── story-7.1-java-parser.md      # Story: Implementation plan
+└── v0.6.0-execution-plan.md      # Version: Release plan
+```
+
+**When to create**:
+- **ROADMAP.md**: Major feature planning, priority decisions
+- **Epic Plan**: Large feature (2+ weeks), architectural decisions
+- **Story Plan**: Complex story requiring detailed design
+- **Version Plan**: Release planning, feature bundling
+
+#### GitHub Issues (Execution & Collaboration)
+
+**When to create**:
+- Each Epic → GitHub Issue (Epic label)
+- Each Story → GitHub Issue (links to Epic)
+- Each Bug → GitHub Issue (bug label)
+- Each Task → Optional (if needs discussion)
+
+**Labels**:
+- `epic`: Major feature (Epic 7: Java Support)
+- `feature`: User-facing feature
+- `enhancement`: Improvement to existing feature
+- `bug`: Bug fix
+- `documentation`: Documentation only
+- `priority:high/medium/low`: Priority
+
+**Milestones**:
+- v0.6.0 - Java Support
+- v0.7.0 - Multi-language Support
+- v1.0.0 - Production Ready
+
+#### Complete Workflow
+
+**1. Strategic Planning** (Quarterly)
+```bash
+# Create/Update ROADMAP.md
+vim docs/planning/ROADMAP.md
+
+# Define next 2-3 versions
+# Set priorities based on user feedback
+```
+
+**2. Epic Design** (Before starting large feature)
+```bash
+# Create Epic plan
+vim docs/planning/epic7-java-support.md
+
+# Include:
+# - User stories
+# - Technical approach
+# - Dependencies
+# - Success criteria
+
+# Create GitHub Issue
+# Title: "Epic 7: Java Language Support"
+# Label: epic, priority:high
+# Link to: docs/planning/epic7-java-support.md
+```
+
+**3. Story Breakdown** (Sprint planning)
+```bash
+# For each story in Epic:
+# 1. Create GitHub Issue
+#    Title: "Story 7.1: Java Parser (tree-sitter)"
+#    Label: feature
+#    Milestone: v0.6.0
+#    Links to: Epic 7 issue
+
+# 2. Create detailed plan (if complex)
+vim docs/planning/story-7.1-java-parser.md
+```
+
+**4. Development** (Daily)
+```bash
+# Create feature branch
+git checkout -b feature/java-parser
+
+# TDD development
+# Commit with issue reference
+git commit -m "feat(parser): add Java parser
+
+Implements basic Java parsing with tree-sitter.
+
+Refs #123"
+
+# Create PR
+gh pr create --title "feat: Java parser support" \
+  --body "Closes #123"
+```
+
+**5. Completion**
+```bash
+# PR merged → Issue auto-closes
+# Update ROADMAP.md status
+# Document in CHANGELOG.md
+```
+
+#### Best Practices
+
+**Planning Documents**:
+- ✅ Version controlled (track evolution)
+- ✅ Include design decisions and rationale
+- ✅ Update status as work progresses
+- ✅ Link to GitHub Issues
+
+**GitHub Issues**:
+- ✅ Clear, actionable titles
+- ✅ Link to planning documents
+- ✅ Use issue templates (create them)
+- ✅ Reference in commits/PRs
+- ✅ Close when done (via PR merge)
+
+**Don't**:
+- ❌ Duplicate content (Issue vs Planning Doc)
+- ❌ Create issues for trivial tasks
+- ❌ Let issues go stale (close or update)
+- ❌ Forget to update ROADMAP.md
+
+#### Issue Templates
+
+Create `.github/ISSUE_TEMPLATE/`:
+
+**epic.md**:
+```markdown
+---
+name: Epic
+about: Major feature requiring multiple stories
+labels: epic
+---
+
+## Epic Overview
+[Brief description]
+
+## User Stories
+- [ ] Story 1: [description]
+- [ ] Story 2: [description]
+
+## Planning Document
+See: `docs/planning/epicN-name.md`
+
+## Success Criteria
+- [ ] Criterion 1
+- [ ] Criterion 2
+```
+
+**feature.md**:
+```markdown
+---
+name: Feature/Story
+about: User-facing feature or story
+labels: feature
+---
+
+## Description
+[What does this feature do?]
+
+## Epic
+Part of: #N (Epic issue)
+
+## Acceptance Criteria
+- [ ] Criterion 1
+- [ ] Criterion 2
+
+## Technical Notes
+[Implementation approach]
+```
+
+**Example: Java Support Workflow**
+
+```
+1. Strategic Decision (ROADMAP.md):
+   - Java support is top priority for v0.6.0
+   - Rationale: Large enterprise Java projects need indexing
+
+2. Epic Planning:
+   - Create docs/planning/epic7-java-support.md
+   - Design: Parser, Spring Routes, Maven detection
+   - Create GitHub Issue #1: "Epic 7: Java Language Support"
+
+3. Story Breakdown:
+   - Issue #2: "Story 7.1: Java Parser (tree-sitter)"
+   - Issue #3: "Story 7.2: Spring Framework Routes"
+   - Issue #4: "Story 7.3: Maven/Gradle Detection"
+   All linked to Epic #1, Milestone v0.6.0
+
+4. Development:
+   - Branch: feature/java-parser
+   - TDD: Write tests, implement
+   - Commit: "feat(parser): add Java parser\n\nRefs #2"
+   - PR: "feat: Java parser support\n\nCloses #2"
+
+5. Completion:
+   - PR merged → Issue #2 closes
+   - Update ROADMAP.md: Story 7.1 ✅
+   - Continue to Issue #3
+```
+
 ---
 
 ## 🏗️ Part 3: Architecture Reference
