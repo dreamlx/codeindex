@@ -222,12 +222,109 @@ Check if your config is valid:
 codeindex validate-config
 ```
 
-## Migration
+## Upgrading Your Configuration
+
+### Check Current Version
+
+```bash
+# Check codeindex version
+codeindex --version
+
+# Check config version
+grep "^version:" .codeindex.yaml
+```
+
+### Version Compatibility Matrix
+
+| codeindex Version | Config Version | Compatible | Migration Needed? |
+|-------------------|----------------|------------|-------------------|
+| v0.5.0-beta1      | 1              | ✅ Yes     | No                |
+| v0.4.0            | 1              | ✅ Yes     | No                |
+| v0.3.0-0.3.1      | 1              | ✅ Yes     | No                |
+| v0.2.0            | 1              | ✅ Yes     | No                |
+| v0.1.x            | 1              | ✅ Yes     | No                |
+
+**Bottom line**: All versions 100% backward compatible. No migration required.
+
+### Upgrade Benefits by Version
+
+#### From v0.1.x to v0.5.0-beta1
+
+Optional improvements available:
+
+1. **Adaptive Symbol Extraction** (v0.2.0)
+   - Better handling of large files (26% → 100% coverage)
+   - Add `symbols.adaptive_symbols` section
+
+2. **AI Enhancement Control** (v0.3.0)
+   - Fine-tune AI usage and cost
+   - Add `ai_enhancement` section
+
+3. **Tech Debt Thresholds** (v0.3.0)
+   - Customize complexity detection
+   - Add `tech_debt` section
+
+4. **Git Hooks** (v0.5.0-beta1)
+   - Automated code quality checks
+   - No config changes - use CLI: `codeindex hooks install --all`
+
+See: `docs/guides/configuration-changelog.md` for detailed upgrade paths
+
+### Quick Upgrade Workflow
+
+```bash
+# 1. Backup current config
+cp .codeindex.yaml .codeindex.yaml.backup
+
+# 2. Get latest example config
+cp examples/.codeindex.yaml .codeindex.yaml.new
+
+# 3. Compare and merge
+diff .codeindex.yaml .codeindex.yaml.new
+
+# 4. Test new config
+codeindex scan src/ --dry-run
+
+# 5. Apply
+mv .codeindex.yaml.new .codeindex.yaml
+```
+
+### Selective Feature Adoption
+
+**Add only what you need**:
+
+```yaml
+# Minimal config (v0.1.0 compatible)
+version: 1
+ai_command: 'claude -p "{prompt}"'
+include:
+  - src/
+
+# + Add adaptive symbols (recommended for large projects)
+symbols:
+  adaptive_symbols:
+    enabled: true
+
+# + Add AI enhancement control (cost optimization)
+ai_enhancement:
+  strategy: "selective"
+  size_threshold: 40960
+
+# + Add tech debt thresholds (custom rules)
+tech_debt:
+  file_size:
+    large_threshold: 3000
+```
+
+## Migration (Future)
+
+**Note**: Migration tools are planned for future breaking changes
 
 Upgrade old config format:
 
 ```bash
-codeindex migrate-config
+codeindex config upgrade    # Future: auto-upgrade
+codeindex config check      # Future: validate and suggest improvements
 ```
 
 ## Tips

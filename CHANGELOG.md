@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.0-beta1] - 2026-02-02
 
+### Configuration Changes
+✅ **No configuration file changes** - Git Hooks managed via CLI only
+
+See: `docs/guides/configuration-changelog.md` for detailed version-by-version changes
+
 ### Added - Epic 6, P3.1: Git Hooks Integration
 - **Git Hooks Management CLI** - Comprehensive hook management system
   - `codeindex hooks install` - Install hooks with automatic backup
@@ -103,6 +108,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.0] - 2026-01-27
 
+### Configuration Changes
+⚠️ **New optional configuration sections added**:
+- `ai_enhancement.strategy` - AI enhancement control
+- `tech_debt.*` - Technical debt thresholds
+- Multi-turn dialogue thresholds (auto-detected)
+
+**Migration**: Not required - all optional with sensible defaults
+See: `docs/guides/configuration-changelog.md#v030-2026-01-27`
+
 ### Added - Epic 4: Code Refactoring (Partial) 🔧
 - **AI Helper module** (`ai_helper.py`) for reusable enhancement functions
   - `aggregate_parse_results()` - Combines multiple ParseResult objects
@@ -162,6 +176,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI refactored with focused helper functions for better maintainability
 
 ### Added - Epic 2: Adaptive Symbol Extraction 🎉
+⚠️ **Configuration Impact**: New `symbols.adaptive_symbols` section (disabled by default)
+
 - **Adaptive symbol extraction** based on file size (5-150 symbols per file)
 - 7-tier file size classification system (tiny/small/medium/large/xlarge/huge/mega)
 - `AdaptiveSymbolsConfig` data structure for flexible configuration
