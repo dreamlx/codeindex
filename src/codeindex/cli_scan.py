@@ -14,6 +14,7 @@ import click
 from .cli_common import console
 from .config import Config
 from .directory_tree import DirectoryTree
+from .docstring_processor import DocstringProcessor
 from .invoker import (
     clean_ai_output,
     format_prompt,
@@ -38,6 +39,7 @@ def _process_directory_with_smartwriter(
     dir_path: Path,
     tree: DirectoryTree,
     config: Config,
+    docstring_processor=None,
 ) -> tuple[Path, bool, str, int]:
     """Process a single directory with SmartWriter.
 
@@ -45,6 +47,7 @@ def _process_directory_with_smartwriter(
         dir_path: Directory to process
         tree: DirectoryTree for level and child information
         config: Configuration
+        docstring_processor: Optional DocstringProcessor for AI docstring extraction
 
     Returns:
         Tuple of (path, success, status_message, size_bytes)
@@ -62,8 +65,8 @@ def _process_directory_with_smartwriter(
         if result.files:
             parse_results = parse_files_parallel(result.files, config, quiet=True)
 
-        # Use SmartWriter
-        writer = SmartWriter(config.indexing)
+        # Use SmartWriter with docstring processor
+        writer = SmartWriter(config.indexing, docstring_processor=docstring_processor)
         write_result = writer.write_readme(
             dir_path=dir_path,
             parse_results=parse_results,
@@ -194,6 +197,18 @@ def _enhance_directory_with_ai(
     help="AI enhancement strategy (auto=detect, standard=single prompt, "
     "multi_turn=3-round dialogue)",
 )
+@click.option(
+    "--docstring-mode",
+    type=click.Choice(["off", "hybrid", "all-ai"]),
+    default=None,
+    help="Docstring extraction mode (off=disabled, hybrid=selective AI, "
+    "all-ai=maximum quality). Overrides config value.",
+)
+@click.option(
+    "--show-cost",
+    is_flag=True,
+    help="Display AI token usage and estimated cost for docstring processing",
+)
 def scan(
     path: Path,
     dry_run: bool,
@@ -202,6 +217,8 @@ def scan(
     timeout: int,
     parallel: int | None,
     strategy: str,
+    docstring_mode: str | None,
+    show_cost: bool,
 ):
     """
     Scan a directory and generate README_AI.md.
@@ -216,6 +233,19 @@ def scan(
     # Override parallel workers if specified
     if parallel is not None:
         config.parallel_workers = parallel
+
+    # Determine docstring mode (CLI overrides config)
+    effective_docstring_mode = (
+        docstring_mode if docstring_mode is not None else config.docstrings.mode
+    )
+
+    # Create DocstringProcessor if needed
+    docstring_processor = None
+    if effective_docstring_mode != "off" and config.docstrings.ai_command:
+        docstring_processor = DocstringProcessor(
+            ai_command=config.docstrings.ai_command,
+            mode=effective_docstring_mode,
+        )
 
     if not quiet:
         console.print(f"[bold]Scanning:[/bold] {path}")
@@ -285,7 +315,7 @@ def scan(
         # (overview/navigation only make sense in hierarchical mode)
         level = "detailed"
 
-        writer = SmartWriter(config.indexing)
+        writer = SmartWriter(config.indexing, docstring_processor=docstring_processor)
         write_result = writer.write_readme(
             dir_path=path,
             parse_results=parse_results,
@@ -299,6 +329,15 @@ def scan(
             truncated_msg = " [truncated]" if write_result.truncated else ""
             msg = f"[green]✓ Created ({level}, {size_kb:.1f}KB{truncated_msg}):[/green]"
             console.print(f"{msg} {write_result.path}")
+
+            # Show cost information if requested
+            if show_cost and docstring_processor:
+                tokens = docstring_processor.total_tokens
+                estimated_cost = (tokens / 1_000_000) * 3.0  # Rough estimate: $3 per 1M tokens
+                console.print(
+                    f"  [dim]→ Docstring processing: {tokens} tokens "
+                    f"(~${estimated_cost:.4f})[/dim]"
+                )
         else:
             console.print(f"[red]✗ Error:[/red] {write_result.error}")
         return
@@ -366,6 +405,18 @@ def scan(
 )
 @click.option("--quiet", "-q", is_flag=True, help="Minimal output")
 @click.option("--hierarchical", "-h", is_flag=True, help="Use hierarchical processing (bottom-up)")
+@click.option(
+    "--docstring-mode",
+    type=click.Choice(["off", "hybrid", "all-ai"]),
+    default=None,
+    help="Docstring extraction mode (off=disabled, hybrid=selective AI, "
+    "all-ai=maximum quality). Overrides config value.",
+)
+@click.option(
+    "--show-cost",
+    is_flag=True,
+    help="Display AI token usage and estimated cost for docstring processing",
+)
 def scan_all(
     root: Path | None,
     parallel: int | None,
@@ -374,7 +425,9 @@ def scan_all(
     fallback: bool,
     ai_all: bool,
     quiet: bool,
-    hierarchical: bool
+    hierarchical: bool,
+    docstring_mode: str | None,
+    show_cost: bool,
 ):
     """Scan all project directories for README_AI.md generation.
 
@@ -395,6 +448,19 @@ def scan_all(
     # Override parallel workers if specified
     if parallel is not None:
         config.parallel_workers = parallel
+
+    # Determine docstring mode (CLI overrides config)
+    effective_docstring_mode = (
+        docstring_mode if docstring_mode is not None else config.docstrings.mode
+    )
+
+    # Create DocstringProcessor if needed
+    docstring_processor = None
+    if effective_docstring_mode != "off" and config.docstrings.ai_command:
+        docstring_processor = DocstringProcessor(
+            ai_command=config.docstrings.ai_command,
+            mode=effective_docstring_mode,
+        )
 
     # Use hierarchical processing if requested
     if hierarchical:
@@ -453,7 +519,9 @@ def scan_all(
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=config.parallel_workers) as executor:
         futures = {
-            executor.submit(_process_directory_with_smartwriter, d, tree, config): d
+            executor.submit(
+                _process_directory_with_smartwriter, d, tree, config, docstring_processor
+            ): d
             for d in dirs
         }
 
@@ -475,6 +543,15 @@ def scan_all(
     if not use_ai:
         if not quiet:
             console.print(f"\n[bold]Completed: {success_count}/{len(dirs)} directories[/bold]")
+
+            # Show cost information if requested
+            if show_cost and docstring_processor:
+                tokens = docstring_processor.total_tokens
+                estimated_cost = (tokens / 1_000_000) * 3.0
+                console.print(
+                    f"  [dim]→ Docstring processing: {tokens} tokens "
+                    f"(~${estimated_cost:.4f})[/dim]"
+                )
         return
 
     # Determine strategy
@@ -489,6 +566,15 @@ def scan_all(
         if not quiet:
             msg = f"Completed: {success_count}/{len(dirs)} directories (AI disabled)"
             console.print(f"\n[bold]{msg}[/bold]")
+
+            # Show cost information if requested
+            if show_cost and docstring_processor:
+                tokens = docstring_processor.total_tokens
+                estimated_cost = (tokens / 1_000_000) * 3.0
+                console.print(
+                    f"  [dim]→ Docstring processing: {tokens} tokens "
+                    f"(~${estimated_cost:.4f})[/dim]"
+                )
         return
 
     ai_checklist = []
@@ -518,6 +604,15 @@ def scan_all(
         if not quiet:
             msg = f"Completed: {success_count}/{len(dirs)} directories"
             console.print(f"\n[bold]{msg} (no AI enhancement needed)[/bold]")
+
+            # Show cost information if requested
+            if show_cost and docstring_processor:
+                tokens = docstring_processor.total_tokens
+                estimated_cost = (tokens / 1_000_000) * 3.0
+                console.print(
+                    f"  [dim]→ Docstring processing: {tokens} tokens "
+                    f"(~${estimated_cost:.4f})[/dim]"
+                )
         return
 
     # ========== Phase 2: AI Enhancement (parallel with rate limiting) ==========
@@ -585,3 +680,12 @@ def scan_all(
             f"{ai_success_count}/{len(ai_checklist)} AI enhanced"
         )
         console.print(f"\n[bold]{msg}[/bold]")
+
+        # Show cost information if requested
+        if show_cost and docstring_processor:
+            tokens = docstring_processor.total_tokens
+            estimated_cost = (tokens / 1_000_000) * 3.0  # Rough estimate: $3 per 1M tokens
+            console.print(
+                f"  [dim]→ Docstring processing: {tokens} tokens "
+                f"(~${estimated_cost:.4f})[/dim]"
+            )

@@ -346,9 +346,13 @@ class DocstringConfig:
             DocstringConfig instance
         """
         if not data:
-            return cls()
+            return cls(ai_command=global_ai_command)
 
         mode = data.get("mode", "off")
+
+        # Handle YAML parsing quirk: "off" is parsed as False
+        if mode is False:
+            mode = "off"
 
         # Validate mode
         valid_modes = ("off", "hybrid", "all-ai")
