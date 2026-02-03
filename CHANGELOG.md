@@ -7,12 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.0-beta1] - 2026-02-02
+## [0.5.0] - 2026-02-03
 
 ### Configuration Changes
 ✅ **No configuration file changes** - Git Hooks managed via CLI only
 
 See: `docs/guides/configuration-changelog.md` for detailed version-by-version changes
+
+### Documentation
+- **Configuration Upgrade Guide** (442 lines)
+  - Created `docs/guides/configuration-changelog.md`
+  - Version-by-version configuration changes (v0.1.0 → v0.5.0)
+  - Migration guides and best practices
+  - Backward compatibility matrix
+- **CLAUDE.md Refactoring** (1929 → 496 lines, -74%)
+  - Reorganized into 4 focused parts for better usability
+  - Removed verbose implementation tutorials
+  - Added quick reference section
+  - Improved documentation structure
+- **Enhanced Configuration Guide**
+  - Added "Upgrading Your Configuration" section
+  - Version compatibility matrix
+  - Selective feature adoption guide
 
 ### Added - Epic 6, P3.1: Git Hooks Integration
 - **Git Hooks Management CLI** - Comprehensive hook management system
@@ -273,7 +289,8 @@ See: `docs/guides/configuration-changelog.md#v030-2026-01-27`
 - Timeout and error handling
 - Development mode installation
 
-[Unreleased]: https://github.com/yourusername/codeindex/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/yourusername/codeindex/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/yourusername/codeindex/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/yourusername/codeindex/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/yourusername/codeindex/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/yourusername/codeindex/compare/v0.2.0...v0.3.0
