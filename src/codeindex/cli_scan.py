@@ -5,8 +5,6 @@ scans and bulk scanning of entire projects with parallel processing and AI enhan
 """
 
 import concurrent.futures
-import threading
-import time
 from pathlib import Path
 
 import click
@@ -87,99 +85,6 @@ def _process_directory_with_smartwriter(
         return dir_path, False, str(e), 0
 
 
-def _enhance_directory_with_ai(
-    dir_path: Path,
-    reason: str,
-    tree: DirectoryTree,
-    config: Config,
-    phase1_results: dict,
-    timeout: int,
-    semaphore: threading.Semaphore,
-    rate_lock: threading.Lock,
-    last_call_time: list[float],
-) -> tuple[Path, bool, str]:
-    """Enhance a single directory with AI (includes rate limiting).
-
-    Args:
-        dir_path: Directory to enhance
-        reason: Reason for enhancement (for logging)
-        tree: DirectoryTree for level information
-        config: Configuration
-        phase1_results: Results from Phase 1 (SmartWriter)
-        timeout: AI CLI timeout in seconds
-        semaphore: Semaphore for max concurrent control
-        rate_lock: Lock for rate limiting
-        last_call_time: List containing last call timestamp (mutable)
-
-    Returns:
-        Tuple of (path, success, message)
-    """
-    with semaphore:
-        # Rate limiting
-        with rate_lock:
-            elapsed = time.time() - last_call_time[0]
-            if elapsed < config.ai_enhancement.rate_limit_delay:
-                time.sleep(config.ai_enhancement.rate_limit_delay - elapsed)
-            last_call_time[0] = time.time()
-
-        try:
-            level = tree.get_level(dir_path)
-
-            # Re-scan directory (non-recursive for overview)
-            scan_recursive = level != "overview"
-            result = scan_directory(dir_path, config, recursive=scan_recursive)
-
-            # Parse files
-            parse_results = []
-            if result.files:
-                parse_results = parse_files_parallel(result.files, config, quiet=True)
-
-            # Try multi-turn enhancement for super large files (Epic 4 refactoring)
-            if parse_results:
-                from codeindex.ai_helper import execute_multi_turn_enhancement
-
-                success, write_result, message = execute_multi_turn_enhancement(
-                    dir_path=dir_path,
-                    parse_results=parse_results,
-                    config=config,
-                    timeout=timeout,
-                    strategy="auto",  # Auto-detect in scan-all
-                    quiet=True,  # scan-all handles its own output
-                )
-
-                if success:
-                    # Multi-turn succeeded
-                    new_size = write_result.path.stat().st_size
-                    old_size = phase1_results[dir_path][2]
-                    msg = f"{message} ({old_size / 1024:.0f}KB → {new_size / 1024:.0f}KB)"
-                    return dir_path, True, msg
-                # If multi-turn not applicable or failed, fall through to standard enhancement
-
-            # Format prompt
-            files_info = format_files_for_prompt(parse_results)
-            symbols_info = format_symbols_for_prompt(parse_results)
-            imports_info = format_imports_for_prompt(parse_results)
-            prompt = format_prompt(dir_path, files_info, symbols_info, imports_info)
-
-            # Invoke AI CLI
-            invoke_result = invoke_ai_cli(config.ai_command, prompt, timeout=timeout)
-
-            if invoke_result.success:
-                cleaned_output = clean_ai_output(invoke_result.output)
-                if validate_markdown_output(cleaned_output):
-                    write_result = write_readme(dir_path, cleaned_output, config.output_file)
-                    if write_result.success:
-                        new_size = write_result.path.stat().st_size
-                        old_size = phase1_results[dir_path][2]
-                        msg = f"AI enhanced ({old_size / 1024:.0f}KB → {new_size / 1024:.0f}KB)"
-                        return dir_path, True, msg
-
-            return dir_path, False, "AI failed, keeping SmartWriter version"
-
-        except Exception as e:
-            return dir_path, False, f"AI error: {str(e)[:50]}"
-
-
 # ========== CLI Commands ==========
 
 
@@ -190,13 +95,6 @@ def _enhance_directory_with_ai(
 @click.option("--quiet", "-q", is_flag=True, help="Minimal output")
 @click.option("--timeout", default=120, help="AI CLI timeout in seconds")
 @click.option("--parallel", "-p", type=int, help="Override parallel workers (from config)")
-@click.option(
-    "--strategy",
-    type=click.Choice(["auto", "standard", "multi_turn"]),
-    default="auto",
-    help="AI enhancement strategy (auto=detect, standard=single prompt, "
-    "multi_turn=3-round dialogue)",
-)
 @click.option(
     "--docstring-mode",
     type=click.Choice(["off", "hybrid", "all-ai"]),
@@ -216,7 +114,6 @@ def scan(
     quiet: bool,
     timeout: int,
     parallel: int | None,
-    strategy: str,
     docstring_mode: str | None,
     show_cost: bool,
 ):
@@ -270,34 +167,6 @@ def scan(
     total_symbols = sum(len(r.symbols) for r in parse_results)
     if not quiet:
         console.print(f"  [dim]→ Extracted {total_symbols} symbols[/dim]")
-
-    # Try multi-turn enhancement if not using fallback (Epic 4 refactoring)
-    if not fallback:
-        from codeindex.ai_helper import execute_multi_turn_enhancement
-
-        success, write_result, message = execute_multi_turn_enhancement(
-            dir_path=path,
-            parse_results=parse_results,
-            config=config,
-            timeout=timeout,
-            strategy=strategy,
-            quiet=quiet,
-        )
-
-        if success:
-            # Multi-turn succeeded
-            if not quiet:
-                console.print(f"[green]✓ {message}:[/green] {write_result.path}")
-            else:
-                print(write_result.path)
-            return
-        else:
-            # Multi-turn not applicable or failed, continue to standard enhancement
-            if "not applicable" not in message and not quiet:
-                # Only show error if it's a real failure (not just "not applicable")
-                console.print(f"[yellow]⚠ {message}[/yellow]")
-                console.print("  [dim]→ Falling back to standard enhancement...[/dim]")
-            # Continue to standard enhancement below
 
     # Format for prompt
     if not quiet:
@@ -398,11 +267,6 @@ def scan(
 @click.option("--timeout", default=120, help="Timeout per directory in seconds")
 @click.option("--no-ai", is_flag=True, help="Disable AI enhancement, use SmartWriter only")
 @click.option("--fallback", is_flag=True, help="Alias for --no-ai (deprecated)")
-@click.option(
-    "--ai-all",
-    is_flag=True,
-    help="Enhance ALL directories with AI (overrides config strategy)",
-)
 @click.option("--quiet", "-q", is_flag=True, help="Minimal output")
 @click.option("--hierarchical", "-h", is_flag=True, help="Use hierarchical processing (bottom-up)")
 @click.option(
@@ -423,7 +287,6 @@ def scan_all(
     timeout: int,
     no_ai: bool,
     fallback: bool,
-    ai_all: bool,
     quiet: bool,
     hierarchical: bool,
     docstring_mode: str | None,
@@ -431,14 +294,7 @@ def scan_all(
 ):
     """Scan all project directories for README_AI.md generation.
 
-    Two-phase processing:
-    1. SmartWriter generates all READMEs in parallel
-    2. AI enhances overview dirs + oversize files (parallel with rate limiting)
-
-    Strategy:
-    - Default: Use selective strategy from config
-    - --ai-all: Enhance ALL directories with AI
-    - --no-ai: Disable AI, use SmartWriter for all directories
+    Generates SmartWriter READMEs for all directories in parallel.
     """
     config = Config.load()
 
@@ -539,152 +395,15 @@ def scan_all(
     if not quiet:
         console.print(f"[dim]→ Phase 1 complete: {success_count}/{len(dirs)} directories[/dim]")
 
-    # ========== Collect AI Enhancement Checklist ==========
-    if not use_ai:
-        if not quiet:
-            console.print(f"\n[bold]Completed: {success_count}/{len(dirs)} directories[/bold]")
-
-            # Show cost information if requested
-            if show_cost and docstring_processor:
-                tokens = docstring_processor.total_tokens
-                estimated_cost = (tokens / 1_000_000) * 3.0
-                console.print(
-                    f"  [dim]→ Docstring processing: {tokens} tokens "
-                    f"(~${estimated_cost:.4f})[/dim]"
-                )
-        return
-
-    # Determine strategy
-    if ai_all:
-        strategy = "all"
-    elif config.ai_enhancement.enabled:
-        strategy = config.ai_enhancement.strategy
-    else:
-        strategy = "none"
-
-    if strategy == "none":
-        if not quiet:
-            msg = f"Completed: {success_count}/{len(dirs)} directories (AI disabled)"
-            console.print(f"\n[bold]{msg}[/bold]")
-
-            # Show cost information if requested
-            if show_cost and docstring_processor:
-                tokens = docstring_processor.total_tokens
-                estimated_cost = (tokens / 1_000_000) * 3.0
-                console.print(
-                    f"  [dim]→ Docstring processing: {tokens} tokens "
-                    f"(~${estimated_cost:.4f})[/dim]"
-                )
-        return
-
-    ai_checklist = []
-    threshold = config.ai_enhancement.size_threshold
-
-    for dir_path in dirs:
-        level = tree.get_level(dir_path)
-        success, msg, size_bytes = phase1_results.get(dir_path, (False, "", 0))
-
-        if not success:
-            continue
-
-        # Strategy: all
-        if strategy == "all":
-            ai_checklist.append((dir_path, f"[{level}]"))
-        # Strategy: selective
-        elif strategy == "selective":
-            # Condition 1: overview level (always enhance)
-            if level == "overview":
-                ai_checklist.append((dir_path, "overview"))
-            # Condition 2: oversize files
-            elif size_bytes > threshold:
-                reason = f"oversize ({size_bytes / 1024:.1f}KB > {threshold / 1024:.0f}KB)"
-                ai_checklist.append((dir_path, reason))
-
-    if not ai_checklist:
-        if not quiet:
-            msg = f"Completed: {success_count}/{len(dirs)} directories"
-            console.print(f"\n[bold]{msg} (no AI enhancement needed)[/bold]")
-
-            # Show cost information if requested
-            if show_cost and docstring_processor:
-                tokens = docstring_processor.total_tokens
-                estimated_cost = (tokens / 1_000_000) * 3.0
-                console.print(
-                    f"  [dim]→ Docstring processing: {tokens} tokens "
-                    f"(~${estimated_cost:.4f})[/dim]"
-                )
-        return
-
-    # ========== Phase 2: AI Enhancement (parallel with rate limiting) ==========
+    # Phase 1 complete - show summary
     if not quiet:
-        overview_count = sum(1 for _, reason in ai_checklist if reason == "overview")
-        oversize_count = sum(1 for _, reason in ai_checklist if reason.startswith("oversize"))
-        level_count = len(ai_checklist) - overview_count - oversize_count
-
-        if strategy == "all":
-            console.print("\n[bold]🤖 Phase 2: AI Enhancement (--ai-all)...[/bold]")
-            console.print(f"[dim]→ Enhancing ALL directories: {len(ai_checklist)} total[/dim]")
-        else:
-            console.print("\n[bold]🤖 Phase 2: AI Enhancement...[/bold]")
-            checklist_msg = (
-                f"→ Checklist: {len(ai_checklist)} directories "
-                f"({overview_count} overview, {oversize_count} oversize, {level_count} other)"
-            )
-            console.print(f"[dim]{checklist_msg}[/dim]")
-
-        rate_msg = (
-            f"→ Max concurrent: {config.ai_enhancement.max_concurrent}, "
-            f"delay: {config.ai_enhancement.rate_limit_delay}s"
-        )
-        console.print(f"[dim]{rate_msg}[/dim]")
-
-    # Rate limiting state
-    semaphore = threading.Semaphore(config.ai_enhancement.max_concurrent)
-    last_call_time = [0.0]
-    rate_lock = threading.Lock()
-
-    # Phase 2: Parallel AI enhancement with rate limiting
-    ai_success_count = 0
-
-    max_workers = config.ai_enhancement.max_concurrent
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {
-            executor.submit(
-                _enhance_directory_with_ai,
-                d,
-                r,
-                tree,
-                config,
-                phase1_results,
-                timeout,
-                semaphore,
-                rate_lock,
-                last_call_time,
-            ): (d, r)
-            for d, r in ai_checklist
-        }
-
-        for future in concurrent.futures.as_completed(futures):
-            dir_path, success, msg = future.result()
-            if success:
-                ai_success_count += 1
-                if not quiet:
-                    console.print(f"[green]✓[/green] {dir_path.name}: {msg}")
-            else:
-                if not quiet:
-                    console.print(f"[yellow]![/yellow] {dir_path.name}: {msg}")
-
-    if not quiet:
-        msg = (
-            f"Completed: {success_count}/{len(dirs)} directories, "
-            f"{ai_success_count}/{len(ai_checklist)} AI enhanced"
-        )
+        msg = f"Completed: {success_count}/{len(dirs)} directories"
         console.print(f"\n[bold]{msg}[/bold]")
 
         # Show cost information if requested
         if show_cost and docstring_processor:
             tokens = docstring_processor.total_tokens
-            estimated_cost = (tokens / 1_000_000) * 3.0  # Rough estimate: $3 per 1M tokens
+            estimated_cost = (tokens / 1_000_000) * 3.0
             console.print(
                 f"  [dim]→ Docstring processing: {tokens} tokens "
                 f"(~${estimated_cost:.4f})[/dim]"

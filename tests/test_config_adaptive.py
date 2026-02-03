@@ -6,7 +6,7 @@ from pathlib import Path
 import yaml
 
 from codeindex.adaptive_config import DEFAULT_ADAPTIVE_CONFIG, AdaptiveSymbolsConfig
-from codeindex.config import Config, IndexingConfig, SymbolsConfig
+from codeindex.config import Config, SymbolsConfig
 
 
 class TestSymbolsConfigAdaptive:
@@ -84,7 +84,8 @@ class TestConfigLoadingAdaptive:
 
             assert config.indexing.symbols.adaptive_symbols.enabled is True
             # 其他应该使用默认值
-            assert config.indexing.symbols.adaptive_symbols.thresholds == DEFAULT_ADAPTIVE_CONFIG.thresholds
+            expected_thresholds = DEFAULT_ADAPTIVE_CONFIG.thresholds
+            assert config.indexing.symbols.adaptive_symbols.thresholds == expected_thresholds
         finally:
             config_path.unlink()
 
@@ -186,7 +187,8 @@ class TestConfigLoadingAdaptive:
             assert config.indexing.symbols.adaptive_symbols.limits["large"] == 60
             assert config.indexing.symbols.adaptive_symbols.limits["xlarge"] == 100
             # 其他保持默认
-            assert config.indexing.symbols.adaptive_symbols.limits["small"] == DEFAULT_ADAPTIVE_CONFIG.limits["small"]
+            expected_small = DEFAULT_ADAPTIVE_CONFIG.limits["small"]
+            assert config.indexing.symbols.adaptive_symbols.limits["small"] == expected_small
         finally:
             config_path.unlink()
 
@@ -333,7 +335,9 @@ class TestBackwardCompatibility:
             config = Config.load(config_path)
 
             # 应该使用默认配置
-            assert config.indexing.symbols.adaptive_symbols.enabled == DEFAULT_ADAPTIVE_CONFIG.enabled
-            assert config.indexing.symbols.adaptive_symbols.thresholds == DEFAULT_ADAPTIVE_CONFIG.thresholds
+            expected_enabled = DEFAULT_ADAPTIVE_CONFIG.enabled
+            expected_thresholds = DEFAULT_ADAPTIVE_CONFIG.thresholds
+            assert config.indexing.symbols.adaptive_symbols.enabled == expected_enabled
+            assert config.indexing.symbols.adaptive_symbols.thresholds == expected_thresholds
         finally:
             config_path.unlink()
