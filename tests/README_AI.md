@@ -695,11 +695,16 @@ Changed files:
 Changed files:
 - `test_docstring_processor.py`
 
----
-
-## Recent Changes
 
 **Commit `f224a32`**: feat: add PHP docstring extraction (Story 9.2)
 
 Changed files:
 - `test_php_docstring_extraction.py`
+
+---
+
+## Recent Changes
+
+**Commit `7f8d78d`**: feat: complete SmartWriter integration with DocstringProcessor (Story 9.3)
+
+Changed files:
