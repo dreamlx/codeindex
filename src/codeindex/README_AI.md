@@ -832,12 +832,19 @@ Changed files:
 Changed files:
 - `parser.py`
 
----
-
-## Recent Changes
 
 **Commit `7f8d78d`**: feat: complete SmartWriter integration with DocstringProcessor (Story 9.3)
 
 Changed files:
 - `config.py`
 - `smart_writer.py`
+
+---
+
+## Recent Changes
+
+**Commit `421e902`**: feat: add CLI options for docstring extraction (Story 9.3 complete)
+
+Changed files:
+- `cli_scan.py`
+- `config.py`
