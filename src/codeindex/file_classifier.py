@@ -53,7 +53,7 @@ class FileSizeClassifier:
         >>> classifier = FileSizeClassifier(config)
         >>> analysis = classifier.classify(parse_result)
         >>> if analysis.category == FileSizeCategory.SUPER_LARGE:
-        ...     print(f"Super large file: {analysis.reason}")
+        ...     # Super large file detected
     """
 
     def __init__(self, config: Config):
@@ -63,8 +63,9 @@ class FileSizeClassifier:
             config: Configuration containing threshold values
         """
         self.config = config
-        self.super_large_lines = config.ai_enhancement.super_large_lines
-        self.super_large_symbols = config.ai_enhancement.super_large_symbols
+        # Super large thresholds for tech debt detection
+        self.super_large_lines = 5000
+        self.super_large_symbols = 100
 
     def classify(self, parse_result: ParseResult) -> FileSizeAnalysis:
         """Classify file size based on lines and symbol count.

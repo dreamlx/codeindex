@@ -7,6 +7,99 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-02-04
+
+### ⚠️ BREAKING CHANGES
+
+**AI Enhancement Feature Completely Removed**
+
+Based on real-world PHP project testing and KISS principle evaluation, the AI Enhancement feature (multi-turn dialogue, Phase 2) has been completely removed. This feature was found to:
+- **Replace** SmartWriter output instead of enhancing it
+- **Lose critical information**: Routes tables, complete method signatures, detailed dependencies
+- **Contradict** the "code indexing for AI programming" purpose
+
+**What's Removed:**
+- ❌ `ai_enhancement` configuration section
+- ❌ Multi-turn dialogue for super large files
+- ❌ Phase 2 AI Enhancement in `scan-all`
+- ❌ `--strategy` option in `scan` command
+- ❌ `--ai-all` option in `scan-all` command
+- ❌ `AIEnhancementConfig` class
+- ❌ `execute_multi_turn_enhancement()` function
+- ❌ `ai_enhancement.py` module (366 lines)
+
+**What's Kept:**
+- ✅ SmartWriter (fallback mode) - Core structured README generation
+- ✅ Docstring Extraction (Epic 9) - Multi-language documentation normalization
+- ✅ FileSizeClassifier - Used by tech_debt module (hardcoded thresholds: 5000 lines, 100 symbols)
+- ✅ All 415 tests pass
+
+**Migration Guide:**
+1. Remove `ai_enhancement:` section from `.codeindex.yaml`
+2. Use `codeindex scan-all` directly (no `--ai-all` needed)
+3. For AI-enhanced docs: Use `codeindex scan <dir>` to invoke AI per directory
+
+**Rationale:**
+- For Serena MCP users: Fallback mode provides more complete, faster, and information-rich output
+- KISS principle: Remove complexity that doesn't add value
+- Focus on core mission: Code indexing, not content generation
+
+### Added
+- **AI-Powered Docstring Extraction** (Epic 9)
+  - Multi-language documentation normalization (PHP + Python)
+  - Three modes: `off` (default), `hybrid` (selective AI), `all-ai` (maximum quality)
+  - Batch processing: 1 AI call per file (not per symbol)
+  - Cost estimation: ~$0.15 for 250 directories (hybrid mode)
+  - CLI options: `--docstring-mode`, `--show-cost`
+  - Comprehensive documentation (docs/guides/docstring-extraction.md)
+
+### Changed
+- `FileSizeClassifier` now uses hardcoded super_large thresholds (5000 lines, 100 symbols)
+- `scan-all` command simplified: Generates SmartWriter READMEs only
+- `tech_debt` module uses `classifier.super_large_lines` instead of config
+
+### Removed
+- All AI Enhancement functionality (see BREAKING CHANGES above)
+- 4 test files: multi_turn_dialogue_bdd, super_large_detection_bdd
+- Multi-turn related scenarios from BDD test files
+
+### Planning
+- **Epic 9: AI-Powered Docstring Extraction** (v0.6.0)
+  - Created comprehensive Epic planning document (docs/planning/epic9-docstring-extraction.md)
+  - 5 user stories with acceptance criteria and technical design
+  - Implementation timeline (2 weeks: 2026-02-03 to 2026-02-15)
+  - Cost analysis: <$1 per 250-directory scan (hybrid mode)
+  - Real PHP project validation plan (251 dirs, 1926 symbols)
+- **Strategic Roadmap Update**
+  - Moved PHP docstring extraction to v0.6.0 (was Java in original plan)
+  - Moved Java Language Support to v0.7.0 (will reuse Epic 9 AI processor)
+  - Priority change rationale: User has real PHP project for immediate validation
+  - Multi-language foundation planned for v0.8.0 (TypeScript, Go, Rust)
+
+### Documentation
+- **Requirements Workflow Guide** (580 lines)
+  - Extracted from CLAUDE.md to separate document
+  - Complete dual-track system (Planning Docs + GitHub Issues)
+  - 5-step workflow with detailed examples
+  - Issue templates (epic.md, feature.md, bug.md, enhancement.md)
+- **CLAUDE.md Optimization** (707 → 546 lines, -23%)
+  - Reduced Requirements section from 208 to 40 lines (-81%)
+  - Added link to detailed requirements-workflow.md
+  - Updated version to v0.5.0
+  - Improved readability as quick reference
+- **README.md Enhancement**
+  - Added documentation navigation section
+  - Categorized guides: User Guides, Developer Guides, Planning
+  - Added links to new documents
+
+### Configuration
+- **PROJECT_SYMBOLS.md Control** (v0.5.0+)
+  - Added `symbols.project_symbols.enabled: false` configuration
+  - Recommended for large projects (>100 files)
+  - Rationale: 419KB file (100K tokens) with limited value
+  - Better alternatives: PROJECT_INDEX.md + README_AI.md + Serena MCP find_symbol()
+  - Updated configuration.md, configuration-changelog.md, examples/.codeindex.yaml
+
 ## [0.5.0] - 2026-02-03
 
 ### Configuration Changes
@@ -289,7 +382,8 @@ See: `docs/guides/configuration-changelog.md#v030-2026-01-27`
 - Timeout and error handling
 - Development mode installation
 
-[Unreleased]: https://github.com/yourusername/codeindex/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/yourusername/codeindex/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/yourusername/codeindex/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/yourusername/codeindex/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/yourusername/codeindex/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/yourusername/codeindex/compare/v0.3.0...v0.3.1

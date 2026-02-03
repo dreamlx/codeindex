@@ -16,14 +16,46 @@
 
 ---
 
-## v0.5.0-beta1 (2026-02-02)
+## v0.5.0 (2026-02-03)
 
 ### Configuration Changes
 
-✅ **No configuration changes**
+⚠️ **New optional configuration added**
 
-- Git Hooks功能不需要配置文件变更
-- 所有 v0.2.0 及以上配置仍然兼容
+#### 1. PROJECT_SYMBOLS.md Generation Control
+
+**Added**:
+```yaml
+symbols:
+  # ... existing adaptive_symbols config ...
+
+  # NEW: Control PROJECT_SYMBOLS.md generation
+  project_symbols:
+    enabled: false           # Disable global symbol index generation
+```
+
+**Why this was added**:
+- PROJECT_SYMBOLS.md can become very large (>400KB for large projects)
+- Limited value for AI-assisted development in practice
+- Better alternatives exist:
+  - `PROJECT_INDEX.md` provides module navigation (typically 26KB)
+  - Each `README_AI.md` contains directory-specific symbols
+  - Serena MCP's `find_symbol()` for precise symbol lookup
+
+**Recommended setting**: `enabled: false` for projects with >100 files
+
+**Migration**:
+```yaml
+# No action required - defaults to generating PROJECT_SYMBOLS.md
+# To disable (recommended for large projects):
+symbols:
+  adaptive_symbols:
+    enabled: true           # Keep existing settings
+  project_symbols:
+    enabled: false          # NEW: Disable PROJECT_SYMBOLS.md
+```
+
+**Backward compatibility**: 100% compatible - defaults to enabled if not specified
 
 ### Git Hooks Usage
 

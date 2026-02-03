@@ -684,10 +684,40 @@ Changed files:
 
 Changed files:
 
----
-
-## Recent Changes
 
 **Commit `5a36043`**: feat(epic6): add Git Hooks management CLI
 
 Changed files:
+
+
+**Commit `6fdff28`**: feat: implement DocstringProcessor core (Story 9.1)
+
+Changed files:
+- `test_docstring_processor.py`
+
+
+**Commit `f224a32`**: feat: add PHP docstring extraction (Story 9.2)
+
+Changed files:
+- `test_php_docstring_extraction.py`
+
+
+**Commit `7f8d78d`**: feat: complete SmartWriter integration with DocstringProcessor (Story 9.3)
+
+Changed files:
+
+
+**Commit `421e902`**: feat: add CLI options for docstring extraction (Story 9.3 complete)
+
+Changed files:
+
+---
+
+## Recent Changes
+
+**Commit `8748c5b`**: refactor!: remove AI Enhancement feature (BREAKING CHANGE)
+
+Changed files:
+- `test_ai_helper.py`
+- `test_config_adaptive.py`
+- `test_file_classifier.py`

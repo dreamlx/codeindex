@@ -293,8 +293,8 @@ class TechDebtDetector:
         lines = parse_result.file_lines
 
         if analysis.category == FileSizeCategory.SUPER_LARGE:
-            # Use config thresholds instead of hard-coded constants
-            threshold = self.config.ai_enhancement.super_large_lines
+            # Use classifier thresholds
+            threshold = self.classifier.super_large_lines
             issues.append(
                 DebtIssue(
                     severity=DebtSeverity.CRITICAL,
