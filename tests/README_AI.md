@@ -706,10 +706,18 @@ Changed files:
 
 Changed files:
 
----
-
-## Recent Changes
 
 **Commit `421e902`**: feat: add CLI options for docstring extraction (Story 9.3 complete)
 
 Changed files:
+
+---
+
+## Recent Changes
+
+**Commit `8748c5b`**: refactor!: remove AI Enhancement feature (BREAKING CHANGE)
+
+Changed files:
+- `test_ai_helper.py`
+- `test_config_adaptive.py`
+- `test_file_classifier.py`
