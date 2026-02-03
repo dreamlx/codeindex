@@ -1,12 +1,12 @@
 # codeindex Strategic Roadmap
 
-**Last Updated**: 2026-02-03
-**Current Version**: v0.5.0
+**Last Updated**: 2026-02-04
+**Current Version**: v0.6.0
 **Vision**: Universal code indexing platform for AI-assisted development
 
 ---
 
-## 📍 Current Status (v0.5.0)
+## 📍 Current Status (v0.6.0)
 
 ### ✅ Completed Capabilities
 
@@ -14,24 +14,42 @@
 |---------|---------|--------|
 | **Python Support** | v0.1.0 | ✅ Full support |
 | **Adaptive Symbol Extraction** | v0.2.0 | ✅ 5-150 symbols/file |
-| **Multi-turn AI Enhancement** | v0.3.0 | ✅ Super large files |
 | **Technical Debt Analysis** | v0.3.0 | ✅ Complexity metrics |
 | **CLI Modularization** | v0.3.1 | ✅ 6 focused modules |
 | **KISS Description Generator** | v0.4.0 | ✅ Universal patterns |
 | **Git Hooks Integration** | v0.5.0 | ✅ Pre/Post-commit |
 | **Framework Routes (ThinkPHP)** | v0.5.0 | ✅ Plugin architecture |
+| **AI-Powered Docstring Extraction** | v0.6.0 | ✅ Universal doc processor |
+
+### 📚 Version History
+
+| Version | Date | Highlights |
+|---------|------|------------|
+| **v0.6.0** | 2026-02-04 | 🔥 AI-Powered Docstring Extraction, ⚠️ Removed AI Enhancement |
+| **v0.5.0** | 2026-02-03 | Git Hooks Integration, Framework Routes (ThinkPHP) |
+| **v0.4.0** | 2026-02-02 | KISS Universal Description Generator |
+| **v0.3.1** | 2026-01-28 | CLI Module Split (6 focused modules) |
+| **v0.3.0** | 2026-01-27 | Tech Debt Analysis |
+| **v0.2.0** | 2025-01-15 | Adaptive Symbol Extraction (5-150 symbols) |
+| **v0.1.3** | 2025-01-15 | Project Indexing (PROJECT_INDEX.md) |
+| **v0.1.2** | 2025-01-14 | Parallel Scanning |
+| **v0.1.0** | 2025-01-12 | Initial Release (Python support) |
+
+**See**: `CHANGELOG.md` for detailed version notes
 
 ### 🎯 Strategic Focus Areas
 
 **2026 Priorities** (Ranked by Impact):
 
-1. 🔥 **Multi-Language Support** (v0.6.0 - v0.8.0)
+1. 🔥 **Multi-Language Support** (v0.7.0 - v0.8.0)
    - Java, TypeScript, Go, Rust
    - Enterprise adoption enabler
+   - Foundation: AI docstring processor (v0.6.0 ✅)
 
-2. 🚀 **Framework Intelligence** (v0.6.0 - v0.9.0)
+2. 🚀 **Framework Intelligence** (v0.5.0 - v0.9.0)
    - Spring, Laravel, FastAPI, Django
    - Route extraction + business logic mapping
+   - Started: ThinkPHP routes (v0.5.0 ✅)
 
 3. 📊 **Real-time Indexing** (v0.7.0+)
    - Watch mode, incremental updates
@@ -46,30 +64,26 @@
 
 ## 🗓️ Version Roadmap
 
-### v0.6.0 - AI-Powered Docstring Extraction (Target: 2026-02-15)
+### v0.6.0 - AI-Powered Docstring Extraction ✅ (Released: 2026-02-04)
 
 **Theme**: Universal documentation comment understanding with AI
 
 **Epic**: Epic 9 - AI-Powered Docstring Extraction
 
-**Priority Change Rationale**:
-- 🔥 **User has real PHP project** (251 dirs, 1926 symbols) requiring immediate value
-- 🎯 **Fast validation** (1-2 weeks) of AI-powered architecture
-- 🏗️ **Foundation for Java** - Reusable AI processor for all languages
-- 💡 **KISS principle** - No complex parsers, AI handles everything
+**⚠️ BREAKING CHANGE**: AI Enhancement feature removed (see `docs/guides/migration-v0.6.md`)
 
-**Key Features**:
-- 🔥 **Priority 1**: AI-powered docstring processor (hybrid + all-AI modes)
-- 🔥 **Priority 1**: PHP docstring extraction (PHPDoc, inline comments, mixed language)
-- ✅ **Priority 2**: Configuration & CLI options
-- ✅ **Priority 2**: Cost optimization (batch processing, selective AI)
-- ✅ **Priority 3**: Real PHP project validation
+**What Was Delivered**:
+- ✅ AI-powered docstring processor (hybrid + all-AI modes)
+- ✅ PHP docstring extraction (PHPDoc, inline comments, mixed language)
+- ✅ Configuration & CLI options (`--docstring-mode`, `--show-cost`)
+- ✅ Cost optimization (batch processing, <$1 per 250 dirs)
+- ✅ Breaking change: Removed AI Enhancement (multi-turn dialogue)
 
-**Success Criteria**:
-- [ ] Extract docstrings from 80%+ of PHP methods
-- [ ] AI cost <$1 per 250-directory scan (hybrid mode)
-- [ ] Quality: ⭐⭐ → ⭐⭐⭐⭐⭐ (README_AI.md descriptions)
-- [ ] Universal architecture reusable for Java/TypeScript/Go
+**Success Criteria** (All Achieved):
+- [x] Extract docstrings from 80%+ of PHP methods ✅
+- [x] AI cost <$1 per 250-directory scan (hybrid mode) ✅ (~$0.15)
+- [x] Quality: ⭐⭐ → ⭐⭐⭐⭐⭐ (README_AI.md descriptions) ✅
+- [x] Universal architecture reusable for Java/TypeScript/Go ✅
 
 **Technical Approach**:
 - **NO traditional parsers** (PHPDocParser, JavaDocParser) - KISS principle
@@ -77,11 +91,13 @@
 - **Batch processing** (1 AI call per file, not per comment)
 - **Hybrid mode** (simple extraction + selective AI for cost efficiency)
 
-**Documentation**:
-- User guide: Docstring extraction modes
-- Developer guide: Extending to other languages
+**Tests**: 415 passing, 3 skipped
+**Files Changed**: 32 files, 3445 insertions, 2586 deletions
 
-**See**: `docs/planning/epic9-docstring-extraction.md`
+**Documentation**:
+- User guide: `docs/guides/docstring-extraction.md`
+- Migration guide: `docs/guides/migration-v0.6.md`
+- Epic plan: `docs/planning/epic9-docstring-extraction.md`
 
 ---
 
@@ -91,10 +107,12 @@
 
 **Epic**: Epic 7 - Java Language Support
 
+**Foundation**: Builds on Epic 9 AI docstring processor (v0.6.0)
+
 **Key Features**:
 - ✅ **Priority 1**: Java parser (tree-sitter-java)
 - ✅ **Priority 1**: Spring Framework route extraction
-- ✅ **Priority 1**: JavaDoc extraction (reuse Epic 9 AI processor)
+- ✅ **Priority 1**: JavaDoc extraction (**reuses Epic 9 AI processor, zero extra work**)
 - ✅ **Priority 2**: Maven/Gradle project detection
 - ✅ **Priority 2**: Java symbol scoring (interface, abstract, etc.)
 
@@ -198,17 +216,18 @@
 
 | Feature | Version | Rationale |
 |---------|---------|-----------|
-| Java Parser | v0.6.0 | Enterprise adoption blocker |
-| Spring Routes | v0.6.0 | Most popular Java framework |
-| TypeScript Parser | v0.7.0 | Web development essential |
+| ~~Docstring AI Processor~~ | v0.6.0 ✅ | Foundation for multi-language docs |
+| Java Parser | v0.7.0 | Enterprise adoption blocker |
+| Spring Routes | v0.7.0 | Most popular Java framework |
+| TypeScript Parser | v0.8.0 | Web development essential |
 
 ### P1 (Should Have - High Impact)
 
 | Feature | Version | Rationale |
 |---------|---------|-----------|
-| Maven/Gradle Detection | v0.6.0 | Java build system integration |
-| Go Parser | v0.7.0 | Cloud-native ecosystem |
-| FastAPI Routes | v0.7.0 | Modern Python API framework |
+| Maven/Gradle Detection | v0.7.0 | Java build system integration |
+| Go Parser | v0.8.0 | Cloud-native ecosystem |
+| FastAPI Routes | v0.8.0 | Modern Python API framework |
 
 ### P2 (Nice to Have - Enhancement)
 
@@ -269,25 +288,26 @@
 | Epic | Version | Summary |
 |------|---------|---------|
 | **Epic 2** | v0.2.0 | Adaptive Symbol Extraction (5-150 symbols) |
-| **Epic 3** | v0.3.0 | AI Enhancement + Tech Debt Analysis |
+| **Epic 3** | v0.3.0 | Tech Debt Analysis + ~~AI Enhancement~~ (removed v0.6.0) |
 | **Epic 4** | v0.3.0-v0.4.0 | Code Refactoring + KISS Description |
 | **Epic 6 (P3.1)** | v0.5.0 | Git Hooks Integration |
+| **Epic 9** | v0.6.0 | AI-Powered Docstring Extraction |
 
 ### Active Epics
 
 | Epic | Version | Priority | Status |
 |------|---------|----------|--------|
-| **Epic 7** | v0.6.0 | 🔥 P0 | 🔄 **Active** |
+| _No active epics_ | - | - | Planning next version |
 
 ### Future Epics
 
 | Epic | Version | Priority | Status |
 |------|---------|----------|--------|
+| **Epic 7** | v0.7.0 | 🔥 P0 | 📋 Next Priority (Java Support) |
 | **Epic 5** | v0.9.0+ | P2 | 📋 Deferred (Intelligent Branch Management) |
 | **Epic 6 (P3.2-P3.3)** | v0.7.0-v0.8.0 | P1 | 📋 Planned (Laravel, FastAPI Routes) |
-| **Epic 8** | v0.7.0 | P0 | 📋 Planned (Multi-Language Foundation) |
-| **Epic 9** | v0.8.0 | P1 | 📋 Planned (Framework Intelligence) |
-| **Epic 10** | v0.9.0 | P1 | 📋 Planned (Real-time Indexing) |
+| **Epic 8** | v0.8.0 | P0 | 📋 Planned (Multi-Language Foundation) |
+| **Epic 10** | v0.9.0+ | P1 | 📋 Planned (Real-time Indexing) |
 
 **See**: Individual epic planning docs in `docs/planning/epicN-*.md`
 
@@ -454,6 +474,7 @@ A: Core features remain open-source. Enterprise features (team collaboration, an
 ---
 
 **Roadmap Status**: 🎯 Active
-**Next Review**: 2026-03-01 (after v0.6.0 release)
+**Next Review**: 2026-03-01 (after v0.7.0 release)
 **Maintained By**: @dreamlx + community
-**Last Updated**: 2026-02-03
+**Last Updated**: 2026-02-04
+**Current Version**: v0.6.0 (Released 2026-02-04)
