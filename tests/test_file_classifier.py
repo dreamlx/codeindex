@@ -2,11 +2,8 @@
 
 from pathlib import Path
 
-import pytest
-
 from codeindex.config import Config
 from codeindex.parser import ParseResult, Symbol
-
 
 # ============================================================================
 # Tests for FileSizeClassifier
@@ -210,28 +207,6 @@ def test_is_large_convenience_method():
     assert classifier.is_large(pr_medium) is False
 
 
-def test_custom_thresholds():
-    """Test custom thresholds from config."""
-    from codeindex.file_classifier import FileSizeCategory, FileSizeClassifier
-
-    config = Config.load()
-    # Override thresholds
-    config.ai_enhancement.super_large_lines = 3000
-    config.ai_enhancement.super_large_symbols = 80
-
-    classifier = FileSizeClassifier(config)
-
-    # This file would be large with default thresholds, but super large with custom
-    parse_result = ParseResult(
-        path=Path("test.py"),
-        file_lines=3500,
-        symbols=[Symbol(f"func{i}", "function", "", "", i, i) for i in range(60)],
-    )
-
-    analysis = classifier.classify(parse_result)
-
-    assert analysis.category == FileSizeCategory.SUPER_LARGE
-    assert analysis.exceeds_line_threshold is True
 
 
 def test_edge_case_exactly_at_threshold():

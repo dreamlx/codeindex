@@ -396,13 +396,27 @@ src/codeindex/
 - Cross-language, cross-architecture support
 - -78 lines, more powerful
 
+### v0.6.0 (2026-02-04)
+- **BREAKING**: Removed AI Enhancement (multi-turn dialogue)
+- Added AI-Powered Docstring Extraction (Epic 9)
+- Simplified scan-all (SmartWriter only)
+- 415 tests passing
+
+### v0.5.0 (2026-02-03)
+- Git Hooks Integration
+- Configuration Upgrade Guide
+- 394 tests passing
+
+### v0.4.0 (2026-02-02)
+- KISS Universal Description Generator
+- PROJECT_INDEX quality improvements
+- 299 tests passing
+
 ### v0.3.1 (2026-01-28)
 - CLI module split (1062 → 31 lines in cli.py)
 - 6 focused modules
 
 ### v0.3.0 (2026-01-27)
-- AI Enhancement module
-- Multi-turn dialogue for super large files
 - Technical debt analysis
 - 283 tests passing
 

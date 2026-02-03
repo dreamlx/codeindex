@@ -226,12 +226,14 @@ def _extract_module_docstring(tree, source_bytes: bytes) -> str:
     return ""
 
 
-def parse_file(path: Path) -> ParseResult:
+def parse_file(path: Path, language: str | None = None) -> ParseResult:
     """
     Parse a source file (Python or PHP) and extract symbols and imports.
 
     Args:
         path: Path to the source file
+        language: Optional language override ("python" or "php").
+                  If None, language is detected from file extension.
 
     Returns:
         ParseResult containing symbols, imports, and docstrings
@@ -247,10 +249,17 @@ def parse_file(path: Path) -> ParseResult:
     )
 
     # Determine language
-    language = _get_language(path)
+    if language is None:
+        language = _get_language(path)
     if not language:
         return ParseResult(
             path=path, error=f"Unsupported file type: {path.suffix}", file_lines=file_lines
+        )
+
+    # Validate language
+    if language not in PARSERS:
+        return ParseResult(
+            path=path, error=f"Unsupported language: {language}", file_lines=file_lines
         )
 
     # Get appropriate parser
@@ -345,10 +354,14 @@ def _get_language(file_path: Path) -> str:
 
 def _extract_php_docstring(node, source_bytes: bytes) -> str:
     """
-    Extract docstring from PHPDoc/DocComment.
+    Extract docstring from PHPDoc/DocComment or inline comments.
 
     For PHP, the comment is often a sibling node (previous sibling)
     rather than a child node.
+
+    Supports:
+    - PHPDoc blocks: /** ... */
+    - Inline comments: // ...
     """
     # First check children (for class-level comments)
     for child in node.children:
@@ -356,12 +369,18 @@ def _extract_php_docstring(node, source_bytes: bytes) -> str:
             text = _get_node_text(child, source_bytes)
             if text.startswith("/**"):
                 return _parse_phpdoc_text(text)
+            elif text.startswith("//"):
+                # Inline comment: remove // and strip
+                return text[2:].strip()
 
     # Check previous sibling (for method-level comments)
     if node.prev_sibling and node.prev_sibling.type == "comment":
         text = _get_node_text(node.prev_sibling, source_bytes)
         if text.startswith("/**"):
             return _parse_phpdoc_text(text)
+        elif text.startswith("//"):
+            # Inline comment: remove // and strip
+            return text[2:].strip()
 
     return ""
 
