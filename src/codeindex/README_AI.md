@@ -820,11 +820,17 @@ Changed files:
 - `cli.py`
 - `cli_docs.py`
 
----
-
-## Recent Changes
 
 **Commit `6fdff28`**: feat: implement DocstringProcessor core (Story 9.1)
 
 Changed files:
 - `docstring_processor.py`
+
+---
+
+## Recent Changes
+
+**Commit `f224a32`**: feat: add PHP docstring extraction (Story 9.2)
+
+Changed files:
+- `parser.py`

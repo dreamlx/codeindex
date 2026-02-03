@@ -689,11 +689,17 @@ Changed files:
 
 Changed files:
 
----
-
-## Recent Changes
 
 **Commit `6fdff28`**: feat: implement DocstringProcessor core (Story 9.1)
 
 Changed files:
 - `test_docstring_processor.py`
+
+---
+
+## Recent Changes
+
+**Commit `f224a32`**: feat: add PHP docstring extraction (Story 9.2)
+
+Changed files:
+- `test_php_docstring_extraction.py`
