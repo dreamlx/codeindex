@@ -684,10 +684,16 @@ Changed files:
 
 Changed files:
 
----
-
-## Recent Changes
 
 **Commit `5a36043`**: feat(epic6): add Git Hooks management CLI
 
 Changed files:
+
+---
+
+## Recent Changes
+
+**Commit `6fdff28`**: feat: implement DocstringProcessor core (Story 9.1)
+
+Changed files:
+- `test_docstring_processor.py`

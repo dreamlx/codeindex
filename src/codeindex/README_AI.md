@@ -813,12 +813,18 @@ Changed files:
 - `scanner.py`
 - `symbol_index.py`
 
----
-
-## Recent Changes
 
 **Commit `492f3f4`**: feat: add 'codeindex docs show-ai-guide' command
 
 Changed files:
 - `cli.py`
 - `cli_docs.py`
+
+---
+
+## Recent Changes
+
+**Commit `6fdff28`**: feat: implement DocstringProcessor core (Story 9.1)
+
+Changed files:
+- `docstring_processor.py`
