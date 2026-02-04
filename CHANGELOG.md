@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **JSON Output Mode** (Epic: JSON Output Integration, Stories 1-5)
+  - `--output json` flag for machine-readable output in `scan` and `scan-all` commands
+  - Structured error handling with error codes (`DIRECTORY_NOT_FOUND`, `NO_CONFIG_FOUND`, etc.)
+  - ParseResult serialization with symbols, imports, and metadata
+  - Error objects with `code`, `message`, and `detail` fields
+  - Documentation updates for JSON integration (CLAUDE.md, README.md)
+  - Exit code 1 for command-level errors, 0 for partial success
+  - File-level error detection via tree-sitter's `has_error` attribute
+
+### Documentation
+- Added JSON output examples to Quick Start (CLAUDE.md)
+- Added "Generate Structured Data (JSON)" section to README.md with usage examples and error handling
+
 ## [0.6.0] - 2026-02-04
 
 ### ⚠️ BREAKING CHANGES

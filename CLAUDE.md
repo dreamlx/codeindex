@@ -107,6 +107,11 @@ codeindex symbols
 # Check indexing coverage
 codeindex status
 
+# 🔧 Generate JSON output (for tool integration, e.g., LoomGraph)
+codeindex scan-all --output json > parse_results.json
+codeindex scan ./src --output json                    # Single directory
+codeindex scan ./src --output json | jq .             # View formatted JSON
+
 # Git Hooks management
 codeindex hooks status
 codeindex hooks install --all
