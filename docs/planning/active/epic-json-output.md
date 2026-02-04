@@ -440,6 +440,140 @@ codeindex scan ./src --output json | jq '.summary'
 
 ---
 
+### Story 6: Git Hooks 性能优化
+
+**优先级**: P2（用户体验改进）
+
+**User Story**:
+```
+作为 codeindex 用户
+我希望 post-commit hook 不阻塞我的工作
+以便提交代码后可以立即继续开发
+```
+
+**背景**:
+
+当前 post-commit hook 的性能问题：
+- **同步执行**：每次提交都会阻塞用户，等待 AI 更新完成
+- **长时间等待**：3 个目录 × 30 秒/目录 = 90 秒阻塞
+- **用户体验差**：无法立即 push 或继续工作
+
+**Acceptance Criteria**:
+1. ⏳ 添加 `hooks.post_commit.mode` 配置选项
+2. ⏳ 实现 `async` 模式（后台异步执行，不阻塞）
+3. ⏳ 实现 `sync` 模式（同步执行，保持现有行为）
+4. ⏳ 实现 `prompt` 模式（只提醒，不自动执行）
+5. ⏳ 实现 `disabled` 模式（完全禁用）
+6. ⏳ 智能检测：≤2 个目录用 sync，>2 个目录用 async
+7. ⏳ 提供进度提示和日志文件路径
+8. ⏳ 更新文档说明各模式的使用场景
+
+**配置示例**:
+
+`.codeindex.yaml`:
+```yaml
+hooks:
+  post_commit:
+    mode: async  # disabled | async | sync | prompt
+    max_dirs_sync: 2  # 超过此数量自动切换到 async
+    log_file: ~/.codeindex/hooks/post-commit.log
+```
+
+**实现方案**:
+
+#### 1. Async 模式实现
+
+使用 `nohup` 后台执行：
+```bash
+# Hook 检测到需要更新
+if [ "$MODE" = "async" ] || [ "$DIR_COUNT" -gt "$MAX_DIRS_SYNC" ]; then
+    echo "⚠️  README_AI.md updates running in background"
+    echo "   Log: $LOG_FILE"
+    echo "   PID: $(cat $PID_FILE)"
+
+    # 后台执行
+    nohup bash -c "
+        # ... AI 更新逻辑 ...
+        git commit --no-verify -m 'docs: auto-update README_AI.md'
+    " > "$LOG_FILE" 2>&1 &
+
+    echo $! > "$PID_FILE"
+    exit 0  # 立即返回，不阻塞用户
+fi
+```
+
+#### 2. Prompt 模式实现
+
+只输出提示，不执行：
+```bash
+if [ "$MODE" = "prompt" ]; then
+    echo "⚠️  ${DIR_COUNT} directories need README_AI.md updates"
+    echo "   Run: codeindex affected --update"
+    exit 0
+fi
+```
+
+#### 3. 智能检测
+
+```bash
+# 默认行为：小项目同步，大项目异步
+if [ -z "$MODE" ]; then
+    if [ "$DIR_COUNT" -le 2 ]; then
+        MODE="sync"
+    else
+        MODE="async"
+    fi
+fi
+```
+
+**Hook 输出示例（async 模式）**:
+
+```bash
+📝 Post-commit: Analyzing changes...
+   Update level: full
+   Found 3 directory(ies) to check
+
+⚠️  README_AI.md updates running in background (async mode)
+   Log: ~/.codeindex/hooks/post-commit.log
+   PID: 12345
+
+   To check progress: tail -f ~/.codeindex/hooks/post-commit.log
+   To wait: wait 12345
+
+✓ Commit completed! You can continue working.
+```
+
+**技术细节**:
+
+1. **PID 文件管理**：`~/.codeindex/hooks/post-commit.pid`
+2. **日志文件**：`~/.codeindex/hooks/post-commit.log`（按日期滚动）
+3. **锁文件**：防止多个后台进程同时运行
+4. **错误处理**：后台进程失败时不影响用户
+
+**测试场景**:
+
+1. **小项目（≤2 目录）**：默认 sync，立即完成
+2. **中项目（3-5 目录）**：默认 async，后台运行
+3. **大项目（>5 目录）**：async + 进度提示
+4. **手动配置**：`.codeindex.yaml` 覆盖默认行为
+5. **并发提交**：锁文件防止冲突
+
+**风险与缓解**:
+
+| 风险 | 影响 | 缓解措施 |
+|------|------|----------|
+| 后台进程失败 | README 未更新 | 记录详细日志，提供手动修复命令 |
+| 多个后台进程 | 资源竞争 | 使用锁文件，只允许一个进程 |
+| 用户切换分支 | 后台提交到错误分支 | 记录原始分支，检查后再提交 |
+
+**预期收益**:
+
+- **用户体验**：提交后立即返回（< 1 秒）
+- **工作流畅度**：不影响 push、checkout 等操作
+- **灵活性**：用户可根据项目规模选择模式
+
+---
+
 ## 📋 实施计划
 
 ### Phase 1: 核心功能（4-6 小时）
@@ -562,13 +696,14 @@ loomgraph embed parse.json --output embeddings.json
 
 | Story | 状态 | 进度 | 预计完成 |
 |-------|------|------|----------|
-| Story 1: 序列化 | 📋 TODO | 0% | 2026-02-04 |
-| Story 2: scan 支持 | 📋 TODO | 0% | 2026-02-04 |
-| Story 3: scan-all 支持 | 📋 TODO | 0% | 2026-02-04 |
+| Story 1: 序列化 | ✅ DONE | 100% | 2026-02-04 |
+| Story 2: scan 支持 | ✅ DONE | 100% | 2026-02-04 |
+| Story 3: scan-all 支持 | ✅ DONE | 100% | 2026-02-04 |
 | Story 4: 错误处理 | 📋 TODO | 0% | 2026-02-04 |
 | Story 5: 文档更新 | 📋 TODO | 0% | 2026-02-05 |
+| Story 6: Git Hooks 优化 | 📋 TODO | 0% | 2026-02-05 |
 
-**总体进度**: 0/5 (0%)
+**总体进度**: 3/6 (50%)
 
 ---
 
