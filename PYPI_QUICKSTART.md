@@ -4,7 +4,7 @@
 
 ```bash
 # 完整自动化发布流程
-./scripts/release.sh 0.5.1
+./scripts/release.sh 0.7.0
 ```
 
 这个脚本会自动：
@@ -52,20 +52,20 @@ chmod 600 ~/.pypirc
 
 ```bash
 # 使用脚本（推荐）
-./scripts/bump_version.sh 0.5.1
+./scripts/bump_version.sh 0.7.0
 
 # 或手动编辑
-vim pyproject.toml           # version = "0.5.1"
-vim src/codeindex/__init__.py  # __version__ = "0.5.1"
-vim CHANGELOG.md             # ## [0.5.1] - 2026-02-04
+vim pyproject.toml           # version = "0.7.0"
+vim src/codeindex/__init__.py  # __version__ = "0.7.0"
+vim CHANGELOG.md             # ## [0.7.0] - 2026-02-04
 ```
 
 ### 3. 提交并打标签
 
 ```bash
 git add .
-git commit -m "chore: bump version to 0.5.1"
-git tag v0.5.1 -m "Release v0.5.1"
+git commit -m "chore: bump version to 0.7.0"
+git tag v0.7.0 -m "Release v0.7.0"
 ```
 
 ### 4. 构建和发布
@@ -86,7 +86,7 @@ twine upload --repository testpypi dist/*
 # 测试安装
 pip install --index-url https://test.pypi.org/simple/ \
             --extra-index-url https://pypi.org/simple/ \
-            ai-codeindex==0.5.1
+            ai-codeindex==0.7.0
 
 # 验证
 codeindex --version
@@ -118,7 +118,7 @@ git push origin master --tags
 3. **触发自动发布**
    ```bash
    # 创建并推送标签即可触发
-   git tag v0.5.1 -m "Release v0.5.1"
+   git tag v0.7.0 -m "Release v0.7.0"
    git push origin master --tags
    ```
 
@@ -134,8 +134,8 @@ git push origin master --tags
 
 | 变更类型 | 当前 | 新版本 | 说明 |
 |---------|------|--------|------|
-| Bug 修复 | 0.5.0 | 0.5.1 | PATCH +1 |
-| 新功能 | 0.5.1 | 0.6.0 | MINOR +1 |
+| Bug 修复 | 0.6.0 | 0.6.1 | PATCH +1 |
+| 新功能 | 0.6.1 | 0.7.0 | MINOR +1 |
 | 破坏性变更 | 0.6.0 | 1.0.0 | MAJOR +1 |
 
 ---
@@ -173,7 +173,7 @@ twine upload dist/*
 ```bash
 # PyPI 不允许覆盖已发布版本
 # 需要增加版本号
-./scripts/bump_version.sh 0.5.2
+./scripts/bump_version.sh 0.7.1
 python -m build
 twine upload dist/*
 ```
@@ -214,10 +214,10 @@ readme = "README.md"  # ← 确保是 .md 后缀
 
 ```bash
 # 版本管理
-./scripts/bump_version.sh 0.5.1
+./scripts/bump_version.sh 0.7.0
 
 # 完整发布
-./scripts/release.sh 0.5.1
+./scripts/release.sh 0.7.0
 
 # 手动构建
 python -m build
@@ -232,6 +232,6 @@ twine upload -r testpypi dist/*
 twine upload dist/*
 
 # GitHub Actions 发布
-git tag v0.5.1 -m "Release v0.5.1"
+git tag v0.7.0 -m "Release v0.7.0"
 git push origin master --tags
 ```

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Complete release automation script for codeindex
-# Usage: ./scripts/release.sh 0.5.1
+# Usage: ./scripts/release.sh 0.7.0
 
 set -e
 
@@ -16,7 +16,7 @@ NC='\033[0m'
 if [ -z "$VERSION" ]; then
     echo -e "${RED}❌ Error: Version number required${NC}"
     echo "Usage: $0 <version>"
-    echo "Example: $0 0.5.1"
+    echo "Example: $0 0.7.0"
     exit 1
 fi
 

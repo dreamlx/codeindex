@@ -114,7 +114,7 @@ python -m build
 
 # 2. 检查
 twine check dist/*
-# 输出: Checking dist/ai_codeindex-0.5.1-py3-none-any.whl: PASSED
+# 输出: Checking dist/ai_codeindex-0.7.0-py3-none-any.whl: PASSED
 
 # 3. 上传
 twine upload dist/*
@@ -125,11 +125,11 @@ twine upload dist/*
 
 ```bash
 # 标签使用版本号（不含包名）
-git tag v0.5.1 -m "Release v0.5.1"
+git tag v0.7.0 -m "Release v0.7.0"
 git push origin master --tags
 
 # GitHub Release 标题
-"Release v0.5.1: JSON Output + Hooks Config"
+"Release v0.7.0: JSON Output + Hooks Config"
 ```
 
 ## 🔧 配置文件

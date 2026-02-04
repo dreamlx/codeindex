@@ -575,7 +575,7 @@ incremental:
     current_only: 50
     suggest_full: 200
 
-# Git Hooks configuration (v0.5.1+, Story 6)
+# Git Hooks configuration (v0.7.0+, Story 6)
 hooks:
   post_commit:
     mode: auto            # auto | disabled | async | sync | prompt

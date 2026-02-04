@@ -2,7 +2,7 @@
 
 **项目**: codeindex
 **当前版本**: 0.6.0
-**下一版本**: 0.5.1 (JSON Output + Hooks Config)
+**下一版本**: 0.7.0 (JSON Output + Hooks Config)
 
 ---
 
@@ -100,13 +100,13 @@ codeindex/
 
 ```bash
 # pyproject.toml
-version = "0.5.1"
+version = "0.7.0"
 
 # src/codeindex/__init__.py (如果有)
-__version__ = "0.5.1"
+__version__ = "0.7.0"
 
 # CHANGELOG.md
-## [0.5.1] - 2026-02-04
+## [0.7.0] - 2026-02-04
 ```
 
 **1.2 更新 CHANGELOG**
@@ -114,7 +114,7 @@ __version__ = "0.5.1"
 将 `[Unreleased]` 的内容移到新版本下：
 
 ```markdown
-## [0.5.1] - 2026-02-04
+## [0.7.0] - 2026-02-04
 
 ### Added
 - JSON output mode (Stories 1-5)
@@ -134,17 +134,17 @@ __version__ = "0.5.1"
 
 ```bash
 git add pyproject.toml src/codeindex/__init__.py CHANGELOG.md
-git commit -m "chore: bump version to 0.5.1"
+git commit -m "chore: bump version to 0.7.0"
 ```
 
 ### Step 2: 创建 Git Tag
 
 ```bash
 # 创建标签
-git tag v0.5.1 -m "Release v0.5.1: JSON Output + Hooks Config"
+git tag v0.7.0 -m "Release v0.7.0: JSON Output + Hooks Config"
 
 # 查看标签
-git tag -l -n1 v0.5.1
+git tag -l -n1 v0.7.0
 
 # 推送到远程（包含标签）
 git push origin master --tags
@@ -162,8 +162,8 @@ python -m build
 # 验证生成的文件
 ls -lh dist/
 # 应该看到:
-#   ai_codeindex-0.5.1-py3-none-any.whl
-#   ai_codeindex-0.5.1.tar.gz
+#   ai_codeindex-0.7.0-py3-none-any.whl
+#   ai_codeindex-0.7.0.tar.gz
 ```
 
 ### Step 4: 测试发布 (TestPyPI)
@@ -177,11 +177,11 @@ twine upload --repository testpypi dist/*
 # 安装测试
 pip install --index-url https://test.pypi.org/simple/ \
             --extra-index-url https://pypi.org/simple/ \
-            ai-codeindex==0.5.1
+            ai-codeindex==0.7.0
 
 # 验证安装
 codeindex --version
-# 应输出: codeindex, version 0.5.1
+# 应输出: codeindex, version 0.7.0
 
 # 测试核心功能
 codeindex init
@@ -205,13 +205,13 @@ twine upload --repository pypi dist/*
 
 ```
 Uploading distributions to https://upload.pypi.org/legacy/
-Uploading ai_codeindex-0.5.1-py3-none-any.whl
+Uploading ai_codeindex-0.7.0-py3-none-any.whl
 100% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Uploading ai_codeindex-0.5.1.tar.gz
+Uploading ai_codeindex-0.7.0.tar.gz
 100% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 View at:
-https://pypi.org/project/ai-codeindex/0.5.1/
+https://pypi.org/project/ai-codeindex/0.7.0/
 ```
 
 ### Step 6: 验证发布
@@ -220,7 +220,7 @@ https://pypi.org/project/ai-codeindex/0.5.1/
 # 等待 1-2 分钟（PyPI 索引更新）
 
 # 从 PyPI 安装
-pip install ai-codeindex==0.5.1
+pip install ai-codeindex==0.7.0
 
 # 验证版本
 pip show codeindex
@@ -236,10 +236,10 @@ codeindex hooks status
 **7.1 创建 GitHub Release**
 
 1. 访问 https://github.com/yourusername/codeindex/releases/new
-2. 选择标签: `v0.5.1`
-3. 标题: `Release v0.5.1: JSON Output + Hooks Config`
+2. 选择标签: `v0.7.0`
+3. 标题: `Release v0.7.0: JSON Output + Hooks Config`
 4. 描述: 从 CHANGELOG.md 复制内容
-5. 附件: 上传 `dist/ai_codeindex-0.5.1.tar.gz`
+5. 附件: 上传 `dist/ai_codeindex-0.7.0.tar.gz`
 6. 点击 "Publish release"
 
 **7.2 更新文档**
@@ -269,7 +269,7 @@ name: Publish to PyPI
 on:
   push:
     tags:
-      - 'v*.*.*'  # 匹配 v0.5.1, v1.0.0 等
+      - 'v*.*.*'  # 匹配 v0.7.0, v1.0.0 等
 
 jobs:
   test:
@@ -371,10 +371,10 @@ jobs:
 ```bash
 # 1. 更新版本号并提交
 git add pyproject.toml CHANGELOG.md
-git commit -m "chore: bump version to 0.5.1"
+git commit -m "chore: bump version to 0.7.0"
 
 # 2. 创建并推送标签
-git tag v0.5.1 -m "Release v0.5.1"
+git tag v0.7.0 -m "Release v0.7.0"
 git push origin master --tags
 
 # 3. GitHub Actions 自动触发：
@@ -391,7 +391,7 @@ git push origin master --tags
 
 ### 语义化版本 (SemVer)
 
-格式: `MAJOR.MINOR.PATCH` (例如: 0.5.1)
+格式: `MAJOR.MINOR.PATCH` (例如: 0.7.0)
 
 - **MAJOR**: 破坏性变更 (不兼容的 API 变更)
 - **MINOR**: 新功能 (向后兼容)
@@ -401,21 +401,21 @@ git push origin master --tags
 
 | 变更类型 | 当前版本 | 新版本 | 说明 |
 |---------|---------|--------|------|
-| Bug 修复 | 0.5.0 | 0.5.1 | 修复 JSON output bug |
-| 新功能 | 0.5.1 | 0.6.0 | 添加 Java 支持 |
+| Bug 修复 | 0.6.0 | 0.6.1 | 修复 JSON output bug |
+| 新功能 | 0.6.1 | 0.7.0 | 添加 Java 支持 |
 | 破坏性变更 | 0.6.0 | 1.0.0 | 移除旧 API |
 
 ### 版本号在哪里
 
 **必须更新**:
 
-1. ✅ `pyproject.toml` → `[project] version = "0.5.1"`
-2. ✅ `CHANGELOG.md` → `## [0.5.1] - 2026-02-04`
-3. ✅ Git tag → `v0.5.1`
+1. ✅ `pyproject.toml` → `[project] version = "0.7.0"`
+2. ✅ `CHANGELOG.md` → `## [0.7.0] - 2026-02-04`
+3. ✅ Git tag → `v0.7.0`
 
 **可选更新**:
 
-4. `src/codeindex/__init__.py` → `__version__ = "0.5.1"`
+4. `src/codeindex/__init__.py` → `__version__ = "0.7.0"`
 5. `README.md` → badges (自动更新)
 
 ### 版本号同步脚本
@@ -424,13 +424,13 @@ git push origin master --tags
 
 ```bash
 #!/bin/bash
-# Usage: ./scripts/bump_version.sh 0.5.1
+# Usage: ./scripts/bump_version.sh 0.7.0
 
 NEW_VERSION=$1
 
 if [ -z "$NEW_VERSION" ]; then
     echo "Usage: $0 <version>"
-    echo "Example: $0 0.5.1"
+    echo "Example: $0 0.7.0"
     exit 1
 fi
 
@@ -478,7 +478,7 @@ echo "4. git push origin master --tags"
 ### 发布后检查
 
 - [ ] **PyPI 页面正常**: https://pypi.org/project/ai-codeindex/
-- [ ] **安装测试**: `pip install ai-codeindex==0.5.1`
+- [ ] **安装测试**: `pip install ai-codeindex==0.7.0`
 - [ ] **版本正确**: `codeindex --version`
 - [ ] **核心功能正常**: 运行基本命令
 - [ ] **GitHub Release 创建**: https://github.com/yourusername/codeindex/releases
@@ -523,10 +523,10 @@ File already exists.
 **解决**:
 ```bash
 # 增加 PATCH 版本号
-# 0.5.1 → 0.5.2
+# 0.7.0 → 0.7.1
 
 # 更新版本号
-./scripts/bump_version.sh 0.5.2
+./scripts/bump_version.sh 0.7.1
 
 # 重新构建
 rm -rf dist/
@@ -611,8 +611,8 @@ ReadTimeoutError: HTTPSConnectionPool(host='upload.pypi.org'): Read timed out.
 twine upload --timeout 300 dist/*
 
 # 或分开上传
-twine upload dist/ai_codeindex-0.5.1-py3-none-any.whl
-twine upload dist/ai_codeindex-0.5.1.tar.gz
+twine upload dist/ai_codeindex-0.7.0-py3-none-any.whl
+twine upload dist/ai_codeindex-0.7.0.tar.gz
 
 # 检查网络连接
 ping upload.pypi.org
@@ -649,7 +649,7 @@ ping upload.pypi.org
 
 ```bash
 # 完整发布流程
-./scripts/release.sh 0.5.1
+./scripts/release.sh 0.7.0
 ```
 
 创建 `scripts/release.sh`:

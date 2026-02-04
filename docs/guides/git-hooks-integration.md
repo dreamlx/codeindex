@@ -277,7 +277,7 @@ rm .git/hooks/*.backup
 
 ### Post-Commit Hook Configuration
 
-**NEW in v0.5.1** (Story 6): Post-commit hooks are now fully configurable via `.codeindex.yaml`.
+**NEW in v0.7.0** (Story 6): Post-commit hooks are now fully configurable via `.codeindex.yaml`.
 
 Add to your `.codeindex.yaml`:
 

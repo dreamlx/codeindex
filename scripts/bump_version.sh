@@ -1,6 +1,6 @@
 #!/bin/bash
 # Version bump script for codeindex
-# Usage: ./scripts/bump_version.sh 0.5.1
+# Usage: ./scripts/bump_version.sh 0.7.0
 
 set -e
 
@@ -9,14 +9,14 @@ NEW_VERSION=$1
 if [ -z "$NEW_VERSION" ]; then
     echo "❌ Error: Version number required"
     echo "Usage: $0 <version>"
-    echo "Example: $0 0.5.1"
+    echo "Example: $0 0.7.0"
     exit 1
 fi
 
 # Validate version format (semantic versioning)
 if ! [[ "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     echo "❌ Error: Invalid version format"
-    echo "Version must be in format: MAJOR.MINOR.PATCH (e.g., 0.5.1)"
+    echo "Version must be in format: MAJOR.MINOR.PATCH (e.g., 0.7.0)"
     exit 1
 fi
 
