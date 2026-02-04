@@ -674,6 +674,12 @@ Changed files:
 Changed files:
 - `test_cli_json.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_error_handling.py`
+
 ---
 
 ## Recent Changes
@@ -681,4 +687,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_error_handling.py`
+- `test_hooks_config.py`

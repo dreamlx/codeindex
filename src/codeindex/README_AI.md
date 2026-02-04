@@ -749,9 +749,6 @@ Changed files:
 - `cli_scan.py`
 - `scanner.py`
 
----
-
-## Recent Changes
 
 **Commit ``**: 
 
@@ -759,3 +756,12 @@ Changed files:
 - `cli_scan.py`
 - `errors.py`
 - `parser.py`
+
+---
+
+## Recent Changes
+
+**Commit ``**: 
+
+Changed files:
+- `config.py`
