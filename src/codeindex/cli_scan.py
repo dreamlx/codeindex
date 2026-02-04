@@ -107,6 +107,12 @@ def _process_directory_with_smartwriter(
     is_flag=True,
     help="Display AI token usage and estimated cost for docstring processing",
 )
+@click.option(
+    "--output",
+    type=click.Choice(["markdown", "json"]),
+    default="markdown",
+    help="Output format (markdown writes README_AI.md, json prints to stdout)",
+)
 def scan(
     path: Path,
     dry_run: bool,
@@ -116,6 +122,7 @@ def scan(
     parallel: int | None,
     docstring_mode: str | None,
     show_cost: bool,
+    output: str,
 ):
     """
     Scan a directory and generate README_AI.md.
@@ -167,6 +174,26 @@ def scan(
     total_symbols = sum(len(r.symbols) for r in parse_results)
     if not quiet:
         console.print(f"  [dim]→ Extracted {total_symbols} symbols[/dim]")
+
+    # Handle JSON output mode
+    if output == "json":
+        import json
+
+        # Build JSON output
+        json_output = {
+            "success": True,
+            "results": [r.to_dict() for r in parse_results],
+            "summary": {
+                "total_files": len(parse_results),
+                "total_symbols": sum(len(r.symbols) for r in parse_results),
+                "total_imports": sum(len(r.imports) for r in parse_results),
+                "errors": sum(1 for r in parse_results if r.error),
+            },
+        }
+
+        # Output to stdout
+        click.echo(json.dumps(json_output, indent=2, ensure_ascii=False))
+        return
 
     # Format for prompt
     if not quiet:
@@ -281,6 +308,12 @@ def scan(
     is_flag=True,
     help="Display AI token usage and estimated cost for docstring processing",
 )
+@click.option(
+    "--output",
+    type=click.Choice(["markdown", "json"]),
+    default="markdown",
+    help="Output format (markdown writes README_AI.md files, json prints to stdout)",
+)
 def scan_all(
     root: Path | None,
     parallel: int | None,
@@ -291,12 +324,17 @@ def scan_all(
     hierarchical: bool,
     docstring_mode: str | None,
     show_cost: bool,
+    output: str,
 ):
     """Scan all project directories for README_AI.md generation.
 
     Generates SmartWriter READMEs for all directories in parallel.
     """
-    config = Config.load()
+    # Determine root path first (needed for config loading)
+    root = Path.cwd() if root is None else root
+
+    # Load config from root directory
+    config = Config.load(root / ".codeindex.yaml" if (root / ".codeindex.yaml").exists() else None)
 
     # --fallback is alias for --no-ai
     use_ai = not (no_ai or fallback)
@@ -320,9 +358,6 @@ def scan_all(
 
     # Use hierarchical processing if requested
     if hierarchical:
-        # Get current directory
-        root = Path.cwd() if root is None else root
-
         if not quiet:
             console.print("[bold]🎯 Using hierarchical processing (bottom-up)[/bold]")
 
@@ -340,8 +375,58 @@ def scan_all(
 
         return
 
-    # Get current directory
-    root = Path.cwd() if root is None else root
+    # Handle JSON output mode (simplified path)
+    if output == "json":
+        import json
+
+        # Build directory tree
+        tree = DirectoryTree(root, config)
+        dirs = tree.get_processing_order()
+
+        if not dirs:
+            # Empty output
+            json_output = {
+                "success": True,
+                "results": [],
+                "summary": {
+                    "total_files": 0,
+                    "total_symbols": 0,
+                    "total_imports": 0,
+                    "errors": 0,
+                },
+            }
+            click.echo(json.dumps(json_output, indent=2, ensure_ascii=False))
+            return
+
+        # Scan and parse all directories
+        all_parse_results = []
+
+        for dir_path in dirs:
+            # Scan directory (non-recursive for overview, recursive for detailed)
+            level = tree.get_level(dir_path)
+            scan_recursive = level != "overview"
+            scan_result = scan_directory(dir_path, config, base_path=root, recursive=scan_recursive)
+
+            if scan_result.files:
+                # Parse files
+                parse_results = parse_files_parallel(scan_result.files, config, quiet=True)
+                all_parse_results.extend(parse_results)
+
+        # Build JSON output
+        json_output = {
+            "success": True,
+            "results": [r.to_dict() for r in all_parse_results],
+            "summary": {
+                "total_files": len(all_parse_results),
+                "total_symbols": sum(len(r.symbols) for r in all_parse_results),
+                "total_imports": sum(len(r.imports) for r in all_parse_results),
+                "errors": sum(1 for r in all_parse_results if r.error),
+            },
+        }
+
+        # Output to stdout
+        click.echo(json.dumps(json_output, indent=2, ensure_ascii=False))
+        return
 
     # Build directory tree (first pass)
     if not quiet:
