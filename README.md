@@ -574,7 +574,24 @@ incremental:
     skip_lines: 5
     current_only: 50
     suggest_full: 200
+
+# Git Hooks configuration (v0.5.1+, Story 6)
+hooks:
+  post_commit:
+    mode: auto            # auto | disabled | async | sync | prompt
+    max_dirs_sync: 2      # Auto mode: ≤2 dirs = sync, >2 = async
+    enabled: true         # Master switch
+    log_file: ~/.codeindex/hooks/post-commit.log
 ```
+
+**Hooks Modes**:
+- `auto` (default): Smart detection based on project size
+- `disabled`: Completely disabled
+- `async`: Always non-blocking (background updates)
+- `sync`: Always blocking (immediate updates)
+- `prompt`: Reminder only, no auto-execution
+
+See [Git Hooks Integration Guide](docs/guides/git-hooks-integration.md) for detailed configuration.
 
 ---
 
