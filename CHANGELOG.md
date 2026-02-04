@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-02-04
+
 ### Added
 - **JSON Output Mode** (Epic: JSON Output Integration, Stories 1-5)
   - `--output json` flag for machine-readable output in `scan` and `scan-all` commands
