@@ -736,11 +736,18 @@ _Markdown writer for README_AI.md files._
 - .tech_debt_formatters
 _... and 29 more_
 
----
-
-## Recent Changes
 
 **Commit `d9c40ec`**: feat(json): implement ParseResult serialization (Story 1)
 
 Changed files:
 - `parser.py`
+
+---
+
+## Recent Changes
+
+**Commit `5a89ba2`**: feat(json): add --output json to scan and scan-all commands (Stories 2 & 3)
+
+Changed files:
+- `cli_scan.py`
+- `scanner.py`

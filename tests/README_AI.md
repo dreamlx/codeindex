@@ -662,11 +662,17 @@ _Tests for ThinkPHP route extraction with line numbers (Epic 6, P1, Task 1.2)._
 - tempfile
 - yaml
 
----
-
-## Recent Changes
 
 **Commit `d9c40ec`**: feat(json): implement ParseResult serialization (Story 1)
 
 Changed files:
 - `test_json_output.py` (new file)
+
+---
+
+## Recent Changes
+
+**Commit `5a89ba2`**: feat(json): add --output json to scan and scan-all commands (Stories 2 & 3)
+
+Changed files:
+- `test_cli_json.py`
