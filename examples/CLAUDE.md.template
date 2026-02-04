@@ -1,129 +1,420 @@
-# CLAUDE.md
+# {YOUR_PROJECT_NAME}
 
-This file provides guidance to Claude Code when working with this project.
-
-## 📖 项目导航指南
-
-### ⚠️ 重要：本项目使用 codeindex 生成了 README_AI.md 索引
-
-本项目已使用 [codeindex](https://github.com/dreamlx/codeindex) 工具为所有目录生成了 `README_AI.md` 文件。这些文件是理解项目架构的最佳入口，包含了自动提取的符号信息、依赖关系和模块说明。
-
-### 🧭 推荐工作流
-
-#### 1️⃣ 理解项目架构（优先阅读 README_AI.md）
-
-在开始任何代码分析前，请按以下顺序阅读：
-
-```
-1. /README_AI.md           # 项目整体概览和目录结构
-2. /src/README_AI.md       # 核心源码目录架构
-3. /tests/README_AI.md     # 测试结构（如果存在）
-4. 相关子目录的 README_AI.md  # 具体模块详情
-```
-
-**示例场景：**
-- 用户问："这个项目是做什么的？" → 先读 `/README_AI.md`
-- 用户问："认证模块在哪里？" → 先读 `/src/README_AI.md`，找到 auth 相关目录，再读 `/src/auth/README_AI.md`
-- 用户问："如何运行测试？" → 先读 `/tests/README_AI.md`，了解测试结构
-
-#### 2️⃣ 定位具体代码（精确导航）
-
-**优先使用 Serena MCP 工具（如果可用）：**
-
-```python
-# ✅ 推荐：查找符号定义
-find_symbol(name_path_pattern="ClassName")
-
-# ✅ 推荐：查找符号引用
-find_referencing_symbols(
-    name_path="function_name",
-    relative_path="src/module/file.py"
-)
-
-# ✅ 推荐：获取文件符号概览
-get_symbols_overview(
-    relative_path="src/module/file.py",
-    depth=1
-)
-```
-
-**备选方案：使用 Read 工具**
-
-```python
-# 当 Serena MCP 不可用时
-Read(file_path="src/module/README_AI.md")  # 先读目录索引
-Read(file_path="src/module/file.py")       # 再读具体文件
-```
-
-**❌ 避免的做法：**
-- 直接用 Glob/Grep 搜索源码（低效且无结构化信息）
-- 不看 README_AI.md 就直接读源代码文件
-- 忽略已有的符号索引信息
-
-#### 3️⃣ 修改代码（保持索引同步）
-
-修改代码后，请重新生成 README_AI.md：
-
-```bash
-# 重新扫描整个项目
-codeindex scan-all --fallback
-
-# 或只扫描修改的目录
-codeindex scan src/module --fallback
-```
-
-**注意：不要手动编辑 README_AI.md 文件，它们会被自动覆盖。**
-
-### 📁 特殊文件说明
-
-| 文件 | 用途 | 何时使用 |
-|------|------|----------|
-| `README_AI.md` | AI生成的目录索引文件 | 理解任何目录的架构和组件 |
-| `PROJECT_SYMBOLS.md` | 全局符号索引（如果存在） | 查找符号定义位置 |
-| `.codeindex.yaml` | codeindex 配置文件 | 了解扫描规则和排除模式 |
-
-### 🔄 工作流总结
-
-```
-用户提问
-    ↓
-读 README_AI.md (理解架构)
-    ↓
-find_symbol (精确定位)
-    ↓
-Read 源码文件 (查看实现)
-    ↓
-find_referencing (分析依赖)
-```
-
-## 🛠️ 项目特定配置
-
-<!-- 在下方添加你的项目特定说明 -->
-
-### 项目结构
-
-<!-- 示例：
-- `src/api/` - REST API 端点
-- `src/models/` - 数据模型
-- `src/services/` - 业务逻辑
--->
-
-### 关键组件
-
-<!-- 示例：
-- `UserService` - 用户管理服务（src/services/user_service.py）
-- `DatabaseConnection` - 数据库连接管理（src/db/connection.py）
--->
-
-### 开发规范
-
-<!-- 示例：
-- 代码风格：遵循 PEP 8
-- 测试：使用 pytest
-- 提交规范：Conventional Commits
--->
+**Last Updated**: {DATE}
+**codeindex Version**: v0.7.0+
 
 ---
 
-*此文件由 [codeindex](https://github.com/dreamlx/codeindex) 自动生成。*
-*更新索引：`codeindex scan-all --fallback`*
+## 📚 Code Intelligence Tools
+
+This project uses **codeindex** for code structure analysis and optional integration with **LoomGraph** for semantic code search.
+
+---
+
+## 🔍 codeindex - AST Code Analysis
+
+### Installation
+
+```bash
+pip install matrix-codeindex
+```
+
+### Quick Start
+
+```bash
+# Generate human-readable documentation (Markdown)
+codeindex scan-all
+
+# Generate machine-readable data (JSON) for tool integration
+codeindex scan-all --output json > parse_results.json
+
+# Scan a specific directory
+codeindex scan ./src --output json
+```
+
+### Configuration
+
+Create `.codeindex.yaml` in project root:
+
+```yaml
+# Include directories to scan
+include:
+  - src
+  - lib
+
+# Exclude directories
+exclude:
+  - tests
+  - node_modules
+  - "**/migrations/*"
+  - "**/__pycache__/*"
+
+# Output file name (for Markdown mode)
+output_file: README_AI.md
+
+# Languages to parse (currently only Python supported)
+languages:
+  - python
+```
+
+### Output Modes
+
+**Markdown Mode** (default):
+- Generates `README_AI.md` in each directory
+- Human-readable documentation
+- Includes symbols, imports, and structure
+- Best for: Browsing and understanding code
+
+**JSON Mode** (`--output json`):
+- Outputs structured data to stdout
+- Machine-readable format
+- Includes symbols, calls, inheritances, imports
+- Best for: Tool integration, automation, AI agents
+
+---
+
+## 🧠 LoomGraph - Code Knowledge Graph (Optional)
+
+If your project uses LoomGraph for semantic code search and graph-based analysis:
+
+### Installation
+
+```bash
+pip install loomgraph
+```
+
+### Quick Start
+
+```bash
+# 1. Index codebase (one-time or when code changes)
+codeindex scan-all --output json > parse_results.json
+loomgraph embed parse_results.json --output embeddings.json
+loomgraph inject parse_results.json embeddings.json
+
+# Or use one-line command
+loomgraph index .
+
+# 2. Search code semantically
+loomgraph search "user authentication logic"
+
+# 3. Query call graph
+loomgraph graph "UserService.login" --direction callers
+
+# 4. Check system status
+loomgraph status
+```
+
+### Configuration
+
+Create `loomgraph.yaml` in project root:
+
+```yaml
+database:
+  host: localhost
+  port: 5432
+  database: loomgraph
+  user: loomgraph
+  password: loomgraph_dev
+
+embedding:
+  provider: jina
+  model: jinaai/jina-embeddings-v2-base-code
+  base_url: http://localhost:8080
+  batch_size: 32
+
+retrieval:
+  default_mode: hybrid  # hybrid, semantic, keyword, graph
+  top_k: 10
+```
+
+---
+
+## 🤖 AI Agent Usage Guide
+
+### For Claude Code / AI Agents
+
+When working with this codebase, you should:
+
+#### 1. Understand Project Structure
+
+**Start with README_AI.md files**:
+```bash
+# These files are generated by codeindex and provide:
+# - Directory overview
+# - Symbol lists (classes, functions, methods)
+# - Import analysis
+# - File structure
+```
+
+**Read hierarchy**:
+1. `/README_AI.md` - Project overview
+2. `/src/README_AI.md` - Main source structure
+3. `/src/{module}/README_AI.md` - Module details
+
+#### 2. Find Symbol Definitions
+
+**Use PROJECT_SYMBOLS.md** (if exists):
+- Global symbol index
+- Quick lookup for classes and functions
+- Cross-file references
+
+**Use codeindex JSON output**:
+```bash
+# Find all classes
+codeindex scan-all --output json | jq '.results[].symbols[] | select(.kind == "class")'
+
+# Find specific symbol
+codeindex scan-all --output json | jq '.results[].symbols[] | select(.name == "UserService")'
+```
+
+#### 3. Analyze Code Relationships
+
+**Extract call graph**:
+```bash
+codeindex scan-all --output json | jq '.results[].calls[]'
+```
+
+**Find who calls a function** (if LoomGraph available):
+```bash
+loomgraph graph "UserService.login" --direction callers
+```
+
+#### 4. Semantic Search (if LoomGraph available)
+
+**Search by intent**:
+```bash
+loomgraph search "how to authenticate users"
+loomgraph search "database connection logic"
+loomgraph search "error handling middleware"
+```
+
+---
+
+## 📋 Common Workflows
+
+### Workflow 1: Understand a New Module
+
+```bash
+# 1. Read the module's documentation
+cat src/auth/README_AI.md
+
+# 2. Get structured data
+codeindex scan src/auth --output json | jq .
+
+# 3. Find key classes
+codeindex scan src/auth --output json | \
+  jq '.results[].symbols[] | select(.kind == "class")'
+
+# 4. (Optional) Semantic search
+loomgraph search "authentication logic in auth module"
+```
+
+### Workflow 2: Find All Usages of a Function
+
+```bash
+# If LoomGraph available
+loomgraph graph "MyClass.my_method" --direction callers
+
+# Otherwise, use text search
+grep -r "my_method" src/
+```
+
+### Workflow 3: Update Documentation After Code Changes
+
+```bash
+# Regenerate documentation
+codeindex scan-all
+
+# Re-index for LoomGraph (if used)
+loomgraph index .
+```
+
+### Workflow 4: Analyze Code Quality
+
+```bash
+# Get statistics
+codeindex scan-all --output json | jq '.summary'
+
+# Find large classes (potential refactoring candidates)
+codeindex scan-all --output json | \
+  jq '.results[].symbols[] | select(.kind == "class" and (.line_end - .line_start) > 100)'
+```
+
+---
+
+## 🛠️ Development Setup
+
+### Initial Setup
+
+```bash
+# 1. Install tools
+pip install matrix-codeindex
+
+# (Optional) Install LoomGraph
+pip install loomgraph
+
+# 2. Generate documentation
+codeindex scan-all
+
+# 3. (Optional) Index for semantic search
+loomgraph index .
+```
+
+### After Code Changes
+
+```bash
+# Update documentation
+codeindex scan-all
+
+# (Optional) Re-index
+loomgraph index .
+```
+
+### Git Hooks (Optional)
+
+Automatically update documentation on commit:
+
+Create `.git/hooks/post-commit`:
+```bash
+#!/bin/bash
+# Auto-update codeindex documentation after commit
+
+# Only update if non-documentation files changed
+CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD)
+NON_DOC_FILES=$(echo "$CHANGED_FILES" | grep -v "README_AI.md" || true)
+
+if [ -n "$NON_DOC_FILES" ]; then
+    echo "🔄 Updating code documentation..."
+    codeindex scan-all --fallback
+
+    # Auto-commit if documentation changed
+    if ! git diff --quiet README_AI.md; then
+        git add README_AI.md
+        git commit -m "docs: auto-update README_AI.md
+
+Co-Authored-By: Claude Code <noreply@anthropic.com>"
+    fi
+fi
+```
+
+Make it executable:
+```bash
+chmod +x .git/hooks/post-commit
+```
+
+---
+
+## 📊 Project Statistics
+
+Run this to get project overview:
+
+```bash
+codeindex scan-all --output json | jq '{
+  files: .summary.total_files,
+  symbols: .summary.total_symbols,
+  calls: .summary.total_calls,
+  errors: .summary.errors
+}'
+```
+
+Expected output:
+```json
+{
+  "files": 150,
+  "symbols": 1250,
+  "calls": 3400,
+  "errors": 0
+}
+```
+
+---
+
+## 🔗 Resources
+
+- **codeindex Documentation**: https://github.com/dreamlx/codeindex
+- **LoomGraph Documentation**: https://github.com/dreamlx/LoomGraph
+- **JSON Output Integration Guide**: See codeindex docs
+
+---
+
+## 📝 Notes
+
+### When to Regenerate Documentation
+
+- ✅ After adding/removing files
+- ✅ After significant refactoring
+- ✅ Before code reviews
+- ✅ When onboarding new team members
+- ❌ Not needed for minor edits (docstring updates will be reflected)
+
+### Performance Tips
+
+For large projects (>1000 files):
+
+1. **Use .codeindex.yaml to exclude unnecessary directories**
+2. **Scan specific modules** instead of entire project:
+   ```bash
+   codeindex scan src/core --output json
+   ```
+3. **Use caching** (LoomGraph feature):
+   ```bash
+   loomgraph index . --incremental
+   ```
+
+---
+
+## 🐛 Troubleshooting
+
+**Issue**: `codeindex: command not found`
+```bash
+# Solution: Install codeindex
+pip install matrix-codeindex
+```
+
+**Issue**: JSON output shows many errors
+```bash
+# Check which files failed
+codeindex scan-all --output json | jq '.results[] | select(.error != null)'
+
+# Usually due to:
+# 1. Syntax errors in Python files
+# 2. Unsupported Python syntax (Python 2)
+# 3. Binary/non-text files accidentally included
+```
+
+**Issue**: LoomGraph can't connect to database
+```bash
+# Check status
+loomgraph status
+
+# Start services (if using Docker)
+docker compose up -d postgres embedding
+```
+
+---
+
+## 🎯 Best Practices
+
+1. **Commit README_AI.md files**: They help team members and AI agents
+2. **Update regularly**: Run `codeindex scan-all` after significant changes
+3. **Use JSON mode for automation**: Keep Markdown mode for human reading
+4. **Configure .codeindex.yaml**: Exclude test files and dependencies
+5. **Integrate with CI/CD**: Auto-generate docs on merge to main
+
+---
+
+**Template Version**: v0.7.0
+**Last Updated**: 2026-02-04
+
+---
+
+## 💡 Customization Guide
+
+To customize this template for your project:
+
+1. Replace `{YOUR_PROJECT_NAME}` with your project name
+2. Replace `{DATE}` with current date
+3. Update directory structure in examples (src/, lib/, etc.)
+4. Add project-specific workflows
+5. Update statistics with actual project numbers
+6. Add team-specific conventions and guidelines

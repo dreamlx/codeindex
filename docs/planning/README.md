@@ -9,6 +9,7 @@
 
 | Epic | Version | Priority | Status | Document |
 |------|---------|----------|--------|----------|
+| [Epic: JSON Output](active/epic-json-output.md) | v0.7.0 | 🔥 P0 | 📋 Active | JSON output for LoomGraph integration |
 | [Epic 7: Java Support](active/epic7-java-support.md) | v0.7.0 | 🔥 P0 | 📋 Planned | Java language + Spring routes |
 
 ---
