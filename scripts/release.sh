@@ -25,8 +25,8 @@ echo ""
 
 # 0. Check prerequisites
 echo -e "${YELLOW}0️⃣  Checking prerequisites...${NC}"
-command -v python >/dev/null 2>&1 || { echo "❌ Python not found"; exit 1; }
-command -v pip >/dev/null 2>&1 || { echo "❌ pip not found"; exit 1; }
+command -v python3 >/dev/null 2>&1 || command -v python >/dev/null 2>&1 || { echo "❌ Python not found"; exit 1; }
+command -v pip3 >/dev/null 2>&1 || command -v pip >/dev/null 2>&1 || { echo "❌ pip not found"; exit 1; }
 command -v git >/dev/null 2>&1 || { echo "❌ git not found"; exit 1; }
 
 # Check if on master branch
@@ -127,7 +127,7 @@ echo -e "${GREEN}✓ Tag created${NC}"
 echo ""
 echo -e "${YELLOW}8️⃣  Building distributions...${NC}"
 rm -rf dist/ build/ *.egg-info src/*.egg-info
-python -m build
+python3 -m build
 echo -e "${GREEN}✓ Distributions built${NC}"
 
 # 9. Check distributions
