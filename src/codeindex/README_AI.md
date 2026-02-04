@@ -736,13 +736,11 @@ _Markdown writer for README_AI.md files._
 - .tech_debt_formatters
 _... and 29 more_
 
+---
+
 ## Recent Changes
 
-**Commit `8748c5b`**: refactor!: remove AI Enhancement feature (BREAKING CHANGE)
+**Commit `d9c40ec`**: feat(json): implement ParseResult serialization (Story 1)
 
 Changed files:
-- `ai_helper.py` - Removed `execute_multi_turn_enhancement` function
-- `cli_scan.py` - Removed `_enhance_directory_with_ai`, `--strategy`, `--ai-all` options; simplified scan-all to SmartWriter-only
-- `config.py` - Removed `AIEnhancementConfig` class
-- `file_classifier.py` - Changed to use hardcoded thresholds (5000 lines, 100 symbols) instead of config
-- `tech_debt.py` - Updated to use classifier thresholds instead of config
+- `parser.py`
