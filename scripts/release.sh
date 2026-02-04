@@ -152,7 +152,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             pip install --index-url https://test.pypi.org/simple/ \
                         --extra-index-url https://pypi.org/simple/ \
-                        --upgrade "codeindex==$VERSION"
+                        --upgrade "ai-codeindex==$VERSION"
 
             # Verify
             if codeindex --version | grep -q "$VERSION"; then

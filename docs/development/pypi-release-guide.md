@@ -162,8 +162,8 @@ python -m build
 # 验证生成的文件
 ls -lh dist/
 # 应该看到:
-#   codeindex-0.5.1-py3-none-any.whl
-#   codeindex-0.5.1.tar.gz
+#   ai_codeindex-0.5.1-py3-none-any.whl
+#   ai_codeindex-0.5.1.tar.gz
 ```
 
 ### Step 4: 测试发布 (TestPyPI)
@@ -177,7 +177,7 @@ twine upload --repository testpypi dist/*
 # 安装测试
 pip install --index-url https://test.pypi.org/simple/ \
             --extra-index-url https://pypi.org/simple/ \
-            codeindex==0.5.1
+            ai-codeindex==0.5.1
 
 # 验证安装
 codeindex --version
@@ -205,13 +205,13 @@ twine upload --repository pypi dist/*
 
 ```
 Uploading distributions to https://upload.pypi.org/legacy/
-Uploading codeindex-0.5.1-py3-none-any.whl
+Uploading ai_codeindex-0.5.1-py3-none-any.whl
 100% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Uploading codeindex-0.5.1.tar.gz
+Uploading ai_codeindex-0.5.1.tar.gz
 100% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 View at:
-https://pypi.org/project/codeindex/0.5.1/
+https://pypi.org/project/ai-codeindex/0.5.1/
 ```
 
 ### Step 6: 验证发布
@@ -220,7 +220,7 @@ https://pypi.org/project/codeindex/0.5.1/
 # 等待 1-2 分钟（PyPI 索引更新）
 
 # 从 PyPI 安装
-pip install codeindex==0.5.1
+pip install ai-codeindex==0.5.1
 
 # 验证版本
 pip show codeindex
@@ -239,7 +239,7 @@ codeindex hooks status
 2. 选择标签: `v0.5.1`
 3. 标题: `Release v0.5.1: JSON Output + Hooks Config`
 4. 描述: 从 CHANGELOG.md 复制内容
-5. 附件: 上传 `dist/codeindex-0.5.1.tar.gz`
+5. 附件: 上传 `dist/ai_codeindex-0.5.1.tar.gz`
 6. 点击 "Publish release"
 
 **7.2 更新文档**
@@ -477,8 +477,8 @@ echo "4. git push origin master --tags"
 
 ### 发布后检查
 
-- [ ] **PyPI 页面正常**: https://pypi.org/project/codeindex/
-- [ ] **安装测试**: `pip install codeindex==0.5.1`
+- [ ] **PyPI 页面正常**: https://pypi.org/project/ai-codeindex/
+- [ ] **安装测试**: `pip install ai-codeindex==0.5.1`
 - [ ] **版本正确**: `codeindex --version`
 - [ ] **核心功能正常**: 运行基本命令
 - [ ] **GitHub Release 创建**: https://github.com/yourusername/codeindex/releases
@@ -611,8 +611,8 @@ ReadTimeoutError: HTTPSConnectionPool(host='upload.pypi.org'): Read timed out.
 twine upload --timeout 300 dist/*
 
 # 或分开上传
-twine upload dist/codeindex-0.5.1-py3-none-any.whl
-twine upload dist/codeindex-0.5.1.tar.gz
+twine upload dist/ai_codeindex-0.5.1-py3-none-any.whl
+twine upload dist/ai_codeindex-0.5.1.tar.gz
 
 # 检查网络连接
 ping upload.pypi.org
@@ -638,7 +638,7 @@ ping upload.pypi.org
 ### codeindex 项目
 
 - **GitHub**: https://github.com/yourusername/codeindex
-- **PyPI**: https://pypi.org/project/codeindex/
+- **PyPI**: https://pypi.org/project/ai-codeindex/
 - **文档**: (待添加)
 
 ---
@@ -704,7 +704,7 @@ twine upload --repository testpypi dist/*
 echo "9️⃣  Testing installation from TestPyPI..."
 pip install --index-url https://test.pypi.org/simple/ \
             --extra-index-url https://pypi.org/simple/ \
-            --upgrade codeindex==$VERSION
+            --upgrade ai-codeindex==$VERSION
 
 # 10. 上传到 PyPI
 echo "🔟 Uploading to PyPI..."
@@ -718,7 +718,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     git push origin master --tags
 
     echo "✅ Release v$VERSION completed!"
-    echo "📦 PyPI: https://pypi.org/project/codeindex/$VERSION/"
+    echo "📦 PyPI: https://pypi.org/project/ai-codeindex/$VERSION/"
     echo "📝 Create GitHub Release: https://github.com/yourusername/codeindex/releases/new?tag=v$VERSION"
 else
     echo "❌ Release cancelled"

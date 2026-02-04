@@ -1,5 +1,5 @@
 [project]
-name = "codeindex"
+name = "ai-codeindex"
 version = "0.6.0"
 description = "AI-native code indexing tool for large codebases"
 readme = "README.md"

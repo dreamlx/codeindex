@@ -1,6 +1,6 @@
 # codeindex
 
-[![PyPI version](https://badge.fury.io/py/codeindex.svg)](https://badge.fury.io/py/codeindex)
+[![PyPI version](https://badge.fury.io/py/ai-codeindex.svg)](https://badge.fury.io/py/ai-codeindex)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://github.com/yourusername/codeindex/workflows/Tests/badge.svg)](https://github.com/yourusername/codeindex/actions)
@@ -43,13 +43,13 @@ codeindex automatically generates intelligent documentation (`README_AI.md`) for
 ### Using pipx (Recommended)
 
 ```bash
-pipx install codeindex
+pipx install ai-codeindex
 ```
 
 ### Using pip
 
 ```bash
-pip install codeindex
+pip install ai-codeindex
 ```
 
 ### From Source

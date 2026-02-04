@@ -86,7 +86,7 @@ twine upload --repository testpypi dist/*
 # 测试安装
 pip install --index-url https://test.pypi.org/simple/ \
             --extra-index-url https://pypi.org/simple/ \
-            codeindex==0.5.1
+            ai-codeindex==0.5.1
 
 # 验证
 codeindex --version
@@ -203,8 +203,8 @@ readme = "README.md"  # ← 确保是 .md 后缀
 
 ## 🔗 相关链接
 
-- **PyPI**: https://pypi.org/project/codeindex/
-- **TestPyPI**: https://test.pypi.org/project/codeindex/
+- **PyPI**: https://pypi.org/project/ai-codeindex/
+- **TestPyPI**: https://test.pypi.org/project/ai-codeindex/
 - **GitHub**: https://github.com/yourusername/codeindex
 - **PyPI Guide**: https://packaging.python.org/tutorials/packaging-projects/
 
