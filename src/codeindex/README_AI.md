@@ -742,12 +742,20 @@ _... and 29 more_
 Changed files:
 - `parser.py`
 
----
-
-## Recent Changes
 
 **Commit `5a89ba2`**: feat(json): add --output json to scan and scan-all commands (Stories 2 & 3)
 
 Changed files:
 - `cli_scan.py`
 - `scanner.py`
+
+---
+
+## Recent Changes
+
+**Commit ``**: 
+
+Changed files:
+- `cli_scan.py`
+- `errors.py`
+- `parser.py`
