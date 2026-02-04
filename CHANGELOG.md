@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **JSON Output Mode** (Epic: JSON Output Integration, Stories 1-5)
+  - `--output json` flag for machine-readable output in `scan` and `scan-all` commands
+  - Structured error handling with error codes (`DIRECTORY_NOT_FOUND`, `NO_CONFIG_FOUND`, etc.)
+  - ParseResult serialization with symbols, imports, and metadata
+  - Error objects with `code`, `message`, and `detail` fields
+  - Exit code 1 for command-level errors, 0 for partial success
+  - File-level error detection via tree-sitter's `has_error` attribute
+
+- **Git Hooks Configuration Support** (Story 6: Performance Optimization)
+  - Full `.codeindex.yaml` configuration for post-commit hooks
+  - 5 modes: `auto`, `disabled`, `async`, `sync`, `prompt`
+  - Smart detection: ≤2 directories = sync, >2 = async (configurable threshold)
+  - Non-blocking async mode for large projects (background updates)
+  - Prompt mode for manual control (reminder only)
+  - Custom log file paths
+  - 14 comprehensive tests for hooks configuration
+
+### Documentation
+- Added JSON output examples to Quick Start (CLAUDE.md)
+- Added "Generate Structured Data (JSON)" section to README.md with usage examples and error handling
+- Updated Git Hooks Integration Guide with full configuration examples
+- Added hooks configuration section to README.md Configuration Reference
+
 ## [0.6.0] - 2026-02-04
 
 ### ⚠️ BREAKING CHANGES

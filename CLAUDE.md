@@ -107,6 +107,11 @@ codeindex symbols
 # Check indexing coverage
 codeindex status
 
+# 🔧 Generate JSON output (for tool integration, e.g., LoomGraph)
+codeindex scan-all --output json > parse_results.json
+codeindex scan ./src --output json                    # Single directory
+codeindex scan ./src --output json | jq .             # View formatted JSON
+
 # Git Hooks management
 codeindex hooks status
 codeindex hooks install --all
@@ -193,6 +198,76 @@ codeindex scan-all --fallback
 # Or specific directories:
 codeindex scan src/codeindex --fallback
 codeindex scan tests --fallback
+```
+
+### Documentation Maintenance (Post-Epic)
+
+**When an Epic is completed**, follow these steps to maintain docs structure:
+
+#### 1. Update ROADMAP.md (Required)
+
+```bash
+# Update version and epic status
+# See: docs/planning/ROADMAP.md
+# - Current Version: vX.X.X
+# - Move epic from "Active" to "Completed"
+# - Update version history table
+# - Add release notes
+```
+
+#### 2. Archive Epic Documents (Required)
+
+```bash
+# Move completed epic to archived location
+mv docs/planning/active/epicN-name.md \
+   docs/planning/completed/epicN-name/plan.md
+
+# Add validation report (if exists)
+# Add any story/task documents to same directory
+```
+
+#### 3. Update Planning Index (Required)
+
+```bash
+# Update docs/planning/README.md
+# - Move epic from "Active" to "Completed" section
+# - Add completion date
+# - Link to archived documents
+```
+
+#### 4. Keep Active/ Clean (Important)
+
+**Rule**: `docs/planning/active/` should ONLY contain:
+- Current sprint work (in-progress epics)
+- Next 1-2 planned epics (not started yet)
+
+**When to move**:
+- ✅ Move to `completed/` when epic is done
+- ✅ Keep in `active/` if planned for next version
+- ❌ Don't accumulate old plans in `active/`
+
+#### 5. Example: After Epic 7 (Java Support) Completes
+
+```bash
+# Step 1: Update ROADMAP.md
+vim docs/planning/ROADMAP.md
+# - Current Version: v0.6.0 → v0.7.0
+# - Epic 7: Active → Completed
+# - Add v0.7.0 release notes
+
+# Step 2: Archive Epic 7
+mkdir -p docs/planning/completed/epic7-java-support
+mv docs/planning/active/epic7-java-support.md \
+   docs/planning/completed/epic7-java-support/plan.md
+# Add validation report if exists
+
+# Step 3: Update index
+vim docs/planning/README.md
+# Move Epic 7 from Active to Completed table
+
+# Step 4: Commit
+git add docs/
+git commit -m "docs: archive Epic 7 (Java Support) for v0.7.0"
 ```
 
 ### Requirements & Planning Workflow
@@ -385,31 +460,23 @@ src/codeindex/
 
 ## 📈 Version History (Highlights)
 
-### v0.5.0 (2026-02-03)
-- **Documentation improvements**: Configuration upgrade guide, CLAUDE.md refactoring
-- **Git Hooks integration** (Epic 6, P3.1): Pre-commit lint + debug detection, post-commit auto README updates
-- **ThinkPHP route extraction**: Framework plugin architecture
-- 394 tests passing
-
-### v0.4.0 (2026-02-02)
-- KISS Universal Description Generator
-- Cross-language, cross-architecture support
-- -78 lines, more powerful
-
 ### v0.6.0 (2026-02-04)
 - **BREAKING**: Removed AI Enhancement (multi-turn dialogue)
-- Added AI-Powered Docstring Extraction (Epic 9)
-- Simplified scan-all (SmartWriter only)
-- 415 tests passing
+- **Epic 9**: AI-Powered Docstring Extraction (hybrid + all-AI modes)
+- PHP + Python docstring support
+- Cost-effective: ~$0.15 per 250 directories
+- 415 tests passing, 3 skipped
 
 ### v0.5.0 (2026-02-03)
-- Git Hooks Integration
-- Configuration Upgrade Guide
+- **Epic 6 P3.1**: Git Hooks Integration
+- ThinkPHP route extraction (framework plugin architecture)
+- Configuration upgrade guide
 - 394 tests passing
 
 ### v0.4.0 (2026-02-02)
 - KISS Universal Description Generator
 - PROJECT_INDEX quality improvements
+- Cross-language, cross-architecture support
 - 299 tests passing
 
 ### v0.3.1 (2026-01-28)
@@ -555,6 +622,6 @@ All versions 100% backward compatible (v0.1.0 → v0.5.0)
 
 ---
 
-**Last Updated**: 2026-02-03
-**codeindex Version**: v0.5.0
+**Last Updated**: 2026-02-04
+**codeindex Version**: v0.6.0
 **For**: Claude Code and contributors

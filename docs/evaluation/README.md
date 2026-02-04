@@ -1,30 +1,33 @@
-# 评估体系
+# Evaluation & Validation
 
-本目录包含 codeindex 的评估框架、对比分析和案例研究。
+**Purpose**: Evaluation framework, case studies, and before/after analysis for codeindex features.
 
-## 📖 文档列表
+---
 
-### 核心文档
+## 📖 Core Documents
 
-- **[framework.md](framework.md)** - 评估框架设计
-  - 导航效率评估标准（5个维度）
-  - 与深入分析标准的对比
-  - 测试用例设计
-  - 评分方法
+### Evaluation Framework
 
-- **[before-after.md](before-after.md)** - 改进前后对比
-  - 核心指标对比（符号数、覆盖率、噪音等）
-  - 具体案例分析（PayController.php, UserModel.php）
-  - Token 消耗对比
-  - 用户体验对比
+- **[framework.md](framework.md)** - Evaluation methodology
+  - Navigation efficiency standards (5 dimensions)
+  - Testing methodology
+  - Scoring methods
 
-### 案例研究
+### Impact Analysis
 
-- **[case-studies/php-payment-project.md](case-studies/php-payment-project.md)** - PHP 支付项目评估
-  - 72分 vs 92分的真相
-  - 评估标准错位分析
-  - 导航效率测试
-  - 最佳实践示例
+- **[before-after/](before-after/)** - Feature impact measurements
+  - Epic 2: Adaptive Symbols - Coverage improvement (26% → 100%)
+  - Epic 9: Docstring Extraction - Quality improvement (⭐⭐ → ⭐⭐⭐⭐⭐)
+  - Git Hooks: Dev workflow enhancement
+
+### Case Studies
+
+Real-world projects tested with codeindex:
+
+- **[php-payment-project.md](case-studies/php-payment-project.md)** - PHP Payment System
+  - 251 directories, 1926 symbols
+  - ThinkPHP framework
+  - Navigation efficiency: 72 → 92 points
 
 ## 🎯 使用指南
 

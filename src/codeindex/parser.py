@@ -20,6 +20,17 @@ class Symbol:
     line_start: int = 0
     line_end: int = 0
 
+    def to_dict(self) -> dict:
+        """Convert Symbol to JSON-serializable dict."""
+        return {
+            "name": self.name,
+            "kind": self.kind,
+            "signature": self.signature,
+            "docstring": self.docstring,
+            "line_start": self.line_start,
+            "line_end": self.line_end,
+        }
+
 
 @dataclass
 class Import:
@@ -28,6 +39,14 @@ class Import:
     module: str
     names: list[str] = field(default_factory=list)
     is_from: bool = False
+
+    def to_dict(self) -> dict:
+        """Convert Import to JSON-serializable dict."""
+        return {
+            "module": self.module,
+            "names": self.names,
+            "is_from": self.is_from,
+        }
 
 
 @dataclass
@@ -41,6 +60,18 @@ class ParseResult:
     namespace: str = ""  # PHP namespace
     error: str | None = None
     file_lines: int = 0  # Number of lines in the file
+
+    def to_dict(self) -> dict:
+        """Convert ParseResult to JSON-serializable dict."""
+        return {
+            "path": str(self.path),
+            "symbols": [symbol.to_dict() for symbol in self.symbols],
+            "imports": [imp.to_dict() for imp in self.imports],
+            "module_docstring": self.module_docstring,
+            "namespace": self.namespace,
+            "error": self.error,
+            "file_lines": self.file_lines,
+        }
 
 
 # Initialize languages
@@ -273,6 +304,14 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
         tree = parser.parse(source_bytes)
     except Exception as e:
         return ParseResult(path=path, error=f"Parse error: {e}", file_lines=file_lines)
+
+    # Check for syntax errors
+    if tree.root_node.has_error:
+        return ParseResult(
+            path=path,
+            error="Syntax error in file (tree-sitter parse failure)",
+            file_lines=file_lines,
+        )
 
     symbols: list[Symbol] = []
     imports: list[Import] = []

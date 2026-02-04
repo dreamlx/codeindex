@@ -1,14 +1,18 @@
 [project]
-name = "codeindex"
+name = "ai-codeindex"
 version = "0.6.0"
 description = "AI-native code indexing tool for large codebases"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "Your Name", email = "your@email.com"}
+    {name = "codeindex contributors", email = "noreply@github.com"}
 ]
-keywords = ["ai", "code", "index", "llm", "documentation"]
+maintainers = [
+    {name = "codeindex team", email = "noreply@github.com"}
+]
+keywords = ["ai", "code", "index", "llm", "documentation", "tree-sitter", "code-analysis"]
+urls = {Homepage = "https://github.com/yourusername/codeindex", Documentation = "https://github.com/yourusername/codeindex", Repository = "https://github.com/yourusername/codeindex", Changelog = "https://github.com/yourusername/codeindex/blob/master/CHANGELOG.md"}
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
