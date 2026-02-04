@@ -305,6 +305,14 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
     except Exception as e:
         return ParseResult(path=path, error=f"Parse error: {e}", file_lines=file_lines)
 
+    # Check for syntax errors
+    if tree.root_node.has_error:
+        return ParseResult(
+            path=path,
+            error="Syntax error in file (tree-sitter parse failure)",
+            file_lines=file_lines,
+        )
+
     symbols: list[Symbol] = []
     imports: list[Import] = []
     module_docstring = ""

@@ -89,7 +89,7 @@ def _process_directory_with_smartwriter(
 
 
 @click.command()
-@click.argument("path", type=click.Path(exists=True, file_okay=False, path_type=Path))
+@click.argument("path", type=click.Path(exists=False, file_okay=False, path_type=Path))
 @click.option("--dry-run", is_flag=True, help="Show what would be done without executing")
 @click.option("--fallback", is_flag=True, help="Generate basic README without AI")
 @click.option("--quiet", "-q", is_flag=True, help="Minimal output")
@@ -131,6 +131,41 @@ def scan(
     """
     path = path.resolve()
 
+    # Check if path exists (handle JSON error output)
+    if not path.exists():
+        if output == "json":
+            import json
+
+            from .errors import ErrorCode, ErrorInfo, create_error_response
+
+            error = ErrorInfo(
+                code=ErrorCode.DIRECTORY_NOT_FOUND,
+                message=f"Directory does not exist: {path}",
+                detail=None,
+            )
+            click.echo(json.dumps(create_error_response(error), indent=2, ensure_ascii=False))
+            raise SystemExit(1)
+        else:
+            # Keep original Click behavior for markdown mode
+            raise click.BadParameter(f"Directory '{path}' does not exist.")
+
+    # Check if it's a directory
+    if not path.is_dir():
+        if output == "json":
+            import json
+
+            from .errors import ErrorCode, ErrorInfo, create_error_response
+
+            error = ErrorInfo(
+                code=ErrorCode.INVALID_PATH,
+                message=f"Path is not a directory: {path}",
+                detail=None,
+            )
+            click.echo(json.dumps(create_error_response(error), indent=2, ensure_ascii=False))
+            raise SystemExit(1)
+        else:
+            raise click.BadParameter(f"Path '{path}' is not a directory.")
+
     # Load config
     config = Config.load()
 
@@ -160,9 +195,25 @@ def scan(
     result = scan_directory(path, config, path.parent)
 
     if not result.files:
-        if not quiet:
-            console.print(f"[yellow]No indexable files found in {path}[/yellow]")
-        return
+        if output == "json":
+            import json
+            # Output empty results JSON
+            json_output = {
+                "success": True,
+                "results": [],
+                "summary": {
+                    "total_files": 0,
+                    "total_symbols": 0,
+                    "total_imports": 0,
+                    "errors": 0,
+                },
+            }
+            click.echo(json.dumps(json_output, indent=2, ensure_ascii=False))
+            return
+        else:
+            if not quiet:
+                console.print(f"[yellow]No indexable files found in {path}[/yellow]")
+            return
 
     if not quiet:
         console.print(f"  [dim]→ Found {len(result.files)} files[/dim]")
@@ -333,8 +384,24 @@ def scan_all(
     # Determine root path first (needed for config loading)
     root = Path.cwd() if root is None else root
 
+    # Check if config file exists (for JSON mode)
+    config_path = root / ".codeindex.yaml"
+    if not config_path.exists():
+        if output == "json":
+            import json
+
+            from .errors import ErrorCode, ErrorInfo, create_error_response
+
+            error = ErrorInfo(
+                code=ErrorCode.NO_CONFIG_FOUND,
+                message=f"Configuration file not found: {config_path}",
+                detail="Run 'codeindex init' to create .codeindex.yaml",
+            )
+            click.echo(json.dumps(create_error_response(error), indent=2, ensure_ascii=False))
+            raise SystemExit(1)
+
     # Load config from root directory
-    config = Config.load(root / ".codeindex.yaml" if (root / ".codeindex.yaml").exists() else None)
+    config = Config.load(config_path if config_path.exists() else None)
 
     # --fallback is alias for --no-ai
     use_ai = not (no_ai or fallback)
