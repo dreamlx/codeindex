@@ -680,6 +680,12 @@ Changed files:
 Changed files:
 - `test_error_handling.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_hooks_config.py`
+
 ---
 
 ## Recent Changes
@@ -687,4 +693,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_hooks_config.py`
+- `test_java_parser.py`
