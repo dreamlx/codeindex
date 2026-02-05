@@ -1,6 +1,6 @@
 # codeindex
 
-[![PyPI version](https://badge.fury.io/py/codeindex.svg)](https://badge.fury.io/py/codeindex)
+[![PyPI version](https://badge.fury.io/py/ai-codeindex.svg)](https://badge.fury.io/py/ai-codeindex)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://github.com/yourusername/codeindex/workflows/Tests/badge.svg)](https://github.com/yourusername/codeindex/actions)
@@ -43,13 +43,13 @@ codeindex automatically generates intelligent documentation (`README_AI.md`) for
 ### Using pipx (Recommended)
 
 ```bash
-pipx install codeindex
+pipx install ai-codeindex
 ```
 
 ### Using pip
 
 ```bash
-pip install codeindex
+pip install ai-codeindex
 ```
 
 ### From Source
@@ -150,7 +150,80 @@ codeindex list-dirs | parallel -j 4 codeindex scan {}
 → Completed: 3/3 directories
 ```
 
-### 5. Check Status
+### 5. Generate Structured Data (JSON)
+
+**NEW in v0.5.0**: For tool integration (e.g., LoomGraph, custom scripts, CI/CD pipelines), generate machine-readable JSON output.
+
+```bash
+# Single directory
+codeindex scan ./src --output json
+
+# Entire project
+codeindex scan-all --output json > parse_results.json
+
+# View formatted JSON
+codeindex scan ./src --output json | jq .
+```
+
+**JSON Output Structure**:
+
+```json
+{
+  "success": true,
+  "results": [
+    {
+      "file": "src/parser.py",
+      "symbols": [
+        {
+          "name": "Parser",
+          "kind": "class",
+          "signature": "class Parser:",
+          "line_start": 15,
+          "line_end": 120
+        }
+      ],
+      "imports": [
+        {"module": "pathlib", "names": ["Path"], "is_from": true}
+      ],
+      "error": null
+    }
+  ],
+  "summary": {
+    "total_files": 1,
+    "total_symbols": 1,
+    "total_imports": 1,
+    "errors": 0
+  }
+}
+```
+
+**Error Handling**:
+
+When errors occur, the JSON response includes structured error information:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "DIRECTORY_NOT_FOUND",
+    "message": "Directory does not exist: /path/to/dir",
+    "detail": null
+  },
+  "results": [],
+  "summary": {
+    "total_files": 0,
+    "errors": 1
+  }
+}
+```
+
+**Use Cases**:
+- 🔌 **Tool Integration**: Feed parse results to visualization tools like LoomGraph
+- 🤖 **CI/CD Pipelines**: Validate code structure in automated workflows
+- 📊 **Analytics**: Analyze codebase metrics across versions
+- 🧪 **Testing**: Verify expected code structure in tests
+
+### 6. Check Status
 
 ```bash
 codeindex status
@@ -168,7 +241,7 @@ Indexing Status
 Indexed: 3/4 (75%)
 ```
 
-### 6. Generate Symbol Indexes (v0.1.2+)
+### 7. Generate Symbol Indexes (v0.1.2+)
 
 **Global symbol index** - Find any class/function across your codebase:
 
@@ -203,7 +276,7 @@ codeindex affected --json  # For scripting/CI
 - Suggests which README_AI.md files need regeneration
 - JSON output for CI/CD integration
 
-### 7. Analyze Technical Debt (v0.3.0+)
+### 8. Analyze Technical Debt (v0.3.0+)
 
 **NEW in v0.3.0**: Detect code quality issues and technical debt patterns.
 
@@ -261,7 +334,7 @@ File Details
      → Split into 3-5 smaller files
 ```
 
-### 8. Framework Route Extraction (v0.5.0+)
+### 9. Framework Route Extraction (v0.5.0+)
 
 **NEW in v0.5.0**: Automatically detect and extract routes from web frameworks with line numbers and descriptions.
 
@@ -501,7 +574,24 @@ incremental:
     skip_lines: 5
     current_only: 50
     suggest_full: 200
+
+# Git Hooks configuration (v0.7.0+, Story 6)
+hooks:
+  post_commit:
+    mode: auto            # auto | disabled | async | sync | prompt
+    max_dirs_sync: 2      # Auto mode: ≤2 dirs = sync, >2 = async
+    enabled: true         # Master switch
+    log_file: ~/.codeindex/hooks/post-commit.log
 ```
+
+**Hooks Modes**:
+- `auto` (default): Smart detection based on project size
+- `disabled`: Completely disabled
+- `async`: Always non-blocking (background updates)
+- `sync`: Always blocking (immediate updates)
+- `prompt`: Reminder only, no auto-execution
+
+See [Git Hooks Integration Guide](docs/guides/git-hooks-integration.md) for detailed configuration.
 
 ---
 

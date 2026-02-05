@@ -4,9 +4,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict
 
+import tree_sitter_java as tsjava
 import tree_sitter_php as tsphp
 import tree_sitter_python as tspython
-from tree_sitter import Language, Parser
+from tree_sitter import Language, Node, Parser
 
 
 @dataclass
@@ -19,6 +20,19 @@ class Symbol:
     docstring: str = ""
     line_start: int = 0
     line_end: int = 0
+    annotations: list["Annotation"] = field(default_factory=list)  # Story 7.1.2.1
+
+    def to_dict(self) -> dict:
+        """Convert Symbol to JSON-serializable dict."""
+        return {
+            "name": self.name,
+            "kind": self.kind,
+            "signature": self.signature,
+            "docstring": self.docstring,
+            "line_start": self.line_start,
+            "line_end": self.line_end,
+            "annotations": [a.to_dict() for a in self.annotations],
+        }
 
 
 @dataclass
@@ -28,6 +42,33 @@ class Import:
     module: str
     names: list[str] = field(default_factory=list)
     is_from: bool = False
+
+    def to_dict(self) -> dict:
+        """Convert Import to JSON-serializable dict."""
+        return {
+            "module": self.module,
+            "names": self.names,
+            "is_from": self.is_from,
+        }
+
+
+@dataclass
+class Annotation:
+    """Represents a code annotation/decorator (e.g., Java @RestController).
+
+    Story 7.1.2.1: Annotation Extraction
+    Supports extraction of annotations from Java classes, methods, and fields.
+    """
+
+    name: str
+    arguments: dict[str, str] = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        """Convert Annotation to JSON-serializable dict."""
+        return {
+            "name": self.name,
+            "arguments": self.arguments,
+        }
 
 
 @dataclass
@@ -42,15 +83,29 @@ class ParseResult:
     error: str | None = None
     file_lines: int = 0  # Number of lines in the file
 
+    def to_dict(self) -> dict:
+        """Convert ParseResult to JSON-serializable dict."""
+        return {
+            "path": str(self.path),
+            "symbols": [symbol.to_dict() for symbol in self.symbols],
+            "imports": [imp.to_dict() for imp in self.imports],
+            "module_docstring": self.module_docstring,
+            "namespace": self.namespace,
+            "error": self.error,
+            "file_lines": self.file_lines,
+        }
+
 
 # Initialize languages
 PY_LANGUAGE = Language(tspython.language())
 PHP_LANGUAGE = Language(tsphp.language_php())
+JAVA_LANGUAGE = Language(tsjava.language())
 
 # Language-specific parsers
 PARSERS: Dict[str, Parser] = {
     "python": Parser(PY_LANGUAGE),
     "php": Parser(PHP_LANGUAGE),
+    "java": Parser(JAVA_LANGUAGE),
 }
 
 # File extension to language mapping
@@ -58,6 +113,7 @@ FILE_EXTENSIONS: Dict[str, str] = {
     ".py": "python",
     ".php": "php",
     ".phtml": "php",
+    ".java": "java",
 }
 
 
@@ -274,6 +330,14 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
     except Exception as e:
         return ParseResult(path=path, error=f"Parse error: {e}", file_lines=file_lines)
 
+    # Check for syntax errors
+    if tree.root_node.has_error:
+        return ParseResult(
+            path=path,
+            error="Syntax error in file (tree-sitter parse failure)",
+            file_lines=file_lines,
+        )
+
     symbols: list[Symbol] = []
     imports: list[Import] = []
     module_docstring = ""
@@ -324,6 +388,39 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
             if child.type == "comment" and child.text.startswith(b"/**"):
                 module_docstring = _extract_php_docstring(child, source_bytes)
                 break
+
+        return ParseResult(
+            path=path,
+            symbols=symbols,
+            imports=imports,
+            module_docstring=module_docstring,
+            namespace=namespace,
+            file_lines=file_lines,
+        )
+
+    elif language == "java":
+        # Java parsing
+        root = tree.root_node
+        namespace = ""  # Java package name
+
+        for child in root.children:
+            if child.type == "package_declaration":
+                namespace = _parse_java_package(child, source_bytes)
+            elif child.type == "class_declaration":
+                symbols.extend(_parse_java_class(child, source_bytes))
+            elif child.type == "interface_declaration":
+                symbols.extend(_parse_java_interface(child, source_bytes))
+            elif child.type == "enum_declaration":
+                symbols.extend(_parse_java_enum(child, source_bytes))
+            elif child.type == "record_declaration":
+                symbols.extend(_parse_java_record(child, source_bytes))
+            elif child.type == "import_declaration":
+                imp = _parse_java_import(child, source_bytes)
+                if imp:
+                    imports.append(imp)
+
+        # Extract module docstring from first JavaDoc comment
+        module_docstring = _extract_java_module_docstring(tree, source_bytes)
 
         return ParseResult(
             path=path,
@@ -699,3 +796,559 @@ def _parse_php_use(node, source_bytes: bytes) -> list[Import]:
                         ))
 
     return imports
+
+
+# ==================== Java Parser Functions ====================
+
+
+def _extract_java_modifiers(node: Node, source_bytes: bytes) -> list[str]:
+    """
+    Extract modifiers (public, private, static, etc.) from a Java node.
+
+    Args:
+        node: Tree-sitter node to extract modifiers from
+        source_bytes: Source code as bytes
+
+    Returns:
+        List of modifier strings (e.g., ['public', 'static', 'final'])
+    """
+    modifiers = []
+    for child in node.children:
+        if child.type == "modifiers":
+            for mod_child in child.children:
+                modifiers.append(_get_node_text(mod_child, source_bytes))
+    return modifiers
+
+
+def _build_java_signature(modifiers: list[str], *parts: str) -> str:
+    """
+    Build a Java signature string from modifiers and parts.
+
+    Args:
+        modifiers: List of modifier strings (e.g., ['public', 'static'])
+        *parts: Additional signature parts (e.g., return type, name, parameters)
+
+    Returns:
+        Complete signature string (e.g., "public static void main(String[] args)")
+    """
+    signature_parts = []
+
+    # Add modifiers if present
+    if modifiers:
+        signature_parts.append(" ".join(modifiers))
+
+    # Add remaining parts
+    signature_parts.extend(parts)
+
+    return " ".join(signature_parts)
+
+
+def _extract_java_annotations(node: Node, source_bytes: bytes) -> list[Annotation]:
+    """Extract annotations from a Java node.
+
+    Story 7.1.2.1: Annotation Extraction
+    Extracts annotations like @RestController, @GetMapping("/path"), etc.
+
+    Args:
+        node: Tree-sitter node to extract annotations from
+        source_bytes: Source code as bytes
+
+    Returns:
+        List of Annotation objects
+    """
+    annotations = []
+
+    for child in node.children:
+        if child.type == "modifiers":
+            for mod_child in child.children:
+                if mod_child.type == "marker_annotation":
+                    # Simple annotation without arguments: @Entity
+                    name = ""
+                    for name_child in mod_child.children:
+                        if name_child.type in ("identifier", "scoped_identifier"):
+                            name = _get_node_text(name_child, source_bytes)
+                    if name:
+                        annotations.append(Annotation(name=name, arguments={}))
+
+                elif mod_child.type == "annotation":
+                    # Annotation with arguments: @RequestMapping("/path")
+                    name = ""
+                    arguments = {}
+
+                    for ann_child in mod_child.children:
+                        if ann_child.type in ("identifier", "scoped_identifier"):
+                            name = _get_node_text(ann_child, source_bytes)
+                        elif ann_child.type == "annotation_argument_list":
+                            arguments = _parse_annotation_arguments(ann_child, source_bytes)
+
+                    if name:
+                        annotations.append(Annotation(name=name, arguments=arguments))
+
+    return annotations
+
+
+def _parse_annotation_arguments(arg_list_node: Node, source_bytes: bytes) -> dict[str, str]:
+    """Parse annotation arguments into a dictionary.
+
+    Args:
+        arg_list_node: annotation_argument_list node
+        source_bytes: Source code as bytes
+
+    Returns:
+        Dictionary of argument name -> value
+        For single value annotations like @GetMapping("/path"), returns {"value": "/path"}
+    """
+    arguments = {}
+
+    for child in arg_list_node.children:
+        if child.type == "element_value_pair":
+            # Named argument: name = "value"
+            key = ""
+            value = ""
+            for pair_child in child.children:
+                if pair_child.type == "identifier":
+                    key = _get_node_text(pair_child, source_bytes)
+                elif pair_child.type == "string_literal":
+                    value = _get_node_text(pair_child, source_bytes).strip('"')
+                elif pair_child.type in ("decimal_integer_literal", "true", "false"):
+                    value = _get_node_text(pair_child, source_bytes)
+                elif pair_child.type == "element_value_array_initializer":
+                    # Array value: {"/users", "/user"}
+                    value = _get_node_text(pair_child, source_bytes)
+
+            if key and value:
+                arguments[key] = value
+
+        elif child.type == "string_literal":
+            # Single unnamed string argument: @GetMapping("/path")
+            # Maps to "value" key by Java convention
+            value = _get_node_text(child, source_bytes).strip('"')
+            arguments["value"] = value
+        elif child.type == "decimal_integer_literal":
+            # Single unnamed integer argument
+            value = _get_node_text(child, source_bytes)
+            arguments["value"] = value
+
+    return arguments
+
+
+def _find_child_by_type(node: Node, type_name: str) -> Node | None:
+    """
+    Find first child node of a specific type.
+
+    Args:
+        node: Parent node to search in
+        type_name: Type of child to find
+
+    Returns:
+        First matching child node, or None if not found
+    """
+    for child in node.children:
+        if child.type == type_name:
+            return child
+    return None
+
+
+def _extract_java_docstring(node: Node, source_bytes: bytes) -> str:
+    """
+    Extract JavaDoc comment from a node.
+
+    JavaDoc comments are /** ... */ blocks that appear before declarations.
+    They are typically previous siblings of the node.
+    """
+    # Check previous siblings for JavaDoc comments
+    if (hasattr(node, 'prev_sibling') and node.prev_sibling and
+            node.prev_sibling.type == "block_comment"):
+        comment_text = _get_node_text(node.prev_sibling, source_bytes)
+        if comment_text.startswith("/**"):
+            # Remove /** and */ and clean up
+            return comment_text[3:-2].strip()
+
+    # Check children for comment (less common)
+    for child in node.children:
+        if child.type == "block_comment":
+            comment_text = _get_node_text(child, source_bytes)
+            if comment_text.startswith("/**"):
+                return comment_text[3:-2].strip()
+
+    return ""
+
+
+def _parse_java_method(node: Node, source_bytes: bytes, class_name: str = "") -> Symbol:
+    """Parse a Java method declaration."""
+    name = ""
+    params = ""
+    return_type = ""
+
+    # Extract modifiers and annotations using helpers
+    modifiers = _extract_java_modifiers(node, source_bytes)
+    annotations = _extract_java_annotations(node, source_bytes)  # Story 7.1.2.1
+
+    for child in node.children:
+        if child.type == "identifier":
+            name = _get_node_text(child, source_bytes)
+        elif child.type == "formal_parameters":
+            params = _get_node_text(child, source_bytes)
+        elif child.type == "type_identifier" or child.type == "void_type":
+            return_type = _get_node_text(child, source_bytes)
+        elif child.type in ("generic_type", "array_type", "scoped_type_identifier"):
+            return_type = _get_node_text(child, source_bytes)
+
+    # Build signature using helper
+    return_str = return_type if return_type else "void"
+    full_name = f"{class_name}.{name}" if class_name else name
+    signature = _build_java_signature(modifiers, return_str, f"{name}{params}")
+
+    docstring = _extract_java_docstring(node, source_bytes)
+
+    return Symbol(
+        name=full_name,
+        kind="method" if class_name else "function",
+        signature=signature,
+        docstring=docstring,
+        line_start=node.start_point[0] + 1,
+        line_end=node.end_point[0] + 1,
+        annotations=annotations,  # Story 7.1.2.1
+    )
+
+
+def _parse_java_constructor(node: Node, source_bytes: bytes, class_name: str) -> Symbol:
+    """Parse a Java constructor declaration."""
+    name = ""
+    params = ""
+
+    # Extract modifiers and annotations using helpers
+    modifiers = _extract_java_modifiers(node, source_bytes)
+    annotations = _extract_java_annotations(node, source_bytes)  # Story 7.1.2.1
+
+    for child in node.children:
+        if child.type == "identifier":
+            name = _get_node_text(child, source_bytes)
+        elif child.type == "formal_parameters":
+            params = _get_node_text(child, source_bytes)
+
+    # Build signature using helper
+    full_name = f"{class_name}.{name}"
+    signature = _build_java_signature(modifiers, f"{name}{params}")
+
+    docstring = _extract_java_docstring(node, source_bytes)
+
+    return Symbol(
+        name=full_name,
+        kind="constructor",
+        signature=signature,
+        docstring=docstring,
+        line_start=node.start_point[0] + 1,
+        line_end=node.end_point[0] + 1,
+        annotations=annotations,  # Story 7.1.2.1
+    )
+
+
+def _parse_java_field(node: Node, source_bytes: bytes, class_name: str = "") -> list[Symbol]:
+    """Parse a Java field declaration."""
+    type_name = ""
+    field_names = []
+
+    # Extract modifiers and annotations using helpers
+    modifiers = _extract_java_modifiers(node, source_bytes)
+    annotations = _extract_java_annotations(node, source_bytes)  # Story 7.1.2.1
+
+    for child in node.children:
+        if child.type in ("type_identifier", "generic_type", "array_type",
+                          "integral_type", "floating_point_type", "boolean_type"):
+            type_name = _get_node_text(child, source_bytes)
+        elif child.type == "variable_declarator":
+            for var_child in child.children:
+                if var_child.type == "identifier":
+                    field_names.append(_get_node_text(var_child, source_bytes))
+
+    # Create symbols for each field
+    symbols = []
+    for field_name in field_names:
+        full_name = f"{class_name}.{field_name}" if class_name else field_name
+
+        # Build signature using helper
+        signature = _build_java_signature(modifiers, type_name, field_name)
+
+        symbols.append(Symbol(
+            name=full_name,
+            kind="field",
+            signature=signature,
+            docstring="",  # Fields typically don't have individual docstrings
+            line_start=node.start_point[0] + 1,
+            line_end=node.end_point[0] + 1,
+            annotations=annotations,  # Story 7.1.2.1
+        ))
+
+    return symbols
+
+
+def _parse_java_class(node: Node, source_bytes: bytes) -> list[Symbol]:
+    """Parse a Java class declaration."""
+    symbols = []
+    class_name = ""
+    type_params = ""
+    superclass = ""
+    interfaces = []
+
+    # Extract modifiers and annotations using helpers
+    modifiers = _extract_java_modifiers(node, source_bytes)
+    annotations = _extract_java_annotations(node, source_bytes)  # Story 7.1.2.1
+
+    for child in node.children:
+        if child.type == "identifier":
+            class_name = _get_node_text(child, source_bytes)
+        elif child.type == "type_parameters":
+            type_params = _get_node_text(child, source_bytes)
+        elif child.type == "superclass":
+            for super_child in child.children:
+                if super_child.type == "type_identifier":
+                    superclass = _get_node_text(super_child, source_bytes)
+        elif child.type == "super_interfaces":
+            for interface_child in child.children:
+                if interface_child.type == "type_list":
+                    for type_child in interface_child.children:
+                        if type_child.type == "type_identifier":
+                            interfaces.append(_get_node_text(type_child, source_bytes))
+
+    # Build class signature using helper
+    class_decl = class_name + type_params if type_params else class_name
+    signature_parts = ["class", class_decl]
+    if superclass:
+        signature_parts.append(f"extends {superclass}")
+    if interfaces:
+        signature_parts.append(f"implements {', '.join(interfaces)}")
+
+    signature = _build_java_signature(modifiers, *signature_parts)
+    docstring = _extract_java_docstring(node, source_bytes)
+
+    # Add class symbol
+    symbols.append(Symbol(
+        name=class_name,
+        kind="class",
+        signature=signature,
+        docstring=docstring,
+        line_start=node.start_point[0] + 1,
+        line_end=node.end_point[0] + 1,
+        annotations=annotations,  # Story 7.1.2.1
+    ))
+
+    # Parse class body (methods, fields, constructors)
+    for child in node.children:
+        if child.type == "class_body":
+            for body_child in child.children:
+                if body_child.type == "method_declaration":
+                    method = _parse_java_method(body_child, source_bytes, class_name)
+                    symbols.append(method)
+                elif body_child.type == "constructor_declaration":
+                    constructor = _parse_java_constructor(body_child, source_bytes, class_name)
+                    symbols.append(constructor)
+                elif body_child.type == "field_declaration":
+                    fields = _parse_java_field(body_child, source_bytes, class_name)
+                    symbols.extend(fields)
+                elif body_child.type == "class_declaration":
+                    # Nested class
+                    nested_symbols = _parse_java_class(body_child, source_bytes)
+                    symbols.extend(nested_symbols)
+
+    return symbols
+
+
+def _parse_java_interface(node: Node, source_bytes: bytes) -> list[Symbol]:
+    """Parse a Java interface declaration."""
+    symbols = []
+    interface_name = ""
+    type_params = ""
+    extends = []
+
+    # Extract modifiers and annotations using helpers
+    modifiers = _extract_java_modifiers(node, source_bytes)
+    annotations = _extract_java_annotations(node, source_bytes)  # Story 7.1.2.1
+
+    for child in node.children:
+        if child.type == "identifier":
+            interface_name = _get_node_text(child, source_bytes)
+        elif child.type == "type_parameters":
+            type_params = _get_node_text(child, source_bytes)
+        elif child.type == "extends_interfaces":
+            for ext_child in child.children:
+                if ext_child.type == "type_list":
+                    for type_child in ext_child.children:
+                        if type_child.type in (
+                            "type_identifier",
+                            "generic_type",
+                            "scoped_type_identifier",
+                        ):
+                            extends.append(_get_node_text(type_child, source_bytes))
+
+    # Build interface signature using helper
+    interface_decl = interface_name + type_params if type_params else interface_name
+    signature_parts = ["interface", interface_decl]
+    if extends:
+        signature_parts.append(f"extends {', '.join(extends)}")
+
+    signature = _build_java_signature(modifiers, *signature_parts)
+    docstring = _extract_java_docstring(node, source_bytes)
+
+    # Add interface symbol
+    symbols.append(Symbol(
+        name=interface_name,
+        kind="interface",
+        signature=signature,
+        docstring=docstring,
+        line_start=node.start_point[0] + 1,
+        line_end=node.end_point[0] + 1,
+        annotations=annotations,  # Story 7.1.2.1
+    ))
+
+    # Parse interface body (method declarations)
+    for child in node.children:
+        if child.type == "interface_body":
+            for body_child in child.children:
+                if body_child.type == "method_declaration":
+                    method = _parse_java_method(body_child, source_bytes, interface_name)
+                    symbols.append(method)
+
+    return symbols
+
+
+def _parse_java_enum(node: Node, source_bytes: bytes) -> list[Symbol]:
+    """Parse a Java enum declaration."""
+    symbols = []
+    enum_name = ""
+
+    # Extract modifiers and annotations using helpers
+    modifiers = _extract_java_modifiers(node, source_bytes)
+    annotations = _extract_java_annotations(node, source_bytes)  # Story 7.1.2.1
+
+    for child in node.children:
+        if child.type == "identifier":
+            enum_name = _get_node_text(child, source_bytes)
+
+    # Build enum signature using helper
+    signature = _build_java_signature(modifiers, "enum", enum_name)
+    docstring = _extract_java_docstring(node, source_bytes)
+
+    # Add enum symbol
+    symbols.append(Symbol(
+        name=enum_name,
+        kind="enum",
+        signature=signature,
+        docstring=docstring,
+        line_start=node.start_point[0] + 1,
+        line_end=node.end_point[0] + 1,
+        annotations=annotations,  # Story 7.1.2.1
+    ))
+
+    # Parse enum body (constants, methods)
+    for child in node.children:
+        if child.type == "enum_body":
+            for body_child in child.children:
+                if body_child.type == "method_declaration":
+                    method = _parse_java_method(body_child, source_bytes, enum_name)
+                    symbols.append(method)
+                elif body_child.type == "constructor_declaration":
+                    constructor = _parse_java_constructor(body_child, source_bytes, enum_name)
+                    symbols.append(constructor)
+
+    return symbols
+
+
+def _parse_java_record(node: Node, source_bytes: bytes) -> list[Symbol]:
+    """Parse a Java record declaration (Java 14+)."""
+    symbols = []
+    record_name = ""
+    type_params = ""
+    params = ""
+
+    # Extract modifiers and annotations using helpers
+    modifiers = _extract_java_modifiers(node, source_bytes)
+    annotations = _extract_java_annotations(node, source_bytes)  # Story 7.1.2.1
+
+    for child in node.children:
+        if child.type == "identifier":
+            record_name = _get_node_text(child, source_bytes)
+        elif child.type == "type_parameters":
+            type_params = _get_node_text(child, source_bytes)
+        elif child.type == "formal_parameters":
+            params = _get_node_text(child, source_bytes)
+
+    # Build record signature using helper
+    name_part = record_name + type_params if type_params else record_name
+    signature = _build_java_signature(modifiers, "record", f"{name_part}{params}")
+    docstring = _extract_java_docstring(node, source_bytes)
+
+    # Add record symbol
+    symbols.append(Symbol(
+        name=record_name,
+        kind="record",
+        signature=signature,
+        docstring=docstring,
+        line_start=node.start_point[0] + 1,
+        line_end=node.end_point[0] + 1,
+        annotations=annotations,  # Story 7.1.2.1
+    ))
+
+    # Parse record body (methods)
+    for child in node.children:
+        if child.type == "class_body":  # Records use class_body too
+            for body_child in child.children:
+                if body_child.type == "method_declaration":
+                    method = _parse_java_method(body_child, source_bytes, record_name)
+                    symbols.append(method)
+
+    return symbols
+
+
+def _parse_java_import(node: Node, source_bytes: bytes) -> Import | None:
+    """Parse a Java import statement."""
+    module = ""
+    is_static = False
+    is_wildcard = False
+
+    for child in node.children:
+        if child.type == "scoped_identifier" or child.type == "identifier":
+            module = _get_node_text(child, source_bytes)
+        elif child.type == "asterisk":
+            is_wildcard = True
+        elif child.type == "static":
+            is_static = True
+
+    if module:
+        # Handle wildcard imports
+        if is_wildcard:
+            module = module + ".*"
+
+        return Import(
+            module=module,
+            names=[],  # Java imports don't have "as" aliases like Python
+            is_from=is_static,  # Use is_from to indicate static imports
+        )
+
+    return None
+
+
+def _extract_java_module_docstring(tree, source_bytes: bytes) -> str:
+    """Extract module-level JavaDoc comment."""
+    root = tree.root_node
+
+    # Look for first block comment (/** ... */)
+    for child in root.children:
+        if child.type == "block_comment":
+            comment_text = _get_node_text(child, source_bytes)
+            if comment_text.startswith("/**"):
+                return comment_text[3:-2].strip()
+        elif child.type in ("class_declaration", "interface_declaration",
+                           "enum_declaration", "record_declaration"):
+            # Found a declaration, extract its docstring as module docstring
+            return _extract_java_docstring(child, source_bytes)
+
+    return ""
+
+
+def _parse_java_package(node: Node, source_bytes: bytes) -> str:
+    """Extract Java package declaration."""
+    for child in node.children:
+        if child.type == "scoped_identifier" or child.type == "identifier":
+            return _get_node_text(child, source_bytes)
+    return ""

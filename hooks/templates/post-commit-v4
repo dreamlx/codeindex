@@ -1,0 +1,162 @@
+#!/bin/zsh
+# Post-commit hook for codeindex
+# Smart incremental update with async support
+#
+# Version 4: Async mode for better UX (non-blocking)
+
+set -e
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+# Avoid infinite loop: skip if last commit only contains README_AI.md or PROJECT_INDEX.md
+LAST_COMMIT_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD)
+if echo "$LAST_COMMIT_FILES" | grep -v "README_AI.md" | grep -v "PROJECT_INDEX.md" | grep -q "."; then
+    : # Has non-doc files, continue
+else
+    exit 0
+fi
+
+# Try to activate virtual environment
+REPO_ROOT=$(git rev-parse --show-toplevel)
+if [ -f "$REPO_ROOT/.venv/bin/activate" ]; then
+    source "$REPO_ROOT/.venv/bin/activate"
+elif [ -f "$REPO_ROOT/venv/bin/activate" ]; then
+    source "$REPO_ROOT/venv/bin/activate"
+fi
+
+echo "\n${CYAN}📝 Post-commit: Analyzing changes...${NC}"
+
+# Check if codeindex is available
+if ! command -v codeindex &> /dev/null; then
+    echo "${YELLOW}⚠ codeindex not found, skipping auto-update${NC}"
+    exit 0
+fi
+
+# Get change analysis as JSON
+ANALYSIS=$(codeindex affected --json 2>/dev/null || echo '{"level": "skip"}')
+
+# Extract level from JSON
+LEVEL=$(echo "$ANALYSIS" | python3 -c "import sys, json; print(json.load(sys.stdin).get('level', 'skip'))" 2>/dev/null || echo "skip")
+
+if [ "$LEVEL" = "skip" ]; then
+    echo "${GREEN}✓ Changes below threshold, skipping update${NC}"
+    exit 0
+fi
+
+echo "   Update level: ${YELLOW}${LEVEL}${NC}"
+
+# Get affected directories from JSON
+AFFECTED_DIRS=$(echo "$ANALYSIS" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+for d in data.get('affected_dirs', []):
+    print(d)
+" 2>/dev/null || true)
+
+if [ -z "$AFFECTED_DIRS" ]; then
+    echo "${GREEN}✓ No directories need updating${NC}"
+    exit 0
+fi
+
+# Count directories
+DIR_COUNT=$(echo "$AFFECTED_DIRS" | wc -l | tr -d ' ')
+echo "   Found ${DIR_COUNT} directory(ies) to check"
+
+# ============================================
+# NEW: Smart async mode detection
+# ============================================
+# Config files for async mode
+LOG_DIR="$HOME/.codeindex/hooks"
+LOG_FILE="$LOG_DIR/post-commit.log"
+PID_FILE="$LOG_DIR/post-commit.pid"
+LOCK_FILE="$LOG_DIR/post-commit.lock"
+
+mkdir -p "$LOG_DIR"
+
+# Determine mode: ≤2 dirs = sync, >2 dirs = async
+if [ "$DIR_COUNT" -le 2 ]; then
+    MODE="sync"
+else
+    MODE="async"
+fi
+
+# Check for lock file (another update in progress)
+if [ -f "$LOCK_FILE" ]; then
+    LOCK_PID=$(cat "$LOCK_FILE" 2>/dev/null || echo "")
+    if [ -n "$LOCK_PID" ] && kill -0 "$LOCK_PID" 2>/dev/null; then
+        echo "${YELLOW}⚠ Another update in progress (PID: $LOCK_PID)${NC}"
+        echo "   Log: $LOG_FILE"
+        exit 0
+    else
+        # Stale lock file, remove it
+        rm -f "$LOCK_FILE"
+    fi
+fi
+
+# If async mode, run in background
+if [ "$MODE" = "async" ]; then
+    echo "\n${YELLOW}⚡ Running in async mode (non-blocking)${NC}"
+    echo "   ${DIR_COUNT} directories will be updated in background"
+    echo "   Log: ${YELLOW}$LOG_FILE${NC}"
+    echo ""
+    echo "   To check progress: ${CYAN}tail -f $LOG_FILE${NC}"
+    echo "   Or wait for completion: ${CYAN}while [ -f $LOCK_FILE ]; do sleep 1; done${NC}"
+    echo ""
+    echo "${GREEN}✓ You can continue working. Updates will commit automatically.${NC}\n"
+
+    # Export all needed variables for background script
+    export REPO_ROOT AFFECTED_DIRS LEVEL DIR_COUNT COMMIT_MSG COMMIT_HASH
+    export RED GREEN YELLOW CYAN NC
+    export LOG_FILE PID_FILE LOCK_FILE
+
+    # Run update in background
+    nohup zsh -c '
+        # Create lock file
+        echo $$ > "$LOCK_FILE"
+
+        # Redirect output to log
+        exec > "$LOG_FILE" 2>&1
+
+        echo "=== Post-commit async update started at $(date) ==="
+        echo "Commit: $COMMIT_HASH - $COMMIT_MSG"
+        echo "Update level: $LEVEL"
+        echo "Directories: $DIR_COUNT"
+        echo ""
+
+        # Source the sync update logic
+        source "'"$REPO_ROOT"'/.git/hooks/post-commit-update-logic.sh"
+
+        # Cleanup
+        rm -f "$LOCK_FILE" "$PID_FILE"
+
+        echo ""
+        echo "=== Update completed at $(date) ==="
+    ' > /dev/null 2>&1 &
+
+    # Save PID
+    echo $! > "$PID_FILE"
+
+    exit 0
+fi
+
+# ============================================
+# Sync mode: Continue with regular flow
+# ============================================
+echo "\n${CYAN}→ Running in sync mode (waiting for completion)${NC}"
+
+# Create lock file
+echo $$ > "$LOCK_FILE"
+
+# Source the shared update logic
+source "$REPO_ROOT/.git/hooks/post-commit-update-logic.sh"
+
+# Cleanup
+rm -f "$LOCK_FILE"
+
+echo "\n${GREEN}✓ Post-commit hook completed${NC}\n"
+exit 0

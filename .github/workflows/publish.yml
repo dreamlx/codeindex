@@ -1,0 +1,92 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # 匹配 v0.5.1, v1.0.0 等
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+
+    - name: Run tests
+      run: pytest -v
+
+    - name: Run linter
+      run: ruff check src/
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # For PyPI trusted publishing
+      contents: write  # For creating releases
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install build tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+
+    - name: Build distribution
+      run: python -m build
+
+    - name: Check distribution
+      run: twine check dist/*
+
+    # TestPyPI step disabled - requires TEST_PYPI_API_TOKEN
+    # - name: Publish to TestPyPI
+    #   if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    #   uses: pypa/gh-action-pypi-publish@release/v1
+    #   with:
+    #     repository-url: https://test.pypi.org/legacy/
+    #     password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+    #     skip-existing: true
+
+    - name: Publish to PyPI
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+      uses: pypa/gh-action-pypi-publish@release/v1
+      # Using Trusted Publisher (OIDC) - no password needed
+
+    - name: Extract version
+      id: version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Extract changelog
+      id: changelog
+      run: |
+        VERSION=${{ steps.version.outputs.VERSION }}
+        sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | head -n -1 > release_notes.md
+        cat release_notes.md
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        body_path: release_notes.md
+        files: dist/*
+        draft: false
+        prerelease: false
+        token: ${{ secrets.GITHUB_TOKEN }}

@@ -275,23 +275,101 @@ rm .git/hooks/*.backup
 
 ## ⚙️ Configuration
 
-### Disable Lint Check
+### Post-Commit Hook Configuration
 
-Currently, hooks are not configurable via `.codeindex.yaml`.
+**NEW in v0.7.0** (Story 6): Post-commit hooks are now fully configurable via `.codeindex.yaml`.
 
-To disable lint check, manually edit `.git/hooks/pre-commit` and comment out the L1 section.
-
-**Future**: Configuration support in `.codeindex.yaml` (v0.6.0+)
+Add to your `.codeindex.yaml`:
 
 ```yaml
-# Future feature
 hooks:
-  pre_commit:
-    lint_enabled: false
-    debug_check_enabled: true
   post_commit:
-    auto_update: true
+    mode: auto             # auto | disabled | async | sync | prompt
+    max_dirs_sync: 2       # Auto mode threshold (≤2 = sync, >2 = async)
+    enabled: true          # Master switch
+    log_file: ~/.codeindex/hooks/post-commit.log
 ```
+
+#### Mode Options
+
+| Mode | Behavior | Use Case |
+|------|----------|----------|
+| `auto` **(default)** | Smart detection: ≤2 dirs = sync, >2 = async | Balanced UX (non-blocking for large projects) |
+| `disabled` | Completely disabled | Temporary disable or CI environments |
+| `async` | Always run in background (non-blocking) | Large projects, fast commits |
+| `sync` | Always run synchronously (blocking) | Small projects, immediate feedback |
+| `prompt` | Only show reminder, don't auto-execute | Manual control, batch updates |
+
+#### Examples
+
+**Disable post-commit hook**:
+```yaml
+hooks:
+  post_commit:
+    mode: disabled
+    enabled: false
+```
+
+**Always async (non-blocking)**:
+```yaml
+hooks:
+  post_commit:
+    mode: async
+    log_file: ~/.my-logs/post-commit.log
+```
+
+**Always sync (blocking)**:
+```yaml
+hooks:
+  post_commit:
+    mode: sync
+```
+
+**Prompt only (manual updates)**:
+```yaml
+hooks:
+  post_commit:
+    mode: prompt
+```
+
+**Custom threshold for auto mode**:
+```yaml
+hooks:
+  post_commit:
+    mode: auto
+    max_dirs_sync: 5  # ≤5 dirs = sync, >5 = async
+```
+
+#### Async Mode Output
+
+When async mode is active, you'll see:
+
+```bash
+⚡ Running in async mode (non-blocking)
+   3 directories will be updated in background
+   Log: ~/.codeindex/hooks/post-commit.log
+
+   To check progress: tail -f ~/.codeindex/hooks/post-commit.log
+   Or wait for completion: while [ -f ~/.codeindex/hooks/post-commit.lock ]; do sleep 1; done
+
+✓ You can continue working. Updates will commit automatically.
+```
+
+#### Prompt Mode Output
+
+When prompt mode is active, you'll see:
+
+```bash
+⚠️ README_AI.md updates available
+   3 directories need updating
+   Run: codeindex affected --update
+```
+
+### Pre-Commit Configuration
+
+Pre-commit hooks are not yet configurable via `.codeindex.yaml`.
+
+To disable lint check, manually edit `.git/hooks/pre-commit` and comment out the L1 section.
 
 ---
 

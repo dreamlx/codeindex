@@ -47,7 +47,8 @@ def get_language_extensions(languages: list[str]) -> set[str]:
 
 def should_exclude(path: Path, exclude_patterns: list[str], base_path: Path) -> bool:
     """Check if path matches any exclude pattern."""
-    rel_path = str(path.relative_to(base_path))
+    # Resolve both paths to handle symlinks (e.g., /var -> /private/var on macOS)
+    rel_path = str(path.resolve().relative_to(base_path.resolve()))
 
     for pattern in exclude_patterns:
         if fnmatch.fnmatch(rel_path, pattern):
