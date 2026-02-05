@@ -979,6 +979,7 @@ def _parse_java_method(node: Node, source_bytes: bytes, class_name: str = "") ->
     name = ""
     params = ""
     return_type = ""
+    type_params = ""  # Story 7.1.2.2: Method-level generic parameters
 
     # Extract modifiers and annotations using helpers
     modifiers = _extract_java_modifiers(node, source_bytes)
@@ -993,11 +994,15 @@ def _parse_java_method(node: Node, source_bytes: bytes, class_name: str = "") ->
             return_type = _get_node_text(child, source_bytes)
         elif child.type in ("generic_type", "array_type", "scoped_type_identifier"):
             return_type = _get_node_text(child, source_bytes)
+        elif child.type == "type_parameters":  # Story 7.1.2.2: Capture method generics
+            type_params = _get_node_text(child, source_bytes)
 
     # Build signature using helper
     return_str = return_type if return_type else "void"
     full_name = f"{class_name}.{name}" if class_name else name
-    signature = _build_java_signature(modifiers, return_str, f"{name}{params}")
+    # Include type parameters if present (e.g., <T extends Comparable<T>>)
+    method_decl = f"{type_params} {return_str}" if type_params else return_str
+    signature = _build_java_signature(modifiers, method_decl, f"{name}{params}")
 
     docstring = _extract_java_docstring(node, source_bytes)
 
