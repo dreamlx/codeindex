@@ -20,6 +20,7 @@ class Symbol:
     docstring: str = ""
     line_start: int = 0
     line_end: int = 0
+    annotations: list["Annotation"] = field(default_factory=list)  # Story 7.1.2.1
 
     def to_dict(self) -> dict:
         """Convert Symbol to JSON-serializable dict."""
@@ -30,6 +31,7 @@ class Symbol:
             "docstring": self.docstring,
             "line_start": self.line_start,
             "line_end": self.line_end,
+            "annotations": [a.to_dict() for a in self.annotations],
         }
 
 
@@ -47,6 +49,25 @@ class Import:
             "module": self.module,
             "names": self.names,
             "is_from": self.is_from,
+        }
+
+
+@dataclass
+class Annotation:
+    """Represents a code annotation/decorator (e.g., Java @RestController).
+
+    Story 7.1.2.1: Annotation Extraction
+    Supports extraction of annotations from Java classes, methods, and fields.
+    """
+
+    name: str
+    arguments: dict[str, str] = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        """Convert Annotation to JSON-serializable dict."""
+        return {
+            "name": self.name,
+            "arguments": self.arguments,
         }
 
 
@@ -822,6 +843,95 @@ def _build_java_signature(modifiers: list[str], *parts: str) -> str:
     return " ".join(signature_parts)
 
 
+def _extract_java_annotations(node: Node, source_bytes: bytes) -> list[Annotation]:
+    """Extract annotations from a Java node.
+
+    Story 7.1.2.1: Annotation Extraction
+    Extracts annotations like @RestController, @GetMapping("/path"), etc.
+
+    Args:
+        node: Tree-sitter node to extract annotations from
+        source_bytes: Source code as bytes
+
+    Returns:
+        List of Annotation objects
+    """
+    annotations = []
+
+    for child in node.children:
+        if child.type == "modifiers":
+            for mod_child in child.children:
+                if mod_child.type == "marker_annotation":
+                    # Simple annotation without arguments: @Entity
+                    name = ""
+                    for name_child in mod_child.children:
+                        if name_child.type in ("identifier", "scoped_identifier"):
+                            name = _get_node_text(name_child, source_bytes)
+                    if name:
+                        annotations.append(Annotation(name=name, arguments={}))
+
+                elif mod_child.type == "annotation":
+                    # Annotation with arguments: @RequestMapping("/path")
+                    name = ""
+                    arguments = {}
+
+                    for ann_child in mod_child.children:
+                        if ann_child.type in ("identifier", "scoped_identifier"):
+                            name = _get_node_text(ann_child, source_bytes)
+                        elif ann_child.type == "annotation_argument_list":
+                            arguments = _parse_annotation_arguments(ann_child, source_bytes)
+
+                    if name:
+                        annotations.append(Annotation(name=name, arguments=arguments))
+
+    return annotations
+
+
+def _parse_annotation_arguments(arg_list_node: Node, source_bytes: bytes) -> dict[str, str]:
+    """Parse annotation arguments into a dictionary.
+
+    Args:
+        arg_list_node: annotation_argument_list node
+        source_bytes: Source code as bytes
+
+    Returns:
+        Dictionary of argument name -> value
+        For single value annotations like @GetMapping("/path"), returns {"value": "/path"}
+    """
+    arguments = {}
+
+    for child in arg_list_node.children:
+        if child.type == "element_value_pair":
+            # Named argument: name = "value"
+            key = ""
+            value = ""
+            for pair_child in child.children:
+                if pair_child.type == "identifier":
+                    key = _get_node_text(pair_child, source_bytes)
+                elif pair_child.type == "string_literal":
+                    value = _get_node_text(pair_child, source_bytes).strip('"')
+                elif pair_child.type in ("decimal_integer_literal", "true", "false"):
+                    value = _get_node_text(pair_child, source_bytes)
+                elif pair_child.type == "element_value_array_initializer":
+                    # Array value: {"/users", "/user"}
+                    value = _get_node_text(pair_child, source_bytes)
+
+            if key and value:
+                arguments[key] = value
+
+        elif child.type == "string_literal":
+            # Single unnamed string argument: @GetMapping("/path")
+            # Maps to "value" key by Java convention
+            value = _get_node_text(child, source_bytes).strip('"')
+            arguments["value"] = value
+        elif child.type == "decimal_integer_literal":
+            # Single unnamed integer argument
+            value = _get_node_text(child, source_bytes)
+            arguments["value"] = value
+
+    return arguments
+
+
 def _find_child_by_type(node: Node, type_name: str) -> Node | None:
     """
     Find first child node of a specific type.
@@ -870,8 +980,9 @@ def _parse_java_method(node: Node, source_bytes: bytes, class_name: str = "") ->
     params = ""
     return_type = ""
 
-    # Extract modifiers using helper
+    # Extract modifiers and annotations using helpers
     modifiers = _extract_java_modifiers(node, source_bytes)
+    annotations = _extract_java_annotations(node, source_bytes)  # Story 7.1.2.1
 
     for child in node.children:
         if child.type == "identifier":
@@ -897,6 +1008,7 @@ def _parse_java_method(node: Node, source_bytes: bytes, class_name: str = "") ->
         docstring=docstring,
         line_start=node.start_point[0] + 1,
         line_end=node.end_point[0] + 1,
+        annotations=annotations,  # Story 7.1.2.1
     )
 
 
@@ -905,8 +1017,9 @@ def _parse_java_constructor(node: Node, source_bytes: bytes, class_name: str) ->
     name = ""
     params = ""
 
-    # Extract modifiers using helper
+    # Extract modifiers and annotations using helpers
     modifiers = _extract_java_modifiers(node, source_bytes)
+    annotations = _extract_java_annotations(node, source_bytes)  # Story 7.1.2.1
 
     for child in node.children:
         if child.type == "identifier":
@@ -927,6 +1040,7 @@ def _parse_java_constructor(node: Node, source_bytes: bytes, class_name: str) ->
         docstring=docstring,
         line_start=node.start_point[0] + 1,
         line_end=node.end_point[0] + 1,
+        annotations=annotations,  # Story 7.1.2.1
     )
 
 
@@ -935,8 +1049,9 @@ def _parse_java_field(node: Node, source_bytes: bytes, class_name: str = "") -> 
     type_name = ""
     field_names = []
 
-    # Extract modifiers using helper
+    # Extract modifiers and annotations using helpers
     modifiers = _extract_java_modifiers(node, source_bytes)
+    annotations = _extract_java_annotations(node, source_bytes)  # Story 7.1.2.1
 
     for child in node.children:
         if child.type in ("type_identifier", "generic_type", "array_type",
@@ -962,6 +1077,7 @@ def _parse_java_field(node: Node, source_bytes: bytes, class_name: str = "") -> 
             docstring="",  # Fields typically don't have individual docstrings
             line_start=node.start_point[0] + 1,
             line_end=node.end_point[0] + 1,
+            annotations=annotations,  # Story 7.1.2.1
         ))
 
     return symbols
@@ -975,8 +1091,9 @@ def _parse_java_class(node: Node, source_bytes: bytes) -> list[Symbol]:
     superclass = ""
     interfaces = []
 
-    # Extract modifiers using helper
+    # Extract modifiers and annotations using helpers
     modifiers = _extract_java_modifiers(node, source_bytes)
+    annotations = _extract_java_annotations(node, source_bytes)  # Story 7.1.2.1
 
     for child in node.children:
         if child.type == "identifier":
@@ -1013,6 +1130,7 @@ def _parse_java_class(node: Node, source_bytes: bytes) -> list[Symbol]:
         docstring=docstring,
         line_start=node.start_point[0] + 1,
         line_end=node.end_point[0] + 1,
+        annotations=annotations,  # Story 7.1.2.1
     ))
 
     # Parse class body (methods, fields, constructors)
@@ -1043,8 +1161,9 @@ def _parse_java_interface(node: Node, source_bytes: bytes) -> list[Symbol]:
     type_params = ""
     extends = []
 
-    # Extract modifiers using helper
+    # Extract modifiers and annotations using helpers
     modifiers = _extract_java_modifiers(node, source_bytes)
+    annotations = _extract_java_annotations(node, source_bytes)  # Story 7.1.2.1
 
     for child in node.children:
         if child.type == "identifier":
@@ -1075,6 +1194,7 @@ def _parse_java_interface(node: Node, source_bytes: bytes) -> list[Symbol]:
         docstring=docstring,
         line_start=node.start_point[0] + 1,
         line_end=node.end_point[0] + 1,
+        annotations=annotations,  # Story 7.1.2.1
     ))
 
     # Parse interface body (method declarations)
@@ -1093,8 +1213,9 @@ def _parse_java_enum(node: Node, source_bytes: bytes) -> list[Symbol]:
     symbols = []
     enum_name = ""
 
-    # Extract modifiers using helper
+    # Extract modifiers and annotations using helpers
     modifiers = _extract_java_modifiers(node, source_bytes)
+    annotations = _extract_java_annotations(node, source_bytes)  # Story 7.1.2.1
 
     for child in node.children:
         if child.type == "identifier":
@@ -1112,6 +1233,7 @@ def _parse_java_enum(node: Node, source_bytes: bytes) -> list[Symbol]:
         docstring=docstring,
         line_start=node.start_point[0] + 1,
         line_end=node.end_point[0] + 1,
+        annotations=annotations,  # Story 7.1.2.1
     ))
 
     # Parse enum body (constants, methods)
@@ -1135,8 +1257,9 @@ def _parse_java_record(node: Node, source_bytes: bytes) -> list[Symbol]:
     type_params = ""
     params = ""
 
-    # Extract modifiers using helper
+    # Extract modifiers and annotations using helpers
     modifiers = _extract_java_modifiers(node, source_bytes)
+    annotations = _extract_java_annotations(node, source_bytes)  # Story 7.1.2.1
 
     for child in node.children:
         if child.type == "identifier":
@@ -1159,6 +1282,7 @@ def _parse_java_record(node: Node, source_bytes: bytes) -> list[Symbol]:
         docstring=docstring,
         line_start=node.start_point[0] + 1,
         line_end=node.end_point[0] + 1,
+        annotations=annotations,  # Story 7.1.2.1
     ))
 
     # Parse record body (methods)
