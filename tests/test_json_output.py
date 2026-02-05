@@ -28,6 +28,7 @@ class TestSymbolSerialization:
             "docstring": "User management service",
             "line_start": 10,
             "line_end": 50,
+            "annotations": [],  # Story 7.1.2.1: Added annotations field
         }
 
     def test_symbol_to_dict_empty_docstring(self):
