@@ -1174,7 +1174,11 @@ def _parse_java_interface(node: Node, source_bytes: bytes) -> list[Symbol]:
             for ext_child in child.children:
                 if ext_child.type == "type_list":
                     for type_child in ext_child.children:
-                        if type_child.type == "type_identifier":
+                        if type_child.type in (
+                            "type_identifier",
+                            "generic_type",
+                            "scoped_type_identifier",
+                        ):
                             extends.append(_get_node_text(type_child, source_bytes))
 
     # Build interface signature using helper
