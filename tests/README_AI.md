@@ -767,6 +767,12 @@ Changed files:
 Changed files:
 - `test_java_edge_cases.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_java_error_recovery.py`
+
 ---
 
 ## Recent Changes
@@ -774,4 +780,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_java_error_recovery.py`
+- `test_java_lombok.py`
