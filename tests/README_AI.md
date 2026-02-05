@@ -731,6 +731,48 @@ Changed files:
 Changed files:
 - `test_java_spring.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_parallel_scan.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_java_generic_bounds.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_java_throws.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_java_lambda.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_java_module.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_java_edge_cases.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_java_error_recovery.py`
+
 ---
 
 ## Recent Changes
@@ -738,4 +780,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_parallel_scan.py`
+- `test_java_lombok.py`
