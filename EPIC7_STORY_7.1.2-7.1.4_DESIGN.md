@@ -1027,98 +1027,28 @@ def test_parallel_parsing_faster_than_sequential():
 
 ---
 
-#### Feature 7.1.4.3: 符号缓存
+#### ~~Feature 7.1.4.3: 符号缓存~~ ❌ 已删除
 
-**需求**: 对未修改的文件跳过重新解析。
+**删除原因**: 收益不足（<1%）
 
-**实现方案**:
+虽然缓存可以节省tree-sitter解析时间（~0.1秒），但**即使缓存命中，仍然需要调用AI生成README**（~10秒），这占据了99%的时间。
 
-```python
-# src/codeindex/cache.py
-import hashlib
-import json
-from pathlib import Path
-
-class ParseCache:
-    """Cache parsed results based on file content hash."""
-
-    def __init__(self, cache_dir: Path = Path(".codeindex_cache")):
-        self.cache_dir = cache_dir
-        self.cache_dir.mkdir(exist_ok=True)
-
-    def get_cache_key(self, file_path: Path, content: str) -> str:
-        """Generate cache key from file path and content hash."""
-        content_hash = hashlib.sha256(content.encode()).hexdigest()
-        return f"{file_path.name}_{content_hash}"
-
-    def get(self, file_path: Path, content: str) -> ParseResult | None:
-        """Get cached parse result if available."""
-        key = self.get_cache_key(file_path, content)
-        cache_file = self.cache_dir / f"{key}.json"
-
-        if cache_file.exists():
-            data = json.loads(cache_file.read_text())
-            return ParseResult.from_dict(data)
-
-        return None
-
-    def set(self, file_path: Path, content: str, result: ParseResult):
-        """Cache parse result."""
-        key = self.get_cache_key(file_path, content)
-        cache_file = self.cache_dir / f"{key}.json"
-
-        cache_file.write_text(json.dumps(result.to_dict()))
-
-    def clear(self):
-        """Clear all cached results."""
-        for cache_file in self.cache_dir.glob("*.json"):
-            cache_file.unlink()
+**实际时间分解**:
+```
+缓存命中: 0.001s (读取cache)
+格式化: 0.01s
+AI调用: 10s  ← 仍然要调用
+总计: 10.011s vs 无缓存10.11s
+收益: 0.1s / 10.1s = <1%
 ```
 
-**集成到parser**:
+**如果要真正有价值的缓存**:
+- 需要缓存AI生成的README（而非ParseResult）
+- 但这改变工具行为（README不随AI能力提升）
+- 需要复杂的cache invalidation策略
+- 投入产出比不划算
 
-```python
-# Global cache instance
-_parse_cache = ParseCache()
-
-def parse_file_with_cache(file_path: Path, content: str, language: str) -> ParseResult:
-    """Parse file with caching."""
-    # Check cache
-    cached = _parse_cache.get(file_path, content)
-    if cached:
-        return cached
-
-    # Parse
-    result = parse_file(file_path, content, language)
-
-    # Cache result
-    _parse_cache.set(file_path, content, result)
-
-    return result
-```
-
-**配置选项**:
-
-```yaml
-# .codeindex.yaml
-performance:
-  enable_cache: true
-  cache_dir: ".codeindex_cache"
-```
-
-**CLI命令**:
-
-```bash
-# Clear cache
-codeindex cache clear
-
-# Show cache stats
-codeindex cache stats
-```
-
-**时间估算**: 5小时
-
-**预期提升**: 90%+ (for unchanged files)
+**结论**: 删除此功能，专注于并行扫描优化
 
 ---
 
@@ -1165,64 +1095,74 @@ def parse_large_file_streaming(file_path: Path, chunk_size: int = 10000):
 
 ---
 
-### 📊 Story 7.1.4 总结
+### 📊 Story 7.1.4 总结 (修正后)
 
-| Feature | 时间 | 预期提升 | 优先级 |
-|---------|------|----------|--------|
-| 7.1.4.1: 符号提取优化 | 4h | 30-50% | P1 |
-| 7.1.4.2: 并行扫描 | 6h | 200-400% | P0 |
-| 7.1.4.3: 符号缓存 | 5h | 90%+ (重复扫描) | P1 |
-| 7.1.4.4: 内存优化 | 4h | 50% (内存) | P2 |
-| **总计** | **19h** | - | - |
+| Feature | 时间 | 预期提升 | 优先级 | 状态 |
+|---------|------|----------|--------|------|
+| 7.1.4.2: 并行扫描 | 6h | 200-400% (scan-all) | P0 | ⏳ 待实现 |
+| 7.1.4.1: 符号提取优化 | 4h | 30-50% (微小) | P2 | 🔵 可选 |
+| ~~7.1.4.3: 符号缓存~~ | ~~5h~~ | ~~<1%~~ | - | ❌ 已删除 |
+| 7.1.4.4: 内存优化 | 4h | 50% (内存，超大项目) | P2 | 🔵 可选 |
+| **MVP总计** | **6h** | - | - | - |
 
-**建议**: 优先实现 P0+P1 (15小时)，P2可选。
+**关键变化**:
+- ❌ 删除7.1.4.3符号缓存（收益<1%）
+- ✅ 重命名7.1.4.2为"并行扫描多个目录"（真正有价值）
+- ✅ MVP工作量：19h → 6h (减少13小时)
 
 ---
 
 ## 优先级建议
 
-### 推荐方案A: 最小可行产品 (MVP)
+### 推荐方案A: 最小可行产品 (MVP) ⭐推荐
 
 **目标**: 快速支持真实Java项目，优先商业价值。
 
 **包含**:
-- ✅ Story 7.1.2 P0+P1: 注解+泛型边界+异常声明 (8h)
-- ✅ Story 7.1.3 P0+P1: Spring测试+边界测试+错误恢复 (13h)
-- ✅ Story 7.1.4 P0+P1: 并行扫描+缓存+符号优化 (15h)
-
-**总工作量**: 36小时 (约5天)
-**新增测试**: 51个 (总计74个测试)
-**商业价值**: ⭐⭐⭐⭐⭐
-
----
-
-### 推荐方案B: 完整增强版
-
-**目标**: 全面完善Java支持，包含所有特性。
-
-**包含**:
-- ✅ Story 7.1.2 全部: 所有符号提取增强 (14h)
-- ✅ Story 7.1.3 全部: 所有测试覆盖 (15h)
-- ✅ Story 7.1.4 全部: 所有性能优化 (19h)
-
-**总工作量**: 48小时 (约6-7天)
-**新增测试**: 62个 (总计85个测试)
-**商业价值**: ⭐⭐⭐⭐⭐
-
----
-
-### 推荐方案C: 快速验证 (仅P0)
-
-**目标**: 最快速度验证Java支持，延后优化。
-
-**包含**:
-- ✅ Story 7.1.2 P0: 仅注解提取 (4h)
-- ✅ Story 7.1.3 P0: 仅Spring测试 (6h)
-- ✅ Story 7.1.4 P0: 仅并行扫描 (6h)
+- ✅ Story 7.1.2.1: 注解提取 (4h) - **已完成**
+- ✅ Story 7.1.3.1: Spring测试套件 (6h) - **已完成**
+- ⏳ Story 7.1.4.2: 并行扫描多个目录 (6h) - **待实现**
 
 **总工作量**: 16小时 (约2天)
-**新增测试**: 25个 (总计48个测试)
+- 已完成: 10小时 ✅
+- 待完成: 6小时 ⏳
+
+**新增测试**: 30个 (11注解 + 19Spring)
+**商业价值**: ⭐⭐⭐⭐⭐
+
+**关键变化**:
+- ❌ 删除7.1.4.3符号缓存（收益<1%）
+- ✅ 专注核心功能：注解 + Spring支持 + 并行优化
+
+---
+
+### 推荐方案B: 增强版 (包含P1特性)
+
+**目标**: 在MVP基础上增加符号提取增强。
+
+**包含**:
+- ✅ MVP全部内容 (16h)
+- ➕ Story 7.1.2.2-3: 泛型边界 + 异常声明 (4h)
+- ➕ Story 7.1.3.2-3: 边界测试 + 错误恢复 (7h)
+
+**总工作量**: 27小时 (约3-4天)
 **商业价值**: ⭐⭐⭐⭐
+
+---
+
+### 推荐方案C: 完整版 (包含所有可选特性)
+
+**目标**: 全面完善Java支持，包含Lambda和模块系统。
+
+**包含**:
+- ✅ 方案B全部内容 (27h)
+- ➕ Story 7.1.2.4-5: Lambda + 模块系统 (6h)
+- ➕ Story 7.1.3.4: Lombok支持 (2h)
+- ➕ Story 7.1.4.1: 单次AST遍历 (2h)
+- ➕ Story 7.1.4.4: 内存优化 (2h)
+
+**总工作量**: 39小时 (约5天)
+**商业价值**: ⭐⭐⭐
 
 ---
 
@@ -1233,8 +1173,7 @@ def parse_large_file_streaming(file_path: Path, chunk_size: int = 10000):
 | 风险 | 概率 | 影响 | 缓解措施 |
 |------|------|------|----------|
 | **tree-sitter-java注解解析不稳定** | 中 | 高 | 充分测试，准备fallback方案 |
-| **并行解析进程通信开销** | 低 | 中 | 基准测试，动态调整worker数 |
-| **缓存失效逻辑复杂** | 中 | 低 | 使用内容hash，简化逻辑 |
+| **并行扫描线程安全问题** | 低 | 中 | ThreadPool处理I/O bound任务很成熟 |
 | **性能优化引入bug** | 中 | 高 | TDD确保功能不退化 |
 
 ### 时间风险
