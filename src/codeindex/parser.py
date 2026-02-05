@@ -7,7 +7,7 @@ from typing import Dict
 import tree_sitter_java as tsjava
 import tree_sitter_php as tsphp
 import tree_sitter_python as tspython
-from tree_sitter import Language, Parser
+from tree_sitter import Language, Node, Parser
 
 
 @dataclass
@@ -780,7 +780,66 @@ def _parse_php_use(node, source_bytes: bytes) -> list[Import]:
 # ==================== Java Parser Functions ====================
 
 
-def _extract_java_docstring(node, source_bytes: bytes) -> str:
+def _extract_java_modifiers(node: Node, source_bytes: bytes) -> list[str]:
+    """
+    Extract modifiers (public, private, static, etc.) from a Java node.
+
+    Args:
+        node: Tree-sitter node to extract modifiers from
+        source_bytes: Source code as bytes
+
+    Returns:
+        List of modifier strings (e.g., ['public', 'static', 'final'])
+    """
+    modifiers = []
+    for child in node.children:
+        if child.type == "modifiers":
+            for mod_child in child.children:
+                modifiers.append(_get_node_text(mod_child, source_bytes))
+    return modifiers
+
+
+def _build_java_signature(modifiers: list[str], *parts: str) -> str:
+    """
+    Build a Java signature string from modifiers and parts.
+
+    Args:
+        modifiers: List of modifier strings (e.g., ['public', 'static'])
+        *parts: Additional signature parts (e.g., return type, name, parameters)
+
+    Returns:
+        Complete signature string (e.g., "public static void main(String[] args)")
+    """
+    signature_parts = []
+
+    # Add modifiers if present
+    if modifiers:
+        signature_parts.append(" ".join(modifiers))
+
+    # Add remaining parts
+    signature_parts.extend(parts)
+
+    return " ".join(signature_parts)
+
+
+def _find_child_by_type(node: Node, type_name: str) -> Node | None:
+    """
+    Find first child node of a specific type.
+
+    Args:
+        node: Parent node to search in
+        type_name: Type of child to find
+
+    Returns:
+        First matching child node, or None if not found
+    """
+    for child in node.children:
+        if child.type == type_name:
+            return child
+    return None
+
+
+def _extract_java_docstring(node: Node, source_bytes: bytes) -> str:
     """
     Extract JavaDoc comment from a node.
 
@@ -805,12 +864,14 @@ def _extract_java_docstring(node, source_bytes: bytes) -> str:
     return ""
 
 
-def _parse_java_method(node, source_bytes: bytes, class_name: str = "") -> Symbol:
+def _parse_java_method(node: Node, source_bytes: bytes, class_name: str = "") -> Symbol:
     """Parse a Java method declaration."""
     name = ""
     params = ""
     return_type = ""
-    modifiers = []
+
+    # Extract modifiers using helper
+    modifiers = _extract_java_modifiers(node, source_bytes)
 
     for child in node.children:
         if child.type == "identifier":
@@ -819,23 +880,13 @@ def _parse_java_method(node, source_bytes: bytes, class_name: str = "") -> Symbo
             params = _get_node_text(child, source_bytes)
         elif child.type == "type_identifier" or child.type == "void_type":
             return_type = _get_node_text(child, source_bytes)
-        elif child.type == "modifiers":
-            for mod_child in child.children:
-                modifiers.append(_get_node_text(mod_child, source_bytes))
         elif child.type in ("generic_type", "array_type", "scoped_type_identifier"):
             return_type = _get_node_text(child, source_bytes)
 
-    # Build signature
-    modifier_str = " ".join(modifiers) if modifiers else ""
+    # Build signature using helper
     return_str = return_type if return_type else "void"
     full_name = f"{class_name}.{name}" if class_name else name
-
-    signature_parts = []
-    if modifier_str:
-        signature_parts.append(modifier_str)
-    signature_parts.append(return_str)
-    signature_parts.append(f"{name}{params}")
-    signature = " ".join(signature_parts)
+    signature = _build_java_signature(modifiers, return_str, f"{name}{params}")
 
     docstring = _extract_java_docstring(node, source_bytes)
 
@@ -849,30 +900,23 @@ def _parse_java_method(node, source_bytes: bytes, class_name: str = "") -> Symbo
     )
 
 
-def _parse_java_constructor(node, source_bytes: bytes, class_name: str) -> Symbol:
+def _parse_java_constructor(node: Node, source_bytes: bytes, class_name: str) -> Symbol:
     """Parse a Java constructor declaration."""
     name = ""
     params = ""
-    modifiers = []
+
+    # Extract modifiers using helper
+    modifiers = _extract_java_modifiers(node, source_bytes)
 
     for child in node.children:
         if child.type == "identifier":
             name = _get_node_text(child, source_bytes)
         elif child.type == "formal_parameters":
             params = _get_node_text(child, source_bytes)
-        elif child.type == "modifiers":
-            for mod_child in child.children:
-                modifiers.append(_get_node_text(mod_child, source_bytes))
 
-    # Build signature
-    modifier_str = " ".join(modifiers) if modifiers else ""
+    # Build signature using helper
     full_name = f"{class_name}.{name}"
-
-    signature_parts = []
-    if modifier_str:
-        signature_parts.append(modifier_str)
-    signature_parts.append(f"{name}{params}")
-    signature = " ".join(signature_parts)
+    signature = _build_java_signature(modifiers, f"{name}{params}")
 
     docstring = _extract_java_docstring(node, source_bytes)
 
@@ -886,11 +930,13 @@ def _parse_java_constructor(node, source_bytes: bytes, class_name: str) -> Symbo
     )
 
 
-def _parse_java_field(node, source_bytes: bytes, class_name: str = "") -> list[Symbol]:
+def _parse_java_field(node: Node, source_bytes: bytes, class_name: str = "") -> list[Symbol]:
     """Parse a Java field declaration."""
     type_name = ""
     field_names = []
-    modifiers = []
+
+    # Extract modifiers using helper
+    modifiers = _extract_java_modifiers(node, source_bytes)
 
     for child in node.children:
         if child.type in ("type_identifier", "generic_type", "array_type",
@@ -900,22 +946,14 @@ def _parse_java_field(node, source_bytes: bytes, class_name: str = "") -> list[S
             for var_child in child.children:
                 if var_child.type == "identifier":
                     field_names.append(_get_node_text(var_child, source_bytes))
-        elif child.type == "modifiers":
-            for mod_child in child.children:
-                modifiers.append(_get_node_text(mod_child, source_bytes))
 
     # Create symbols for each field
     symbols = []
     for field_name in field_names:
         full_name = f"{class_name}.{field_name}" if class_name else field_name
 
-        modifier_str = " ".join(modifiers) if modifiers else ""
-        signature_parts = []
-        if modifier_str:
-            signature_parts.append(modifier_str)
-        signature_parts.append(type_name)
-        signature_parts.append(field_name)
-        signature = " ".join(signature_parts)
+        # Build signature using helper
+        signature = _build_java_signature(modifiers, type_name, field_name)
 
         symbols.append(Symbol(
             name=full_name,
@@ -929,21 +967,20 @@ def _parse_java_field(node, source_bytes: bytes, class_name: str = "") -> list[S
     return symbols
 
 
-def _parse_java_class(node, source_bytes: bytes) -> list[Symbol]:
+def _parse_java_class(node: Node, source_bytes: bytes) -> list[Symbol]:
     """Parse a Java class declaration."""
     symbols = []
     class_name = ""
-    modifiers = []
     type_params = ""
     superclass = ""
     interfaces = []
 
+    # Extract modifiers using helper
+    modifiers = _extract_java_modifiers(node, source_bytes)
+
     for child in node.children:
         if child.type == "identifier":
             class_name = _get_node_text(child, source_bytes)
-        elif child.type == "modifiers":
-            for mod_child in child.children:
-                modifiers.append(_get_node_text(mod_child, source_bytes))
         elif child.type == "type_parameters":
             type_params = _get_node_text(child, source_bytes)
         elif child.type == "superclass":
@@ -957,19 +994,15 @@ def _parse_java_class(node, source_bytes: bytes) -> list[Symbol]:
                         if type_child.type == "type_identifier":
                             interfaces.append(_get_node_text(type_child, source_bytes))
 
-    # Build class signature
-    modifier_str = " ".join(modifiers) if modifiers else ""
-    signature_parts = []
-    if modifier_str:
-        signature_parts.append(modifier_str)
-    signature_parts.append("class")
-    signature_parts.append(class_name + type_params if type_params else class_name)
+    # Build class signature using helper
+    class_decl = class_name + type_params if type_params else class_name
+    signature_parts = ["class", class_decl]
     if superclass:
         signature_parts.append(f"extends {superclass}")
     if interfaces:
         signature_parts.append(f"implements {', '.join(interfaces)}")
-    signature = " ".join(signature_parts)
 
+    signature = _build_java_signature(modifiers, *signature_parts)
     docstring = _extract_java_docstring(node, source_bytes)
 
     # Add class symbol
@@ -1003,20 +1036,19 @@ def _parse_java_class(node, source_bytes: bytes) -> list[Symbol]:
     return symbols
 
 
-def _parse_java_interface(node, source_bytes: bytes) -> list[Symbol]:
+def _parse_java_interface(node: Node, source_bytes: bytes) -> list[Symbol]:
     """Parse a Java interface declaration."""
     symbols = []
     interface_name = ""
-    modifiers = []
     type_params = ""
     extends = []
+
+    # Extract modifiers using helper
+    modifiers = _extract_java_modifiers(node, source_bytes)
 
     for child in node.children:
         if child.type == "identifier":
             interface_name = _get_node_text(child, source_bytes)
-        elif child.type == "modifiers":
-            for mod_child in child.children:
-                modifiers.append(_get_node_text(mod_child, source_bytes))
         elif child.type == "type_parameters":
             type_params = _get_node_text(child, source_bytes)
         elif child.type == "extends_interfaces":
@@ -1026,17 +1058,13 @@ def _parse_java_interface(node, source_bytes: bytes) -> list[Symbol]:
                         if type_child.type == "type_identifier":
                             extends.append(_get_node_text(type_child, source_bytes))
 
-    # Build interface signature
-    modifier_str = " ".join(modifiers) if modifiers else ""
-    signature_parts = []
-    if modifier_str:
-        signature_parts.append(modifier_str)
-    signature_parts.append("interface")
-    signature_parts.append(interface_name + type_params if type_params else interface_name)
+    # Build interface signature using helper
+    interface_decl = interface_name + type_params if type_params else interface_name
+    signature_parts = ["interface", interface_decl]
     if extends:
         signature_parts.append(f"extends {', '.join(extends)}")
-    signature = " ".join(signature_parts)
 
+    signature = _build_java_signature(modifiers, *signature_parts)
     docstring = _extract_java_docstring(node, source_bytes)
 
     # Add interface symbol
@@ -1060,28 +1088,20 @@ def _parse_java_interface(node, source_bytes: bytes) -> list[Symbol]:
     return symbols
 
 
-def _parse_java_enum(node, source_bytes: bytes) -> list[Symbol]:
+def _parse_java_enum(node: Node, source_bytes: bytes) -> list[Symbol]:
     """Parse a Java enum declaration."""
     symbols = []
     enum_name = ""
-    modifiers = []
+
+    # Extract modifiers using helper
+    modifiers = _extract_java_modifiers(node, source_bytes)
 
     for child in node.children:
         if child.type == "identifier":
             enum_name = _get_node_text(child, source_bytes)
-        elif child.type == "modifiers":
-            for mod_child in child.children:
-                modifiers.append(_get_node_text(mod_child, source_bytes))
 
-    # Build enum signature
-    modifier_str = " ".join(modifiers) if modifiers else ""
-    signature_parts = []
-    if modifier_str:
-        signature_parts.append(modifier_str)
-    signature_parts.append("enum")
-    signature_parts.append(enum_name)
-    signature = " ".join(signature_parts)
-
+    # Build enum signature using helper
+    signature = _build_java_signature(modifiers, "enum", enum_name)
     docstring = _extract_java_docstring(node, source_bytes)
 
     # Add enum symbol
@@ -1108,35 +1128,27 @@ def _parse_java_enum(node, source_bytes: bytes) -> list[Symbol]:
     return symbols
 
 
-def _parse_java_record(node, source_bytes: bytes) -> list[Symbol]:
+def _parse_java_record(node: Node, source_bytes: bytes) -> list[Symbol]:
     """Parse a Java record declaration (Java 14+)."""
     symbols = []
     record_name = ""
-    modifiers = []
     type_params = ""
     params = ""
+
+    # Extract modifiers using helper
+    modifiers = _extract_java_modifiers(node, source_bytes)
 
     for child in node.children:
         if child.type == "identifier":
             record_name = _get_node_text(child, source_bytes)
-        elif child.type == "modifiers":
-            for mod_child in child.children:
-                modifiers.append(_get_node_text(mod_child, source_bytes))
         elif child.type == "type_parameters":
             type_params = _get_node_text(child, source_bytes)
         elif child.type == "formal_parameters":
             params = _get_node_text(child, source_bytes)
 
-    # Build record signature
-    modifier_str = " ".join(modifiers) if modifiers else ""
-    signature_parts = []
-    if modifier_str:
-        signature_parts.append(modifier_str)
-    signature_parts.append("record")
+    # Build record signature using helper
     name_part = record_name + type_params if type_params else record_name
-    signature_parts.append(f"{name_part}{params}")
-    signature = " ".join(signature_parts)
-
+    signature = _build_java_signature(modifiers, "record", f"{name_part}{params}")
     docstring = _extract_java_docstring(node, source_bytes)
 
     # Add record symbol
@@ -1160,7 +1172,7 @@ def _parse_java_record(node, source_bytes: bytes) -> list[Symbol]:
     return symbols
 
 
-def _parse_java_import(node, source_bytes: bytes) -> Import | None:
+def _parse_java_import(node: Node, source_bytes: bytes) -> Import | None:
     """Parse a Java import statement."""
     module = ""
     is_static = False
@@ -1206,7 +1218,7 @@ def _extract_java_module_docstring(tree, source_bytes: bytes) -> str:
     return ""
 
 
-def _parse_java_package(node, source_bytes: bytes) -> str:
+def _parse_java_package(node: Node, source_bytes: bytes) -> str:
     """Extract Java package declaration."""
     for child in node.children:
         if child.type == "scoped_identifier" or child.type == "identifier":
