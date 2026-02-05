@@ -7,31 +7,89 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.7.0] - 2026-02-04
+## [0.7.0] - 2026-02-05
 
 ### Added
-- **JSON Output Mode** (Epic: JSON Output Integration, Stories 1-5)
-  - `--output json` flag for machine-readable output in `scan` and `scan-all` commands
-  - Structured error handling with error codes (`DIRECTORY_NOT_FOUND`, `NO_CONFIG_FOUND`, etc.)
-  - ParseResult serialization with symbols, imports, and metadata
-  - Error objects with `code`, `message`, and `detail` fields
-  - Exit code 1 for command-level errors, 0 for partial success
-  - File-level error detection via tree-sitter's `has_error` attribute
 
-- **Git Hooks Configuration Support** (Story 6: Performance Optimization)
+- **Java Language Support** (Epic 7: Java Language Support - MVP)
+  - Complete Java parser using tree-sitter-java
+  - Support for classes, interfaces, enums, records, sealed classes
+  - Generic types parsing (`<T extends Comparable<T>>`)
+  - Package declarations and imports (regular, static, wildcard)
+  - JavaDoc comment extraction
+  - 23 comprehensive Java parser tests
+
+- **Java Annotation Extraction** (Story 7.1.2.1)
+  - Full annotation parsing for Spring Framework
+  - Support for marker annotations (`@Entity`)
+  - Annotations with arguments (`@GetMapping("/users")`)
+  - Array arguments (`@RequestMapping({"/api", "/v1"})`)
+  - Named parameters (`@Column(name = "user_id")`)
+  - Spring annotations: `@RestController`, `@Service`, `@Repository`, `@Entity`, `@Autowired`, etc.
+  - Bean Validation: `@NotBlank`, `@Email`, `@Size`
+  - JPA Lifecycle: `@PrePersist`, `@PreUpdate`
+  - 11 annotation extraction tests
+
+- **Spring Framework Test Suite** (Story 7.1.3.1)
+  - Comprehensive Spring Boot project testing
+  - Controller layer: REST endpoints, parameter annotations
+  - Service layer: Business logic, transactional methods
+  - Repository layer: JPA repositories, custom queries
+  - Entity layer: JPA entities, validation, lifecycle hooks
+  - Configuration layer: Spring Boot main, bean definitions
+  - Real-world Spring Boot application examples
+  - 19 Spring Framework tests
+
+- **Parallel Directory Scanning** (Story 7.1.4.2)
+  - ThreadPoolExecutor for concurrent directory processing
+  - Configurable `parallel_workers` in `.codeindex.yaml`
+  - CLI override: `--parallel N` option
+  - 3-4x performance improvement for scan-all operations
+  - Graceful handling of edge cases (single dir, workers > dirs)
+  - 9 parallel scanning verification tests
+
+- **JSON Output Mode** (Epic: JSON Output Integration)
+  - `--output json` flag for machine-readable output
+  - Structured error handling with error codes
+  - ParseResult serialization with symbols, imports, metadata
+  - File-level error detection via tree-sitter
+  - Exit code 1 for errors, 0 for success
+
+- **Git Hooks Configuration Support** (Story 6)
   - Full `.codeindex.yaml` configuration for post-commit hooks
   - 5 modes: `auto`, `disabled`, `async`, `sync`, `prompt`
-  - Smart detection: ≤2 directories = sync, >2 = async (configurable threshold)
-  - Non-blocking async mode for large projects (background updates)
-  - Prompt mode for manual control (reminder only)
-  - Custom log file paths
+  - Smart detection: ≤2 directories = sync, >2 = async
+  - Non-blocking async mode for large projects
   - 14 comprehensive tests for hooks configuration
 
+### Fixed
+
+- Fixed interface extends parsing for generic types (`JpaRepository<User, Long>`)
+- Fixed JSON serialization to include annotations field in Symbol
+- Fixed test expectations for Symbol.to_dict() output format
+
 ### Documentation
-- Added JSON output examples to Quick Start (CLAUDE.md)
-- Added "Generate Structured Data (JSON)" section to README.md with usage examples and error handling
-- Updated Git Hooks Integration Guide with full configuration examples
-- Added hooks configuration section to README.md Configuration Reference
+
+- Added `RELEASE_NOTES_v0.7.0.md` with comprehensive release information
+- Added `EPIC7_STORY_7.1.2-7.1.4_DESIGN.md` - Epic 7 design and story breakdown
+- Added `EPIC7_PERFORMANCE_CORRECTION.md` - Performance analysis and pragmatic decisions
+- Added `EPIC7_TEST_STRATEGY.md` - Testing approach and coverage
+- Updated `CLAUDE.md` with Java support examples
+- Updated `README.md` with Java language support
+- Added JSON output examples to Quick Start
+- Updated Git Hooks Integration Guide
+
+### Performance
+
+- Parallel scanning: 3-4x improvement for multi-directory projects
+- Pragmatic decisions: Skipped micro-optimizations (<3% benefit)
+- Memory-efficient: Per-directory processing, immediate release
+
+### Testing
+
+- Total: 517 tests passing, 3 skipped
+- New: +39 tests (11 annotations + 19 Spring + 9 parallel)
+- Coverage: Java parser, Spring Framework, parallel scanning
 
 ## [0.6.0] - 2026-02-04
 
