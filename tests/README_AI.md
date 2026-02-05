@@ -731,6 +731,12 @@ Changed files:
 Changed files:
 - `test_java_spring.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_parallel_scan.py`
+
 ---
 
 ## Recent Changes
@@ -738,4 +744,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_parallel_scan.py`
+- `test_java_generic_bounds.py`
