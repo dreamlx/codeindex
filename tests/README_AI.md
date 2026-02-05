@@ -714,9 +714,6 @@ Changed files:
 Changed files:
 - `test_hooks_config.py`
 
----
-
-## Recent Changes
 
 **Commit ``**: 
 
@@ -727,3 +724,12 @@ Changed files:
 
 Changed files:
 - `test_java_annotations.py` (new file)
+
+---
+
+## Recent Changes
+
+**Commit ``**: 
+
+Changed files:
+- `test_java_spring.py`
