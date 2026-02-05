@@ -749,6 +749,12 @@ Changed files:
 Changed files:
 - `test_java_throws.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_java_lambda.py`
+
 ---
 
 ## Recent Changes
@@ -756,4 +762,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_java_lambda.py`
+- `test_java_module.py`
