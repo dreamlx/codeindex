@@ -755,6 +755,12 @@ Changed files:
 Changed files:
 - `test_java_lambda.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_java_module.py`
+
 ---
 
 ## Recent Changes
@@ -762,4 +768,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_java_module.py`
+- `test_java_edge_cases.py`
