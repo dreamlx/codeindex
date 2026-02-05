@@ -980,6 +980,7 @@ def _parse_java_method(node: Node, source_bytes: bytes, class_name: str = "") ->
     params = ""
     return_type = ""
     type_params = ""  # Story 7.1.2.2: Method-level generic parameters
+    throws_clause = ""  # Story 7.1.2.3: Throws declarations
 
     # Extract modifiers and annotations using helpers
     modifiers = _extract_java_modifiers(node, source_bytes)
@@ -996,6 +997,8 @@ def _parse_java_method(node: Node, source_bytes: bytes, class_name: str = "") ->
             return_type = _get_node_text(child, source_bytes)
         elif child.type == "type_parameters":  # Story 7.1.2.2: Capture method generics
             type_params = _get_node_text(child, source_bytes)
+        elif child.type == "throws":  # Story 7.1.2.3: Capture throws clause
+            throws_clause = _get_node_text(child, source_bytes)
 
     # Build signature using helper
     return_str = return_type if return_type else "void"
@@ -1003,6 +1006,9 @@ def _parse_java_method(node: Node, source_bytes: bytes, class_name: str = "") ->
     # Include type parameters if present (e.g., <T extends Comparable<T>>)
     method_decl = f"{type_params} {return_str}" if type_params else return_str
     signature = _build_java_signature(modifiers, method_decl, f"{name}{params}")
+    # Append throws clause if present (e.g., "throws IOException, SQLException")
+    if throws_clause:
+        signature += f" {throws_clause}"
 
     docstring = _extract_java_docstring(node, source_bytes)
 
@@ -1021,6 +1027,7 @@ def _parse_java_constructor(node: Node, source_bytes: bytes, class_name: str) ->
     """Parse a Java constructor declaration."""
     name = ""
     params = ""
+    throws_clause = ""  # Story 7.1.2.3: Throws declarations
 
     # Extract modifiers and annotations using helpers
     modifiers = _extract_java_modifiers(node, source_bytes)
@@ -1031,10 +1038,15 @@ def _parse_java_constructor(node: Node, source_bytes: bytes, class_name: str) ->
             name = _get_node_text(child, source_bytes)
         elif child.type == "formal_parameters":
             params = _get_node_text(child, source_bytes)
+        elif child.type == "throws":  # Story 7.1.2.3: Capture throws clause
+            throws_clause = _get_node_text(child, source_bytes)
 
     # Build signature using helper
     full_name = f"{class_name}.{name}"
     signature = _build_java_signature(modifiers, f"{name}{params}")
+    # Append throws clause if present (e.g., "throws IOException, SQLException")
+    if throws_clause:
+        signature += f" {throws_clause}"
 
     docstring = _extract_java_docstring(node, source_bytes)
 
