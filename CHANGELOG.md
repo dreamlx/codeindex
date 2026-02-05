@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-02-06
+
+### Added
+
+- **Complete Java Language Support** (Epic 7 Complete - 11 Stories)
+  - All Java language features now fully supported
+  - 184 new tests (662 total passing, 3 skipped)
+  - Comprehensive coverage of Java 8-17+ features
+
+- **Advanced Java Features** (Stories 7.1.2.2-7.1.2.5)
+  - Generic Bounds: `<T extends Comparable<T>>`, multiple bounds with `&`
+  - Throws Declarations: `throws IOException, SQLException`
+  - Lambda Expressions: `x -> x * 2`, method references `String::length`
+  - Module System (Java 9+): module-info.java, requires/exports/opens
+  - 70 new tests for advanced features
+
+- **Spring Framework Route Extraction** (Story 7.2)
+  - Plugin-based route extractor for Spring REST controllers
+  - Supports `@GetMapping`, `@PostMapping`, `@PutMapping`, `@DeleteMapping`, `@PatchMapping`
+  - Automatic path composition (class-level + method-level `@RequestMapping`)
+  - Path variable support: `{id}`, `{userId}`
+  - Line number tracking for navigation
+  - 11 route extraction tests
+
+- **Lombok Support** (Story 7.1.3.4)
+  - Full support for Lombok annotations
+  - Code generation: `@Data`, `@Getter`, `@Setter`, `@Builder`
+  - Constructors: `@AllArgsConstructor`, `@NoArgsConstructor`, `@RequiredArgsConstructor`
+  - Utilities: `@ToString`, `@EqualsAndHashCode`
+  - Logging: `@Slf4j`, `@Log`
+  - Works with JPA and Spring annotations
+  - 21 Lombok tests
+
+- **Robustness Testing** (Stories 7.1.3.2-7.1.3.3)
+  - Edge Case Tests: Nested classes, complex generics, Unicode identifiers
+  - Error Recovery: Syntax errors, incomplete declarations, malformed code
+  - 51 tests for edge cases and error handling
+
+### Changed
+
+- Parser now handles complex Java scenarios (nested classes, varargs, arrays)
+- Error recovery strategy: Report errors rather than extract incorrect symbols
+- Enhanced annotation extraction to handle dict-format arguments
+
+### Performance
+
+- Parallel directory scanning (from v0.7.0): 3-4x speedup maintained
+- Efficient handling of large Java projects
+
+### Documentation
+
+- Added `RELEASE_NOTES_v0.8.0.md` with complete Epic 7 details
+- Updated README_AI.md files for src and tests directories
+
+### Dependencies
+
+- tree-sitter-java: 0.21.0 (no changes)
+- All dependencies remain stable
+
 ## [0.7.0] - 2026-02-05
 
 ### Added
