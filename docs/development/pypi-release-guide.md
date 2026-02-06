@@ -1,8 +1,8 @@
 # PyPI 发布指南
 
-**项目**: codeindex
-**当前版本**: 0.6.0
-**下一版本**: 0.7.0 (JSON Output + Hooks Config)
+**项目**: codeindex (PyPI: ai-codeindex)
+**当前版本**: 0.9.0
+**下一版本**: 0.10.0 (Multi-Language LoomGraph Support)
 
 ---
 

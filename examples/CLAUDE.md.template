@@ -16,7 +16,7 @@ This project uses **codeindex** for code structure analysis and optional integra
 ### Installation
 
 ```bash
-pip install matrix-codeindex
+pip install ai-codeindex
 ```
 
 ### Quick Start

@@ -441,7 +441,7 @@ jobs:
 update-index:
   image: python:3.11
   script:
-    - pip install codeindex
+    - pip install ai-codeindex
     - codeindex list-dirs | xargs -P 4 -I {} codeindex scan {} --fallback
   artifacts:
     paths:
