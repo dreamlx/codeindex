@@ -30,10 +30,16 @@ class ScanResult:
         """Get PHP files only."""
         return [f for f in self.files if f.suffix in (".php", ".phtml")]
 
+    @property
+    def java_files(self) -> list[Path]:
+        """Get Java files only."""
+        return [f for f in self.files if f.suffix == ".java"]
+
 
 LANGUAGE_EXTENSIONS = {
     "python": [".py"],
     "php": [".php", ".phtml"],
+    "java": [".java"],
 }
 
 
@@ -101,6 +107,8 @@ def scan_directory(
             if item.suffix == ".py" and "python" in config.languages:
                 files.append(item)
             elif item.suffix in (".php", ".phtml") and "php" in config.languages:
+                files.append(item)
+            elif item.suffix == ".java" and "java" in config.languages:
                 files.append(item)
             # Add more language support here in V2
         elif item.is_dir() and recursive:

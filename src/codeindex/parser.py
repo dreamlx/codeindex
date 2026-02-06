@@ -1092,6 +1092,48 @@ def _strip_generic_type(type_name: str) -> str:
     return type_name.split('<')[0].strip()
 
 
+
+def _extract_package_namespace(class_full_name: str) -> str:
+    """
+    Extract package namespace from a full class name.
+
+    For nested classes like "com.example.Outer.Inner", extracts "com.example".
+    For top-level classes like "com.example.User", extracts "com.example".
+
+    Args:
+        class_full_name: Full class name (e.g., "com.example.Outer.Inner")
+
+    Returns:
+        Package namespace (e.g., "com.example")
+
+    Examples:
+        >>> _extract_package_namespace("com.example.User")
+        'com.example'
+        >>> _extract_package_namespace("com.example.Outer.Inner")
+        'com.example'
+        >>> _extract_package_namespace("User")
+        ''
+        >>> _extract_package_namespace("Outer.Inner")
+        ''
+    """
+    if not class_full_name or "." not in class_full_name:
+        return ""
+
+    parts = class_full_name.split(".")
+
+    # Find the first part that starts with uppercase (class name)
+    # Everything before it is the package namespace
+    for i, part in enumerate(parts):
+        if part and part[0].isupper():
+            # Found first class name, return everything before it
+            if i == 0:
+                return ""  # No package, just class name
+            return ".".join(parts[:i])
+
+    # If no uppercase part found, assume all is package
+    return class_full_name
+
+
 def _resolve_java_type(
     short_name: str,
     namespace: str,
@@ -1487,7 +1529,7 @@ def _extract_java_inheritances(
     node: Node,
     source_bytes: bytes,
     child_name: str,
-    namespace: str,
+    package_namespace: str,
     import_map: dict[str, str]
 ) -> list[Inheritance]:
     """
@@ -1496,8 +1538,8 @@ def _extract_java_inheritances(
     Args:
         node: Tree-sitter node for class_declaration or interface_declaration
         source_bytes: Source code as bytes
-        child_name: Full name of the child class (e.g., "com.example.User")
-        namespace: Current package name
+        child_name: Full name of child class (e.g., "com.example.Outer.Inner")
+        package_namespace: Package name for type resolution (e.g., "com.example")
         import_map: Mapping of short names to full qualified names
 
     Returns:
@@ -1519,7 +1561,7 @@ def _extract_java_inheritances(
         if parent_name:
             # Strip generics and resolve full name
             parent_name = _strip_generic_type(parent_name)
-            parent_full = _resolve_java_type(parent_name, namespace, import_map)
+            parent_full = _resolve_java_type(parent_name, package_namespace, import_map)
             inheritances.append(Inheritance(child=child_name, parent=parent_full))
 
     # Extract super_interfaces and extends_interfaces by traversing children
@@ -1547,7 +1589,7 @@ def _extract_java_inheritances(
                             # Strip generics and resolve full name
                             interface_name = _strip_generic_type(interface_name)
                             interface_full = _resolve_java_type(
-                                interface_name, namespace, import_map
+                                interface_name, package_namespace, import_map
                             )
                             inheritances.append(
                                 Inheritance(child=child_name, parent=interface_full)
@@ -1575,7 +1617,7 @@ def _extract_java_inheritances(
                             # Strip generics and resolve full name
                             extended_interface = _strip_generic_type(extended_interface)
                             extended_full = _resolve_java_type(
-                                extended_interface, namespace, import_map
+                                extended_interface, package_namespace, import_map
                             )
                             inheritances.append(
                                 Inheritance(child=child_name, parent=extended_full)
@@ -1676,9 +1718,11 @@ def _parse_java_class(
     if class_name:
         # Construct full class name
         full_class_name = f"{namespace}.{class_name}" if namespace else class_name
+        # Extract package namespace (for nested classes, removes outer class part)
+        package_namespace = _extract_package_namespace(full_class_name)
         # Extract inheritances
         class_inheritances = _extract_java_inheritances(
-            node, source_bytes, full_class_name, namespace, import_map
+            node, source_bytes, full_class_name, package_namespace, import_map
         )
         inheritances.extend(class_inheritances)
 
@@ -1801,9 +1845,11 @@ def _parse_java_interface(
     if interface_name:
         # Construct full interface name
         full_interface_name = f"{namespace}.{interface_name}" if namespace else interface_name
+        # Extract package namespace (for nested interfaces, removes outer class part)
+        package_namespace = _extract_package_namespace(full_interface_name)
         # Extract inheritances (interface extends other interfaces)
         interface_inheritances = _extract_java_inheritances(
-            node, source_bytes, full_interface_name, namespace, import_map
+            node, source_bytes, full_interface_name, package_namespace, import_map
         )
         inheritances.extend(interface_inheritances)
 
