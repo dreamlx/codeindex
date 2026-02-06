@@ -1,12 +1,12 @@
 # codeindex Strategic Roadmap
 
 **Last Updated**: 2026-02-06
-**Current Version**: v0.9.0
+**Current Version**: v0.10.0
 **Vision**: Universal code indexing platform for AI-assisted development
 
 ---
 
-## 📍 Current Status (v0.9.0)
+## 📍 Current Status (v0.10.0)
 
 ### ✅ Completed Capabilities
 
@@ -22,13 +22,15 @@
 | **AI-Powered Docstring Extraction** | v0.6.0 | ✅ Universal doc processor |
 | **Java Language Support (MVP)** | v0.7.0 | ✅ Parser + JavaDoc |
 | **Java Language Support (Complete)** | v0.8.0 | ✅ Spring Routes + Lombok |
-| **LoomGraph Integration** | v0.9.0 | ✅ Knowledge graph data |
+| **LoomGraph Integration (Python)** | v0.9.0 | ✅ Knowledge graph data |
+| **LoomGraph Integration (PHP)** | v0.10.0 | ✅ Inheritance + Import Alias |
 
 ### 📚 Version History
 
 | Version | Date | Highlights |
 |---------|------|------------|
-| **v0.9.0** | 2026-02-06 | 🔥 LoomGraph Integration (Inheritance + Import Alias) |
+| **v0.10.0** | 2026-02-06 | 🎯 PHP LoomGraph Integration (Inheritance + Import Alias) |
+| **v0.9.0** | 2026-02-06 | 🔥 Python LoomGraph Integration (Inheritance + Import Alias) |
 | **v0.8.0** | 2026-02-06 | 🚀 Java Complete (Spring Routes + Lombok + Advanced Features) |
 | **v0.7.0** | 2026-02-05 | ☕ Java Language Support (MVP) + Spring Framework Testing |
 | **v0.6.0** | 2026-02-04 | 🔥 AI-Powered Docstring Extraction, ⚠️ Removed AI Enhancement |
@@ -236,7 +238,53 @@
 
 ---
 
-### v0.10.0 - Multi-Language Foundation (Target: 2026-05-31)
+### v0.10.0 - PHP LoomGraph Integration ✅ (Released: 2026-02-06)
+
+**Theme**: Extend knowledge graph support to PHP
+
+**Epic**: Epic 10 Part 2 - PHP LoomGraph Integration
+
+**What Was Delivered**:
+- ✅ PHP Inheritance Extraction (Story 10.1.2)
+  - Extends relationships: `class Child extends Parent`
+  - Implements relationships: `class User implements Auth, Loggable`
+  - Combined: `class Admin extends User implements Authorizable`
+  - Namespace resolution via use_map
+  - 17 comprehensive tests
+
+- ✅ PHP Import Alias Extraction (Story 10.2.2)
+  - Alias in `Import.alias` field (not `names`)
+  - Group imports: `use A\{B as C, D}`
+  - `names` always empty `[]` for PHP
+  - 15 import alias tests
+
+- ✅ PHP LoomGraph Integration Testing (Story 10.3)
+  - 16 integration tests validating format
+  - Real-world patterns (Laravel, Symfony)
+  - Example: `examples/loomgraph_sample.php`
+  - JSON output: `examples/loomgraph_php_output.json`
+
+**Success Criteria** (All Achieved):
+- [x] Extract PHP inheritance relationships ✅
+- [x] Extract PHP import aliases ✅
+- [x] JSON output compatible with LoomGraph ✅
+- [x] Consistent with Python implementation ✅
+
+**Tests**: 777 passing (48 new tests), 3 skipped
+
+**Documentation**:
+- Release notes: `RELEASE_NOTES_v0.10.0.md`
+- Epic plans: `docs/planning/completed/epic10-loomgraph-integration/`
+  - `part1-python-plan.md` (v0.9.0)
+  - `part2-php-plan.md` (v0.10.0)
+
+**Breaking Changes**: PHP Import.alias field migration (minor)
+
+**See**: CHANGELOG.md v0.10.0 entry
+
+---
+
+### v0.11.0 - Multi-Language Foundation (Target: 2026-05-31)
 
 **Theme**: TypeScript, Go, Rust support + LoomGraph multi-language
 
@@ -244,17 +292,15 @@
 - TypeScript/JavaScript parser + JSDoc extraction (AI-powered)
 - Go parser + doc comment extraction (AI-powered)
 - Rust parser + doc comment extraction (AI-powered)
-- Epic 10 remaining stories:
-  - Story 10.1.2: PHP inheritance extraction
-  - Story 10.1.3: Java inheritance extraction
-  - Story 10.2.2: PHP/Java import alias extraction
+- Epic 10 remaining story:
+  - Story 10.1.3: Java inheritance extraction (LoomGraph)
 - FastAPI route extraction (Python)
 - Django URL extraction (Python)
 - Laravel route extraction (PHP)
 
 **Success Criteria**:
 - [ ] 5 languages fully supported (Python, PHP, Java, TypeScript, Go)
-- [ ] LoomGraph support for all 5 languages (inheritance + import alias)
+- [ ] LoomGraph support for Python, PHP, Java (inheritance + import alias)
 - [ ] Consistent AI-powered docstring extraction across all languages
 - [ ] Language-agnostic symbol importance scoring
 
@@ -359,14 +405,14 @@
 
 | Rank | Language | Target Version | Status |
 |------|----------|----------------|--------|
-| 1 | **Python** | v0.1.0 | ✅ Complete |
-| 2 | **Java** | v0.6.0 | 🔄 In Progress (Epic 7) |
-| 3 | **TypeScript/JavaScript** | v0.7.0 | 📋 Planned |
-| 4 | **Go** | v0.7.0 | 📋 Planned |
-| 5 | **Rust** | v0.7.0 | 📋 Planned |
-| 6 | **C#** | v0.8.0 | 📋 Planned |
-| 7 | **PHP** | v0.8.0 | 📋 Planned (partial in v0.5.0) |
-| 8 | **C++** | v0.9.0 | 📋 Planned |
+| 1 | **Python** | v0.1.0 | ✅ Complete (LoomGraph: v0.9.0) |
+| 2 | **PHP** | v0.5.0 | ✅ Complete (LoomGraph: v0.10.0) |
+| 3 | **Java** | v0.7.0 | ✅ Complete (LoomGraph: Planned) |
+| 4 | **TypeScript/JavaScript** | v0.11.0 | 📋 Planned |
+| 5 | **Go** | v0.11.0 | 📋 Planned |
+| 6 | **Rust** | v0.11.0 | 📋 Planned |
+| 7 | **C#** | v0.12.0 | 📋 Planned |
+| 8 | **C++** | v0.12.0 | 📋 Planned |
 
 ---
 
@@ -398,6 +444,8 @@
 | **Epic 4** | v0.3.0-v0.4.0 | Code Refactoring + KISS Description |
 | **Epic 6 (P3.1)** | v0.5.0 | Git Hooks Integration |
 | **Epic 9** | v0.6.0 | AI-Powered Docstring Extraction |
+| **Epic 7** | v0.7.0-v0.8.0 | Java Language Support (Complete) |
+| **Epic 10 (Part 1-2)** | v0.9.0-v0.10.0 | LoomGraph Integration (Python + PHP) |
 
 ### Active Epics
 
@@ -409,11 +457,12 @@
 
 | Epic | Version | Priority | Status |
 |------|---------|----------|--------|
-| **Epic 7** | v0.7.0 | 🔥 P0 | 📋 Next Priority (Java Support) |
-| **Epic 5** | v0.9.0+ | P2 | 📋 Deferred (Intelligent Branch Management) |
-| **Epic 6 (P3.2-P3.3)** | v0.7.0-v0.8.0 | P1 | 📋 Planned (Laravel, FastAPI Routes) |
-| **Epic 8** | v0.8.0 | P0 | 📋 Planned (Multi-Language Foundation) |
-| **Epic 10** | v0.9.0+ | P1 | 📋 Planned (Real-time Indexing) |
+| **Epic 10 (Part 3)** | v0.11.0 | P1 | 📋 Next Priority (Java LoomGraph) |
+| **Epic 8** | v0.11.0 | P0 | 📋 Planned (TypeScript/Go/Rust Support) |
+| **Epic 6 (P3.2-P3.3)** | v0.11.0-v0.12.0 | P1 | 📋 Planned (Laravel, FastAPI Routes) |
+| **Epic 11** | v0.12.0+ | P1 | 📋 Planned (Call Relationship Extraction) |
+| **Epic 5** | v0.12.0+ | P2 | 📋 Deferred (Intelligent Branch Management) |
+| **Epic 12** | v0.13.0+ | P1 | 📋 Planned (Real-time Indexing) |
 
 **See**: Individual epic planning docs in `docs/planning/epicN-*.md`
 

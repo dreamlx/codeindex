@@ -1,0 +1,233 @@
+{
+  "path": "examples/loomgraph_sample.php",
+  "namespace": "App\\Example",
+  "file_lines": 254,
+  "symbols": [
+    {
+      "name": "BaseRepository",
+      "kind": "class",
+      "signature": "abstract class BaseRepository",
+      "docstring": "Base repository with common CRUD operations.",
+      "line_start": 22,
+      "line_end": 43
+    },
+    {
+      "name": "BaseRepository::save",
+      "kind": "method",
+      "signature": "public function save(): bool",
+      "docstring": "Save entity to database.",
+      "line_start": 29,
+      "line_end": 32
+    },
+    {
+      "name": "BaseRepository::delete",
+      "kind": "method",
+      "signature": "public function delete(): void",
+      "docstring": "Delete entity from database.",
+      "line_start": 39,
+      "line_end": 42
+    },
+    {
+      "name": "User",
+      "kind": "class",
+      "signature": "class User extends BaseRepository implements AuthenticatableInterface",
+      "docstring": "User model with authentication capabilities. Extends BaseRepository and implements AuthenticatableIn...",
+      "line_start": 71,
+      "line_end": 138
+    },
+    {
+      "name": "User::$username",
+      "kind": "property",
+      "signature": "private string $username",
+      "docstring": "",
+      "line_start": 78,
+      "line_end": 78
+    },
+    {
+      "name": "User::$email",
+      "kind": "property",
+      "signature": "private string $email",
+      "docstring": "",
+      "line_start": 85,
+      "line_end": 85
+    },
+    {
+      "name": "User::$createdAt",
+      "kind": "property",
+      "signature": "private DateTime $createdAt",
+      "docstring": "",
+      "line_start": 92,
+      "line_end": 92
+    },
+    {
+      "name": "User::__construct",
+      "kind": "method",
+      "signature": "public function __construct(string $username, string $email)",
+      "docstring": "Initialize user account.",
+      "line_start": 100,
+      "line_end": 105
+    },
+    {
+      "name": "User::authenticate",
+      "kind": "method",
+      "signature": "public function authenticate(string $password): bool",
+      "docstring": "Authenticate user with password.",
+      "line_start": 113,
+      "line_end": 117
+    },
+    {
+      "name": "User::getPermissions",
+      "kind": "method",
+      "signature": "public function getPermissions(): array",
+      "docstring": "Get user permissions.",
+      "line_start": 124,
+      "line_end": 127
+    },
+    {
+      "name": "User::getEmail",
+      "kind": "method",
+      "signature": "public function getEmail(): string",
+      "docstring": "Get user's email.",
+      "line_start": 134,
+      "line_end": 137
+    },
+    {
+      "name": "AdminUser",
+      "kind": "class",
+      "signature": "class AdminUser extends User",
+      "docstring": "Admin user with elevated privileges. Extends User to inherit authentication capabilities.",
+      "line_start": 145,
+      "line_end": 182
+    },
+    {
+      "name": "AdminUser::grantPermission",
+      "kind": "method",
+      "signature": "public function grantPermission(int $userId, string $permission): bool",
+      "docstring": "Grant permission to another user.",
+      "line_start": 154,
+      "line_end": 158
+    },
+    {
+      "name": "AdminUser::revokePermission",
+      "kind": "method",
+      "signature": "public function revokePermission(int $userId, string $permission): bool",
+      "docstring": "Revoke permission from user.",
+      "line_start": 167,
+      "line_end": 171
+    },
+    {
+      "name": "AdminUser::getPermissions",
+      "kind": "method",
+      "signature": "public function getPermissions(): array",
+      "docstring": "Get all admin permissions.",
+      "line_start": 178,
+      "line_end": 181
+    },
+    {
+      "name": "UserController",
+      "kind": "class",
+      "signature": "class UserController implements AuthenticatableInterface",
+      "docstring": "Controller class implementing multiple interfaces.",
+      "line_start": 187,
+      "line_end": 219
+    },
+    {
+      "name": "UserController::authenticate",
+      "kind": "method",
+      "signature": "public function authenticate(string $password): bool",
+      "docstring": "Authenticate user.",
+      "line_start": 195,
+      "line_end": 198
+    },
+    {
+      "name": "UserController::getPermissions",
+      "kind": "method",
+      "signature": "public function getPermissions(): array",
+      "docstring": "Get permissions.",
+      "line_start": 205,
+      "line_end": 208
+    },
+    {
+      "name": "UserController::jsonSerialize",
+      "kind": "method",
+      "signature": "public function jsonSerialize(): array",
+      "docstring": "JSON serialization.",
+      "line_start": 215,
+      "line_end": 218
+    },
+    {
+      "name": "getUserById",
+      "kind": "function",
+      "signature": "function getUserById(int $userId): ?User",
+      "docstring": "Retrieve user by ID.",
+      "line_start": 227,
+      "line_end": 231
+    },
+    {
+      "name": "createUser",
+      "kind": "function",
+      "signature": "function createUser(string $username, string $email): User",
+      "docstring": "Create new user account.",
+      "line_start": 240,
+      "line_end": 243
+    },
+    {
+      "name": "validateEmail",
+      "kind": "function",
+      "signature": "function validateEmail(string $email): bool",
+      "docstring": "Validate email format.",
+      "line_start": 251,
+      "line_end": 254
+    }
+  ],
+  "imports": [
+    {
+      "module": "Illuminate\\Database\\Eloquent\\Model",
+      "names": [],
+      "is_from": true,
+      "alias": "BaseModel"
+    },
+    {
+      "module": "Illuminate\\Contracts\\Auth\\Authenticatable",
+      "names": [],
+      "is_from": true,
+      "alias": null
+    },
+    {
+      "module": "App\\Traits\\Loggable",
+      "names": [],
+      "is_from": true,
+      "alias": null
+    },
+    {
+      "module": "App\\Services\\Logger",
+      "names": [],
+      "is_from": true,
+      "alias": "LogService"
+    },
+    {
+      "module": "App\\Services\\Cache",
+      "names": [],
+      "is_from": true,
+      "alias": null
+    }
+  ],
+  "inheritances": [
+    {
+      "child": "App\\Example\\User",
+      "parent": "App\\Example\\BaseRepository"
+    },
+    {
+      "child": "App\\Example\\User",
+      "parent": "App\\Example\\AuthenticatableInterface"
+    },
+    {
+      "child": "App\\Example\\AdminUser",
+      "parent": "App\\Example\\User"
+    },
+    {
+      "child": "App\\Example\\UserController",
+      "parent": "App\\Example\\AuthenticatableInterface"
+    }
+  ]
+}

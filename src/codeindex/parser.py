@@ -4,9 +4,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict
 
-import tree_sitter_java as tsjava
-import tree_sitter_php as tsphp
-import tree_sitter_python as tspython
 from tree_sitter import Language, Node, Parser
 
 
@@ -154,18 +151,6 @@ class ParseResult:
         }
 
 
-# Initialize languages
-PY_LANGUAGE = Language(tspython.language())
-PHP_LANGUAGE = Language(tsphp.language_php())
-JAVA_LANGUAGE = Language(tsjava.language())
-
-# Language-specific parsers
-PARSERS: Dict[str, Parser] = {
-    "python": Parser(PY_LANGUAGE),
-    "php": Parser(PHP_LANGUAGE),
-    "java": Parser(JAVA_LANGUAGE),
-}
-
 # File extension to language mapping
 FILE_EXTENSIONS: Dict[str, str] = {
     ".py": "python",
@@ -173,6 +158,59 @@ FILE_EXTENSIONS: Dict[str, str] = {
     ".phtml": "php",
     ".java": "java",
 }
+
+# Parser cache for lazy loading (avoids re-initialization)
+_PARSER_CACHE: Dict[str, Parser] = {}
+
+
+def _get_parser(language: str) -> Parser | None:
+    """Get or create a parser for the specified language (lazy loading).
+
+    This function implements lazy loading to avoid importing all language
+    parsers at module load time. Only the needed parser is imported and
+    initialized when first used.
+
+    Args:
+        language: Language name ("python", "php", "java")
+
+    Returns:
+        Parser instance for the language, or None if unsupported
+
+    Raises:
+        ImportError: If the tree-sitter library for the language is not installed
+
+    Example:
+        parser = _get_parser("python")  # Only imports tree-sitter-python
+    """
+    # Return cached parser if available
+    if language in _PARSER_CACHE:
+        return _PARSER_CACHE[language]
+
+    # Lazy import and initialize parser based on language
+    try:
+        if language == "python":
+            import tree_sitter_python as tspython
+            lang = Language(tspython.language())
+        elif language == "php":
+            import tree_sitter_php as tsphp
+            lang = Language(tsphp.language_php())
+        elif language == "java":
+            import tree_sitter_java as tsjava
+            lang = Language(tsjava.language())
+        else:
+            return None
+
+        # Create and cache parser
+        parser = Parser(lang)
+        _PARSER_CACHE[language] = parser
+        return parser
+
+    except ImportError as e:
+        # Provide helpful error message
+        raise ImportError(
+            f"tree-sitter-{language} is not installed. "
+            f"Install it with: pip install tree-sitter-{language}"
+        ) from e
 
 
 def _get_node_text(node, source_bytes: bytes) -> str:
@@ -445,17 +483,17 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
             path=path, error=f"Unsupported file type: {path.suffix}", file_lines=file_lines
         )
 
-    # Validate language
-    if language not in PARSERS:
+    # Get appropriate parser (lazy loading)
+    try:
+        parser = _get_parser(language)
+    except ImportError as e:
         return ParseResult(
-            path=path, error=f"Unsupported language: {language}", file_lines=file_lines
+            path=path, error=str(e), file_lines=file_lines
         )
 
-    # Get appropriate parser
-    parser = PARSERS.get(language)
     if not parser:
         return ParseResult(
-            path=path, error=f"No parser for language: {language}", file_lines=file_lines
+            path=path, error=f"Unsupported language: {language}", file_lines=file_lines
         )
 
     try:
@@ -497,9 +535,13 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
                 imports.extend(import_list)
 
     elif language == "php":
-        # PHP parsing
+        # PHP parsing (Epic 10, Story 10.1.2: inheritance extraction)
         root = tree.root_node
         namespace = ""
+        inheritances: list[Inheritance] = []
+
+        # First pass: collect namespace and build use_map for inheritance resolution
+        use_map: dict[str, str] = {}  # {short_name: full_qualified_name}
 
         for child in root.children:
             if child.type == "namespace_definition":
@@ -507,8 +549,23 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
             elif child.type == "namespace_use_declaration":
                 use_imports = _parse_php_use(child, source_bytes)
                 imports.extend(use_imports)
-            elif child.type == "class_declaration":
-                symbols.extend(_parse_php_class(child, source_bytes))
+                # Build use_map for inheritance resolution
+                # Epic 10, Story 10.2.2: Now using imp.alias field correctly
+                for imp in use_imports:
+                    # Extract class name from full path: App\Model\User -> User
+                    short_name = imp.module.split("\\")[-1]
+                    # If there's an alias, use it as the key; otherwise use short name
+                    if imp.alias:
+                        use_map[imp.alias] = imp.module
+                    else:
+                        use_map[short_name] = imp.module
+
+        # Second pass: parse classes with use_map and inheritances
+        for child in root.children:
+            if child.type == "class_declaration":
+                symbols.extend(
+                    _parse_php_class(child, source_bytes, namespace, use_map, inheritances)
+                )
             elif child.type == "function_definition":
                 symbols.append(_parse_php_function(child, source_bytes))
             elif child.type in ("include_expression", "require_expression"):
@@ -527,6 +584,7 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
             path=path,
             symbols=symbols,
             imports=imports,
+            inheritances=inheritances,
             module_docstring=module_docstring,
             namespace=namespace,
             file_lines=file_lines,
@@ -782,8 +840,30 @@ def _parse_php_property(node, source_bytes: bytes, class_name: str) -> Symbol:
         line_end=node.end_point[0] + 1,
     )
 
-def _parse_php_class(node, source_bytes: bytes) -> list[Symbol]:
-    """Parse a PHP class definition node with extends, implements, properties and methods."""
+def _parse_php_class(
+    node,
+    source_bytes: bytes,
+    namespace: str = "",
+    use_map: dict[str, str] | None = None,
+    inheritances: list[Inheritance] | None = None
+) -> list[Symbol]:
+    """Parse a PHP class definition node with extends, implements, properties and methods.
+
+    Epic 10, Story 10.1.2: Added namespace, use_map, and inheritances parameters
+    to support inheritance extraction for LoomGraph integration.
+
+    Args:
+        node: tree-sitter node for class_declaration
+        source_bytes: Source code bytes
+        namespace: Current namespace (e.g., "App\\Models")
+        use_map: Mapping of short names to full qualified names from use statements
+        inheritances: List to append Inheritance relationships to
+    """
+    if use_map is None:
+        use_map = {}
+    if inheritances is None:
+        inheritances = []
+
     symbols = []
     class_name = ""
     extends = ""
@@ -808,6 +888,22 @@ def _parse_php_class(node, source_bytes: bytes) -> list[Symbol]:
             for ic_child in child.children:
                 if ic_child.type == "name":
                     implements.append(_get_node_text(ic_child, source_bytes))
+
+    # Build full class name with namespace
+    full_class_name = f"{namespace}\\{class_name}" if namespace else class_name
+
+    # Create Inheritance objects (Epic 10, Story 10.1.2)
+    if extends:
+        # Resolve parent class full name using use_map
+        parent_full_name = use_map.get(extends, f"{namespace}\\{extends}" if namespace else extends)
+        inheritances.append(Inheritance(child=full_class_name, parent=parent_full_name))
+
+    for interface in implements:
+        # Resolve interface full name using use_map
+        interface_full_name = use_map.get(
+            interface, f"{namespace}\\{interface}" if namespace else interface
+        )
+        inheritances.append(Inheritance(child=full_class_name, parent=interface_full_name))
 
     # Build signature: [abstract|final] class Name [extends Base] [implements I1, I2]
     sig_parts = []
@@ -869,13 +965,20 @@ def _parse_php_namespace(node, source_bytes: bytes) -> str:
 
 
 def _parse_php_use(node, source_bytes: bytes) -> list[Import]:
-    """
-    Parse PHP use statement.
+    """Parse PHP use statement.
+
+    Epic 10, Story 10.2.2: Updated to store alias in alias field (not names field)
+    for consistency with Python import handling and LoomGraph integration.
 
     Handles:
     - use App\\Service\\UserService;
     - use App\\Model\\User as UserModel;
     - use App\\Repository\\{UserRepository, OrderRepository};
+
+    Returns:
+        List of Import objects with:
+        - names: always empty [] (PHP use imports entire class, not specific members)
+        - alias: the alias if present (e.g., "UserModel"), None otherwise
     """
     imports = []
     base_namespace = ""
@@ -902,11 +1005,15 @@ def _parse_php_use(node, source_bytes: bytes) -> list[Import]:
                 if base_namespace:
                     module = f"{base_namespace}\\{module}"
 
-                imports.append(Import(
-                    module=module,
-                    names=[alias] if alias else [],
-                    is_from=True,  # PHP use is similar to Python's from...import
-                ))
+                # Epic 10, Story 10.2.2: alias now in alias field, names always empty
+                imports.append(
+                    Import(
+                        module=module,
+                        names=[],  # PHP use imports whole class, not specific members
+                        is_from=True,  # PHP use is similar to Python's from...import
+                        alias=alias if alias else None,
+                    )
+                )
 
         elif child.type == "namespace_use_group":
             # Group import: {UserRepository, OrderRepository}
@@ -925,11 +1032,15 @@ def _parse_php_use(node, source_bytes: bytes) -> list[Import]:
 
                     if name:
                         full_module = f"{base_namespace}\\{name}" if base_namespace else name
-                        imports.append(Import(
-                            module=full_module,
-                            names=[alias] if alias else [],
-                            is_from=True,
-                        ))
+                        # Epic 10, Story 10.2.2: alias now in alias field
+                        imports.append(
+                            Import(
+                                module=full_module,
+                                names=[],  # PHP use imports whole class
+                                is_from=True,
+                                alias=alias if alias else None,
+                            )
+                        )
 
     return imports
 

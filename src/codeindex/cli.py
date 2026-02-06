@@ -7,6 +7,7 @@ codebase organized and maintainable.
 
 import click
 
+from . import __version__
 from .cli_config import init, list_dirs, status
 from .cli_docs import docs
 from .cli_hooks import hooks
@@ -16,7 +17,7 @@ from .cli_tech_debt import tech_debt
 
 
 @click.group()
-@click.version_option()
+@click.version_option(version=__version__, prog_name="codeindex")
 def main():
     """codeindex - AI-native code indexing tool for large codebases."""
     pass

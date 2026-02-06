@@ -1,6 +1,6 @@
 [project]
 name = "ai-codeindex"
-version = "0.9.0"
+version = "0.11.0"
 description = "AI-native code indexing tool for large codebases"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -28,12 +28,22 @@ dependencies = [
     "pyyaml>=6.0",
     "rich>=13.0",
     "tree-sitter>=0.21",
+]
+
+[project.optional-dependencies]
+# Language-specific parsers (install only what you need)
+python = ["tree-sitter-python>=0.21"]
+php = ["tree-sitter-php>=0.23"]
+java = ["tree-sitter-java>=0.23.0"]
+
+# Convenience: all languages
+all = [
     "tree-sitter-python>=0.21",
     "tree-sitter-php>=0.23",
     "tree-sitter-java>=0.23.0",
 ]
 
-[project.optional-dependencies]
+# Development dependencies
 dev = [
     "pytest>=7.0",
     "pytest-bdd>=7.0",

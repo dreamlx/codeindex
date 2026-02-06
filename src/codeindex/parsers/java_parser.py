@@ -8,7 +8,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from codeindex.parser import PARSERS, ParseResult, parse_file
+from codeindex.parser import ParseResult, _get_parser, parse_file
 
 
 def is_java_file(path: str) -> bool:
@@ -17,8 +17,8 @@ def is_java_file(path: str) -> bool:
 
 
 def get_java_parser():
-    """Get the Java parser instance."""
-    return PARSERS.get("java")
+    """Get the Java parser instance (lazy loading)."""
+    return _get_parser("java")
 
 
 def parse_java_file(file_path: str, content: str) -> ParseResult:

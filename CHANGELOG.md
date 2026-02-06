@@ -7,6 +7,112 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-02-06
+
+### Added
+
+- **Lazy Loading for Language Parsers** (Architecture Improvement)
+  - Language parsers only imported when actually needed
+  - Parser caching to avoid re-initialization
+  - Helpful error messages when language parser not installed
+  - 6 new tests for lazy loading behavior
+
+### Changed
+
+- **BREAKING**: Language parsers moved to optional dependencies
+  - Install: `pip install ai-codeindex[python]` for Python support
+  - Install: `pip install ai-codeindex[php]` for PHP support
+  - Install: `pip install ai-codeindex[java]` for Java support
+  - Install: `pip install ai-codeindex[all]` for all languages
+  - Core package only includes tree-sitter (no language parsers)
+
+### Fixed
+
+- PHP projects no longer require installing tree-sitter-java
+- Python projects no longer require installing tree-sitter-php
+- Reduced unnecessary dependencies and installation complexity
+
+### Migration
+
+- **Existing users**: Reinstall with language extras: `pip install --upgrade ai-codeindex[all]`
+- **New users**: Install only needed languages: `pip install ai-codeindex[python,php]`
+- **Development**: Use `pip install -e ".[all]"` for all languages
+
+### Technical Details
+
+- Removed module-level imports of all language parsers
+- Added `_get_parser()` function for lazy loading
+- Added `_PARSER_CACHE` dictionary for parser reuse
+- Updated `parse_file()` to use lazy-loaded parsers
+- Updated `java_parser.py` to use `_get_parser()` instead of `PARSERS` global
+
+### Tests
+
+- 783 tests passing (+6 new), 3 skipped
+- New test file: `tests/test_lazy_loading.py`
+- Validates parsers not imported at module load time
+- Validates caching behavior
+- Validates helpful error messages
+
+## [0.10.1] - 2026-02-06
+
+### Fixed
+
+- **JSON Output Clean Stream** (Bug Fix)
+  - Fixed: `--output json` now produces clean JSON without progress messages
+  - Issue: console.print() statements were polluting stdout with scanning progress
+  - Solution: Force quiet mode when output format is JSON
+  - Impact: Enables direct piping to tools like jq or LoomGraph integration
+  - Tests: All 777 tests passing
+
+## [0.10.0] - 2026-02-06
+
+### Added
+
+- **PHP LoomGraph Integration** (Epic 10 Part 2 Complete - MVP)
+  - PHP inheritance extraction: `extends` (single), `implements` (multiple interfaces)
+  - PHP import alias extraction: `use X as Y`, group imports `use A\{B as C, D}`
+  - 32 new tests (777 total passing, 3 skipped)
+  - PHP example file and JSON output demonstration
+
+- **PHP Inheritance Extraction** (Story 10.1.2)
+  - Extends relationships: `class Child extends Parent`
+  - Implements relationships: `class User implements Auth, Loggable`
+  - Combined: `class Admin extends User implements Authorizable`
+  - Namespace resolution: short names → full qualified names via use_map
+  - 17 comprehensive inheritance tests
+  - Real-world patterns: Laravel Models, Symfony Controllers
+
+- **PHP Import Alias Extraction** (Story 10.2.2)
+  - Alias stored in `alias` field (not `names` field)
+  - `names` field always empty `[]` for PHP (imports whole class)
+  - Group imports split into separate Import objects
+  - Mixed aliased/non-aliased imports: `use A\{B as C, D}`
+  - 15 import alias tests covering all PHP use patterns
+
+- **PHP LoomGraph Integration Testing** (Story 10.3)
+  - 16 integration tests validating LoomGraph format
+  - JSON format validation (inheritances, alias fields, data types)
+  - Real-world framework patterns (Laravel, Symfony)
+  - Edge cases (no inheritance, no imports, complex namespaces)
+  - Example files:
+    * `examples/loomgraph_sample.php` (254 lines)
+    * `examples/loomgraph_php_output.json` (sample JSON export)
+
+### Changed
+
+- **PHP Use Statement Parsing** (Breaking Change)
+  - Import alias now in `Import.alias` field instead of `Import.names`
+  - Aligns PHP with Python import handling for consistency
+  - `names` field is now always `[]` for PHP use statements
+  - Migration: Check `import.alias` instead of `import.names[0]`
+
+### Fixed
+
+- Fixed PHP import alias test failures caused by reserved keyword `OR`
+  - Tree-sitter correctly identifies `OR` as syntax error (logical OR operator)
+  - Updated tests to use valid PHP identifiers
+
 ## [0.9.0] - 2026-02-06
 
 ### Added
