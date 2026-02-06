@@ -1,7 +1,7 @@
 # Planning Index
 
-**Last Updated**: 2026-02-04
-**Current Version**: v0.6.0
+**Last Updated**: 2026-02-06
+**Current Version**: v0.11.0
 
 ---
 
@@ -9,8 +9,7 @@
 
 | Epic | Version | Priority | Status | Document |
 |------|---------|----------|--------|----------|
-| [Epic: JSON Output](active/epic-json-output.md) | v0.7.0 | 🔥 P0 | 📋 Active | JSON output for LoomGraph integration |
-| [Epic 7: Java Support](active/epic7-java-support.md) | v0.7.0 | 🔥 P0 | 📋 Planned | Java language + Spring routes |
+| _No active epics_ | - | - | Planning next version | See ROADMAP.md for future plans |
 
 ---
 
@@ -18,6 +17,9 @@
 
 | Epic | Version | Completion Date | Summary |
 |------|---------|-----------------|---------|
+| [Epic 10: LoomGraph Integration](completed/epic10-loomgraph-integration/) | v0.9.0-v0.10.0 | 2026-02-06 | Python + PHP inheritance + import alias |
+| [Epic: JSON Output](completed/epic-json-output/plan.md) | v0.9.0-v0.10.0 | 2026-02-06 | JSON output (part of Epic 10) |
+| [Epic 7: Java Support](completed/epic7-java-support/plan.md) | v0.7.0-v0.8.0 | 2026-02-06 | Java language + Spring routes + Lombok |
 | [Epic 9: Docstring Extraction](completed/epic9-docstring-extraction/plan.md) | v0.6.0 | 2026-02-04 | AI-powered docstring processor |
 | [Epic 6: Framework Routes](completed/epic6-framework-routes/plan.md) | v0.5.0 | 2026-02-03 | ThinkPHP routes + Git Hooks |
 | [Epic 4: Refactoring + KISS](completed/epic4-refactoring/plan.md) | v0.3.1-v0.4.0 | 2026-02-02 | CLI split + KISS |

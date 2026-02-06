@@ -1,12 +1,12 @@
 # codeindex Strategic Roadmap
 
 **Last Updated**: 2026-02-06
-**Current Version**: v0.10.0
+**Current Version**: v0.11.0
 **Vision**: Universal code indexing platform for AI-assisted development
 
 ---
 
-## 📍 Current Status (v0.10.0)
+## 📍 Current Status (v0.11.0)
 
 ### ✅ Completed Capabilities
 
@@ -24,11 +24,13 @@
 | **Java Language Support (Complete)** | v0.8.0 | ✅ Spring Routes + Lombok |
 | **LoomGraph Integration (Python)** | v0.9.0 | ✅ Knowledge graph data |
 | **LoomGraph Integration (PHP)** | v0.10.0 | ✅ Inheritance + Import Alias |
+| **Lazy Loading Architecture** | v0.11.0 | ✅ Optional language parsers |
 
 ### 📚 Version History
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| **v0.11.0** | 2026-02-06 | 🏗️ Lazy Loading Architecture (Optional Language Parsers) |
 | **v0.10.0** | 2026-02-06 | 🎯 PHP LoomGraph Integration (Inheritance + Import Alias) |
 | **v0.9.0** | 2026-02-06 | 🔥 Python LoomGraph Integration (Inheritance + Import Alias) |
 | **v0.8.0** | 2026-02-06 | 🚀 Java Complete (Spring Routes + Lombok + Advanced Features) |
@@ -284,31 +286,93 @@
 
 ---
 
-### v0.11.0 - Multi-Language Foundation (Target: 2026-05-31)
+### v0.11.0 - Lazy Loading Architecture ✅ (Released: 2026-02-06)
 
-**Theme**: TypeScript, Go, Rust support + LoomGraph multi-language
+**Theme**: Performance optimization through optional language dependencies
 
-**Key Features**:
-- TypeScript/JavaScript parser + JSDoc extraction (AI-powered)
-- Go parser + doc comment extraction (AI-powered)
-- Rust parser + doc comment extraction (AI-powered)
-- Epic 10 remaining story:
-  - Story 10.1.3: Java inheritance extraction (LoomGraph)
-- FastAPI route extraction (Python)
-- Django URL extraction (Python)
-- Laravel route extraction (PHP)
+**What Was Delivered**:
+- ✅ Lazy loading for language parsers (only import when needed)
+- ✅ Parser caching to avoid re-initialization
+- ✅ Optional dependencies: `pip install ai-codeindex[python]`, `[php]`, `[java]`, `[all]`
+- ✅ Helpful error messages when language parser not installed
+- ✅ Reduced installation complexity (no unnecessary dependencies)
+
+**Breaking Changes**:
+- Language parsers moved to optional dependencies
+- Users must reinstall with extras: `pip install --upgrade ai-codeindex[all]`
+
+**Success Criteria** (All Achieved):
+- [x] PHP projects don't require tree-sitter-java ✅
+- [x] Python projects don't require tree-sitter-php ✅
+- [x] Parsers loaded on-demand ✅
+- [x] Backward compatible with existing code ✅
+
+**Tests**: 783 passing (+6 new), 3 skipped
+
+**Documentation**:
+- Migration guide in CHANGELOG.md
+- Updated installation instructions
+
+**See**: CHANGELOG.md v0.11.0 entry
+
+---
+
+### v0.12.0 - LoomGraph Complete + Call Relationships (Target: 2026-02-13)
+
+**Theme**: Complete knowledge graph foundation
+
+**Epic**: Epic 10 Part 3 + Epic 11
+
+**What Will Be Delivered**:
+- Java LoomGraph Integration (Story 10.1.3)
+  - Java inheritance extraction (extends + implements)
+  - Generic type handling
+  - Consistent with Python/PHP implementation
+
+- Call Relationship Extraction (Epic 11 - NEW)
+  - Python call extraction (function/method calls)
+  - PHP call extraction (function/method/static calls)
+  - Java call extraction (method/static/constructor calls)
+  - LoomGraph integration (`calls` field in ParseResult)
 
 **Success Criteria**:
-- [ ] 5 languages fully supported (Python, PHP, Java, TypeScript, Go)
-- [ ] LoomGraph support for Python, PHP, Java (inheritance + import alias)
-- [ ] Consistent AI-powered docstring extraction across all languages
-- [ ] Language-agnostic symbol importance scoring
+- [ ] LoomGraph supports all 3 languages (Python, PHP, Java)
+- [ ] Extract function/method call relationships
+- [ ] Distinguish internal vs external calls
+- [ ] Track call locations (line numbers)
+- [ ] JSON output compatible with LoomGraph
+
+**Estimated Work**: 1-2 weeks
+**Tests Target**: ~90-100 new tests (target: 870+ total)
+
+**See**: Planning TBD (Epic 10 Part 3, Epic 11)
+
+---
+
+### v0.13.0 - TypeScript Language Support (Target: 2026-03-31)
+
+**Theme**: Web development ecosystem foundation
+
+**Epic**: Epic 8 - TypeScript Support
+
+**Key Features**:
+- TypeScript/JavaScript parser (tree-sitter-typescript)
+- JSDoc extraction (AI-powered)
+- React component detection
+- TypeScript type annotations parsing
+- LoomGraph Integration (inheritance + import alias)
+
+**Success Criteria**:
+- [ ] Parse 95%+ valid TypeScript code
+- [ ] Extract JSDoc comments with AI processor
+- [ ] Detect React components (@Component, hooks)
+- [ ] Generate useful README_AI.md for TS modules
 
 **See**: Planning TBD
 
 ---
 
-### v0.11.0 - Advanced Framework Intelligence (Target: 2026-07-31)
+### v0.14.0 - Framework Intelligence Expansion (Target: 2026-04-30)
 
 **Theme**: Framework-aware code understanding
 
@@ -447,22 +511,21 @@
 | **Epic 7** | v0.7.0-v0.8.0 | Java Language Support (Complete) |
 | **Epic 10 (Part 1-2)** | v0.9.0-v0.10.0 | LoomGraph Integration (Python + PHP) |
 
-### Active Epics
+### Active Epics (v0.12.0 Development)
 
 | Epic | Version | Priority | Status |
 |------|---------|----------|--------|
-| _No active epics_ | - | - | Planning next version |
+| **Epic 10 (Part 3)** | v0.12.0 | P0 | 🚀 Starting (Java LoomGraph) |
+| **Epic 11** | v0.12.0 | P1 | 📋 Planned (Call Relationship Extraction) |
 
 ### Future Epics
 
 | Epic | Version | Priority | Status |
 |------|---------|----------|--------|
-| **Epic 10 (Part 3)** | v0.11.0 | P1 | 📋 Next Priority (Java LoomGraph) |
-| **Epic 8** | v0.11.0 | P0 | 📋 Planned (TypeScript/Go/Rust Support) |
-| **Epic 6 (P3.2-P3.3)** | v0.11.0-v0.12.0 | P1 | 📋 Planned (Laravel, FastAPI Routes) |
-| **Epic 11** | v0.12.0+ | P1 | 📋 Planned (Call Relationship Extraction) |
-| **Epic 5** | v0.12.0+ | P2 | 📋 Deferred (Intelligent Branch Management) |
-| **Epic 12** | v0.13.0+ | P1 | 📋 Planned (Real-time Indexing) |
+| **Epic 8** | v0.13.0 | P0 | 📋 Planned (TypeScript Support) |
+| **Epic 6 (P3.2-P3.3)** | v0.14.0 | P1 | 📋 Planned (Laravel, FastAPI Routes) |
+| **Epic 5** | v0.15.0+ | P2 | 📋 Deferred (Intelligent Branch Management) |
+| **Epic 12** | v0.15.0+ | P1 | 📋 Planned (Real-time Indexing) |
 
 **See**: Individual epic planning docs in `docs/planning/epicN-*.md`
 
