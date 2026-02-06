@@ -497,9 +497,13 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
                 imports.extend(import_list)
 
     elif language == "php":
-        # PHP parsing
+        # PHP parsing (Epic 10, Story 10.1.2: inheritance extraction)
         root = tree.root_node
         namespace = ""
+        inheritances: list[Inheritance] = []
+
+        # First pass: collect namespace and build use_map for inheritance resolution
+        use_map: dict[str, str] = {}  # {short_name: full_qualified_name}
 
         for child in root.children:
             if child.type == "namespace_definition":
@@ -507,8 +511,24 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
             elif child.type == "namespace_use_declaration":
                 use_imports = _parse_php_use(child, source_bytes)
                 imports.extend(use_imports)
-            elif child.type == "class_declaration":
-                symbols.extend(_parse_php_class(child, source_bytes))
+                # Build use_map for inheritance resolution
+                for imp in use_imports:
+                    # Extract class name from full path: App\Model\User -> User
+                    short_name = imp.module.split("\\")[-1]
+                    # TEMP: names field currently stores alias (Story 10.2.2 will fix this)
+                    # After Story 10.2.2, this will be: if imp.alias:
+                    if imp.names and len(imp.names) > 0:
+                        # imp.names[0] is the alias in current format
+                        use_map[imp.names[0]] = imp.module
+                    else:
+                        use_map[short_name] = imp.module
+
+        # Second pass: parse classes with use_map and inheritances
+        for child in root.children:
+            if child.type == "class_declaration":
+                symbols.extend(
+                    _parse_php_class(child, source_bytes, namespace, use_map, inheritances)
+                )
             elif child.type == "function_definition":
                 symbols.append(_parse_php_function(child, source_bytes))
             elif child.type in ("include_expression", "require_expression"):
@@ -527,6 +547,7 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
             path=path,
             symbols=symbols,
             imports=imports,
+            inheritances=inheritances,
             module_docstring=module_docstring,
             namespace=namespace,
             file_lines=file_lines,
@@ -782,8 +803,30 @@ def _parse_php_property(node, source_bytes: bytes, class_name: str) -> Symbol:
         line_end=node.end_point[0] + 1,
     )
 
-def _parse_php_class(node, source_bytes: bytes) -> list[Symbol]:
-    """Parse a PHP class definition node with extends, implements, properties and methods."""
+def _parse_php_class(
+    node,
+    source_bytes: bytes,
+    namespace: str = "",
+    use_map: dict[str, str] | None = None,
+    inheritances: list[Inheritance] | None = None
+) -> list[Symbol]:
+    """Parse a PHP class definition node with extends, implements, properties and methods.
+
+    Epic 10, Story 10.1.2: Added namespace, use_map, and inheritances parameters
+    to support inheritance extraction for LoomGraph integration.
+
+    Args:
+        node: tree-sitter node for class_declaration
+        source_bytes: Source code bytes
+        namespace: Current namespace (e.g., "App\\Models")
+        use_map: Mapping of short names to full qualified names from use statements
+        inheritances: List to append Inheritance relationships to
+    """
+    if use_map is None:
+        use_map = {}
+    if inheritances is None:
+        inheritances = []
+
     symbols = []
     class_name = ""
     extends = ""
@@ -808,6 +851,22 @@ def _parse_php_class(node, source_bytes: bytes) -> list[Symbol]:
             for ic_child in child.children:
                 if ic_child.type == "name":
                     implements.append(_get_node_text(ic_child, source_bytes))
+
+    # Build full class name with namespace
+    full_class_name = f"{namespace}\\{class_name}" if namespace else class_name
+
+    # Create Inheritance objects (Epic 10, Story 10.1.2)
+    if extends:
+        # Resolve parent class full name using use_map
+        parent_full_name = use_map.get(extends, f"{namespace}\\{extends}" if namespace else extends)
+        inheritances.append(Inheritance(child=full_class_name, parent=parent_full_name))
+
+    for interface in implements:
+        # Resolve interface full name using use_map
+        interface_full_name = use_map.get(
+            interface, f"{namespace}\\{interface}" if namespace else interface
+        )
+        inheritances.append(Inheritance(child=full_class_name, parent=interface_full_name))
 
     # Build signature: [abstract|final] class Name [extends Base] [implements I1, I2]
     sig_parts = []
