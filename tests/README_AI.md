@@ -773,6 +773,12 @@ Changed files:
 Changed files:
 - `test_java_error_recovery.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_java_lombok.py`
+
 ---
 
 ## Recent Changes
@@ -780,4 +786,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_java_lombok.py`
+- `test_loomgraph_integration.py`
