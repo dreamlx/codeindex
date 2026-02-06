@@ -591,25 +591,36 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
         )
 
     elif language == "java":
-        # Java parsing
+        # Java parsing (Epic 10 Part 3: inheritance extraction)
         root = tree.root_node
         namespace = ""  # Java package name
+        inheritances: list[Inheritance] = []
+
+        # First pass: collect package name and build import_map
+        import_map: dict[str, str] = _build_java_import_map(root, source_bytes)
 
         for child in root.children:
             if child.type == "package_declaration":
                 namespace = _parse_java_package(child, source_bytes)
-            elif child.type == "class_declaration":
-                symbols.extend(_parse_java_class(child, source_bytes))
-            elif child.type == "interface_declaration":
-                symbols.extend(_parse_java_interface(child, source_bytes))
-            elif child.type == "enum_declaration":
-                symbols.extend(_parse_java_enum(child, source_bytes))
-            elif child.type == "record_declaration":
-                symbols.extend(_parse_java_record(child, source_bytes))
             elif child.type == "import_declaration":
                 imp = _parse_java_import(child, source_bytes)
                 if imp:
                     imports.append(imp)
+
+        # Second pass: parse classes/interfaces with import_map and inheritances
+        for child in root.children:
+            if child.type == "class_declaration":
+                symbols.extend(
+                    _parse_java_class(child, source_bytes, namespace, import_map, inheritances)
+                )
+            elif child.type == "interface_declaration":
+                symbols.extend(
+                    _parse_java_interface(child, source_bytes, namespace, import_map, inheritances)
+                )
+            elif child.type == "enum_declaration":
+                symbols.extend(_parse_java_enum(child, source_bytes))
+            elif child.type == "record_declaration":
+                symbols.extend(_parse_java_record(child, source_bytes))
 
         # Extract module docstring from first JavaDoc comment
         module_docstring = _extract_java_module_docstring(tree, source_bytes)
@@ -1047,6 +1058,124 @@ def _parse_php_use(node, source_bytes: bytes) -> list[Import]:
 
 # ==================== Java Parser Functions ====================
 
+# Java standard library classes (java.lang.* implicit imports)
+JAVA_LANG_CLASSES = {
+    "Object", "String", "Exception", "RuntimeException",
+    "Throwable", "Error", "Class", "Number", "Integer",
+    "Long", "Double", "Float", "Boolean", "Character",
+    "Byte", "Short", "Void", "Math", "System",
+    "Thread", "Runnable", "StringBuilder", "StringBuffer",
+}
+
+
+def _strip_generic_type(type_name: str) -> str:
+    """
+    Strip generic type parameters from a type name.
+
+    Args:
+        type_name: Type name that may contain generics (e.g., "ArrayList<String>")
+
+    Returns:
+        Type name without generics (e.g., "ArrayList")
+
+    Examples:
+        >>> _strip_generic_type("ArrayList<String>")
+        'ArrayList'
+        >>> _strip_generic_type("Map<K, V>")
+        'Map'
+        >>> _strip_generic_type("Comparable<T extends Number>")
+        'Comparable'
+        >>> _strip_generic_type("BaseClass")
+        'BaseClass'
+    """
+    # Split on '<' and take first part
+    return type_name.split('<')[0].strip()
+
+
+def _resolve_java_type(
+    short_name: str,
+    namespace: str,
+    import_map: dict[str, str]
+) -> str:
+    """
+    Resolve a short type name to its full qualified name.
+
+    Resolution priority:
+    1. java.lang.* (implicit imports)
+    2. Explicit imports from import_map
+    3. Same package (namespace)
+
+    Args:
+        short_name: Short type name (e.g., "BaseService")
+        namespace: Current package name (e.g., "com.example.service")
+        import_map: Mapping of short names to full qualified names
+
+    Returns:
+        Full qualified name (e.g., "com.example.base.BaseService")
+
+    Examples:
+        >>> _resolve_java_type("Exception", "com.example", {})
+        'java.lang.Exception'
+        >>> _resolve_java_type(
+        ...     "BaseService",
+        ...     "com.example.service",
+        ...     {"BaseService": "com.example.base.BaseService"}
+        ... )
+        'com.example.base.BaseService'
+        >>> _resolve_java_type("LocalClass", "com.example", {})
+        'com.example.LocalClass'
+    """
+    # 1. java.lang implicit imports
+    if short_name in JAVA_LANG_CLASSES:
+        return f"java.lang.{short_name}"
+
+    # 2. Explicit imports
+    if short_name in import_map:
+        return import_map[short_name]
+
+    # 3. Same package
+    if namespace:
+        return f"{namespace}.{short_name}"
+
+    return short_name
+
+
+def _build_java_import_map(root: Node, source_bytes: bytes) -> dict[str, str]:
+    """
+    Build a mapping of short class names to full qualified names from imports.
+
+    Args:
+        root: Tree-sitter root node
+        source_bytes: Source code as bytes
+
+    Returns:
+        Dictionary mapping short names to full qualified names
+
+    Examples:
+        import com.example.base.BaseService;
+        -> {"BaseService": "com.example.base.BaseService"}
+
+        import java.util.ArrayList;
+        -> {"ArrayList": "java.util.ArrayList"}
+    """
+    import_map = {}
+
+    for child in root.children:
+        if child.type == "import_declaration":
+            # Extract import path
+            for import_child in child.children:
+                if import_child.type == "scoped_identifier":
+                    full_name = _get_node_text(import_child, source_bytes)
+                    # Extract short name (last part after '.')
+                    short_name = full_name.split('.')[-1]
+                    import_map[short_name] = full_name
+                elif import_child.type == "identifier":
+                    # Simple import (no dots)
+                    short_name = _get_node_text(import_child, source_bytes)
+                    import_map[short_name] = short_name
+
+    return import_map
+
 
 def _extract_java_modifiers(node: Node, source_bytes: bytes) -> list[str]:
     """
@@ -1347,13 +1476,159 @@ def _parse_java_field(node: Node, source_bytes: bytes, class_name: str = "") -> 
     return symbols
 
 
-def _parse_java_class(node: Node, source_bytes: bytes) -> list[Symbol]:
-    """Parse a Java class declaration."""
+def _extract_java_inheritances(
+    node: Node,
+    source_bytes: bytes,
+    child_name: str,
+    namespace: str,
+    import_map: dict[str, str]
+) -> list[Inheritance]:
+    """
+    Extract inheritance relationships from a Java class or interface declaration.
+
+    Args:
+        node: Tree-sitter node for class_declaration or interface_declaration
+        source_bytes: Source code as bytes
+        child_name: Full name of the child class (e.g., "com.example.User")
+        namespace: Current package name
+        import_map: Mapping of short names to full qualified names
+
+    Returns:
+        List of Inheritance objects
+
+    Example:
+        class UserService extends BaseService implements Loggable
+        -> [
+            Inheritance(child="UserService", parent="BaseService"),
+            Inheritance(child="UserService", parent="Loggable")
+        ]
+    """
+    inheritances = []
+
+    # Extract superclass (extends)
+    superclass_node = node.child_by_field_name("superclass")
+    if superclass_node:
+        parent_name = _extract_type_from_node(superclass_node, source_bytes)
+        if parent_name:
+            # Strip generics and resolve full name
+            parent_name = _strip_generic_type(parent_name)
+            parent_full = _resolve_java_type(parent_name, namespace, import_map)
+            inheritances.append(Inheritance(child=child_name, parent=parent_full))
+
+    # Extract super_interfaces (implements for classes)
+    interfaces_node = node.child_by_field_name("super_interfaces")
+    if interfaces_node:
+        # super_interfaces contains a type_list, traverse it
+        types_to_extract = []
+        if interfaces_node.type == "type_list":
+            types_to_extract = interfaces_node.children
+        else:
+            # Find type_list child
+            for child in interfaces_node.children:
+                if child.type == "type_list":
+                    types_to_extract = child.children
+                    break
+
+        for type_child in types_to_extract:
+            interface_name = _extract_type_from_node(type_child, source_bytes)
+            if interface_name and interface_name.strip() and interface_name != ',':
+                # Strip generics and resolve full name
+                interface_name = _strip_generic_type(interface_name)
+                interface_full = _resolve_java_type(interface_name, namespace, import_map)
+                inheritances.append(Inheritance(child=child_name, parent=interface_full))
+
+    # Extract extends_interfaces (extends for interfaces)
+    extends_node = node.child_by_field_name("extends_interfaces")
+    if extends_node:
+        # extends_interfaces contains a type_list, traverse it
+        types_to_extract = []
+        if extends_node.type == "type_list":
+            types_to_extract = extends_node.children
+        else:
+            # Find type_list child
+            for child in extends_node.children:
+                if child.type == "type_list":
+                    types_to_extract = child.children
+                    break
+
+        for type_child in types_to_extract:
+            extended_interface = _extract_type_from_node(type_child, source_bytes)
+            if extended_interface and extended_interface.strip() and extended_interface != ',':
+                # Strip generics and resolve full name
+                extended_interface = _strip_generic_type(extended_interface)
+                extended_full = _resolve_java_type(extended_interface, namespace, import_map)
+                inheritances.append(Inheritance(child=child_name, parent=extended_full))
+
+    return inheritances
+
+
+def _extract_type_from_node(node: Node, source_bytes: bytes) -> str:
+    """
+    Extract type name from a tree-sitter node.
+
+    Handles both simple type_identifier and complex generic_type nodes.
+    For nodes like superclass or super_interfaces, traverses children to find the actual type.
+
+    Args:
+        node: Tree-sitter node
+        source_bytes: Source code as bytes
+
+    Returns:
+        Type name string (may include generics)
+
+    Examples:
+        type_identifier "BaseUser" -> "BaseUser"
+        generic_type "ArrayList<String>" -> "ArrayList<String>"
+        superclass node -> "BaseUser" (extracts from children)
+    """
+    # If the node itself is a type_identifier or generic_type, return its text
+    if node.type == "type_identifier":
+        return _get_node_text(node, source_bytes)
+    elif node.type == "generic_type":
+        # Get full text including generics
+        return _get_node_text(node, source_bytes)
+    elif node.type == "scoped_type_identifier":
+        # For fully qualified names like com.example.BaseClass
+        return _get_node_text(node, source_bytes)
+
+    # For container nodes (like superclass, super_interfaces), traverse children
+    for child in node.children:
+        if child.type in ("type_identifier", "generic_type", "scoped_type_identifier"):
+            return _extract_type_from_node(child, source_bytes)
+
+    # Fallback: return empty string if no type found
+    return ""
+
+
+def _parse_java_class(
+    node: Node,
+    source_bytes: bytes,
+    namespace: str = "",
+    import_map: dict[str, str] | None = None,
+    inheritances: list[Inheritance] | None = None
+) -> list[Symbol]:
+    """Parse a Java class declaration.
+
+    Args:
+        node: Tree-sitter node for class_declaration
+        source_bytes: Source code as bytes
+        namespace: Current package name (e.g., "com.example.service")
+        import_map: Mapping of short names to full qualified names
+        inheritances: List to collect inheritance relationships (mutated in-place)
+
+    Returns:
+        List of Symbol objects for the class and its members
+    """
     symbols = []
     class_name = ""
     type_params = ""
     superclass = ""
     interfaces = []
+
+    if import_map is None:
+        import_map = {}
+    if inheritances is None:
+        inheritances = []
 
     # Extract modifiers and annotations using helpers
     modifiers = _extract_java_modifiers(node, source_bytes)
@@ -1374,6 +1649,16 @@ def _parse_java_class(node: Node, source_bytes: bytes) -> list[Symbol]:
                     for type_child in interface_child.children:
                         if type_child.type == "type_identifier":
                             interfaces.append(_get_node_text(type_child, source_bytes))
+
+    # Epic 10 Part 3: Extract inheritance relationships
+    if class_name:
+        # Construct full class name
+        full_class_name = f"{namespace}.{class_name}" if namespace else class_name
+        # Extract inheritances
+        class_inheritances = _extract_java_inheritances(
+            node, source_bytes, full_class_name, namespace, import_map
+        )
+        inheritances.extend(class_inheritances)
 
     # Build class signature using helper
     class_decl = class_name + type_params if type_params else class_name
@@ -1411,19 +1696,44 @@ def _parse_java_class(node: Node, source_bytes: bytes) -> list[Symbol]:
                     fields = _parse_java_field(body_child, source_bytes, class_name)
                     symbols.extend(fields)
                 elif body_child.type == "class_declaration":
-                    # Nested class
-                    nested_symbols = _parse_java_class(body_child, source_bytes)
+                    # Nested class - use parent class name as namespace for nested class
+                    nested_namespace = f"{namespace}.{class_name}" if namespace else class_name
+                    nested_symbols = _parse_java_class(
+                        body_child, source_bytes, nested_namespace, import_map, inheritances
+                    )
                     symbols.extend(nested_symbols)
 
     return symbols
 
 
-def _parse_java_interface(node: Node, source_bytes: bytes) -> list[Symbol]:
-    """Parse a Java interface declaration."""
+def _parse_java_interface(
+    node: Node,
+    source_bytes: bytes,
+    namespace: str = "",
+    import_map: dict[str, str] | None = None,
+    inheritances: list[Inheritance] | None = None
+) -> list[Symbol]:
+    """Parse a Java interface declaration.
+
+    Args:
+        node: Tree-sitter node for interface_declaration
+        source_bytes: Source code as bytes
+        namespace: Current package name
+        import_map: Mapping of short names to full qualified names
+        inheritances: List to collect inheritance relationships
+
+    Returns:
+        List of Symbol objects for the interface and its members
+    """
     symbols = []
     interface_name = ""
     type_params = ""
     extends = []
+
+    if import_map is None:
+        import_map = {}
+    if inheritances is None:
+        inheritances = []
 
     # Extract modifiers and annotations using helpers
     modifiers = _extract_java_modifiers(node, source_bytes)
@@ -1464,6 +1774,16 @@ def _parse_java_interface(node: Node, source_bytes: bytes) -> list[Symbol]:
         line_end=node.end_point[0] + 1,
         annotations=annotations,  # Story 7.1.2.1
     ))
+
+    # Epic 10 Part 3: Extract inheritance relationships for interface
+    if interface_name:
+        # Construct full interface name
+        full_interface_name = f"{namespace}.{interface_name}" if namespace else interface_name
+        # Extract inheritances (interface extends other interfaces)
+        interface_inheritances = _extract_java_inheritances(
+            node, source_bytes, full_interface_name, namespace, import_map
+        )
+        inheritances.extend(interface_inheritances)
 
     # Parse interface body (method declarations)
     for child in node.children:
