@@ -9,13 +9,13 @@ codeindex is an AI-native code indexing tool that generates intelligent document
 ### Using pipx (Recommended)
 
 ```bash
-pipx install codeindex
+pipx install ai-codeindex
 ```
 
 ### Using pip
 
 ```bash
-pip install codeindex
+pip install ai-codeindex
 ```
 
 ### From source
