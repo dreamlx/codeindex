@@ -64,7 +64,11 @@ class Calculator:
 
 
 def test_parse_imports():
-    """Test parsing import statements."""
+    """Test parsing import statements.
+
+    Epic 10, Story 10.2.1: Import extraction now creates separate Import
+    objects for each imported name to support per-name aliases.
+    """
     code = '''
 import os
 import sys
@@ -80,13 +84,21 @@ from typing import List, Optional
     path.unlink()
 
     assert result.error is None
-    assert len(result.imports) == 4
+    # Epic 10: Now 5 imports (each from-import name is separate)
+    assert len(result.imports) == 5
 
     modules = [imp.module for imp in result.imports]
     assert "os" in modules
     assert "sys" in modules
     assert "pathlib" in modules
     assert "typing" in modules
+
+    # Verify individual from-imports
+    typing_imports = [imp for imp in result.imports if imp.module == "typing"]
+    assert len(typing_imports) == 2
+    typing_names = [imp.names[0] for imp in typing_imports]
+    assert "List" in typing_names
+    assert "Optional" in typing_names
 
 
 def test_parse_module_docstring():

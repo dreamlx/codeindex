@@ -312,49 +312,89 @@ def _parse_class(
     return symbols
 
 
-def _parse_import(node, source_bytes: bytes) -> Import | None:
-    """Parse an import statement."""
+def _parse_import(node, source_bytes: bytes) -> list[Import]:
+    """Parse an import statement.
+
+    Returns a list of Import objects. For imports with different aliases,
+    creates separate Import objects (Epic 10, Story 10.2.1).
+
+    Examples:
+        import numpy as np → [Import("numpy", [], False, alias="np")]
+        from typing import Dict as D, List → [Import("typing", ["Dict"], True, alias="D"),
+                                                Import("typing", ["List"], True, alias=None)]
+    """
+    imports = []
+
     if node.type == "import_statement":
-        # import foo, bar
-        names = []
+        # import foo, bar as baz
         for child in node.children:
             if child.type == "dotted_name":
-                names.append(_get_node_text(child, source_bytes))
+                # Simple import without alias
+                module_name = _get_node_text(child, source_bytes)
+                imports.append(Import(module=module_name, names=[], is_from=False, alias=None))
             elif child.type == "aliased_import":
+                # import foo as bar
+                module_name = ""
+                alias = None
                 for ac in child.children:
                     if ac.type == "dotted_name":
-                        names.append(_get_node_text(ac, source_bytes))
-                        break
-        if names:
-            return Import(module=names[0], names=names[1:] if len(names) > 1 else [], is_from=False)
+                        module_name = _get_node_text(ac, source_bytes)
+                    elif ac.type == "identifier" and module_name:
+                        # This is the alias (after 'as')
+                        alias = _get_node_text(ac, source_bytes)
+                if module_name:
+                    imports.append(Import(module=module_name, names=[], is_from=False, alias=alias))
 
     elif node.type == "import_from_statement":
-        # from foo import bar, baz
+        # from foo import bar, baz as qux
         module = ""
-        names = []
+        imported_items = []  # List of (name, alias) tuples
+        found_module = False
+
+        # Parse the import structure
         for child in node.children:
-            if child.type == "dotted_name":
-                if not module:
-                    module = _get_node_text(child, source_bytes)
-                else:
-                    names.append(_get_node_text(child, source_bytes))
-            elif child.type == "relative_import":
+            if child.type == "dotted_name" and not found_module:
+                # This is the module name
                 module = _get_node_text(child, source_bytes)
-            elif child.type == "aliased_import":
-                for ac in child.children:
-                    if ac.type == "dotted_name":
-                        names.append(_get_node_text(ac, source_bytes))
-                        break
-                    elif ac.type == "identifier":
-                        names.append(_get_node_text(ac, source_bytes))
-                        break
-            elif child.type == "identifier":
-                names.append(_get_node_text(child, source_bytes))
+                found_module = True
+            elif child.type == "relative_import" and not found_module:
+                module = _get_node_text(child, source_bytes)
+                found_module = True
+            elif found_module:
+                # After module, collect imported items
+                if child.type == "dotted_name":
+                    # This could be wrongly parsed - skip if it's the module name itself
+                    name = _get_node_text(child, source_bytes)
+                    if name != module:  # Don't add module name as import
+                        imported_items.append((name, None))
+                elif child.type == "identifier":
+                    # Single identifier: from foo import bar
+                    name = _get_node_text(child, source_bytes)
+                    if name not in ("import", "from", "*") and name != module:
+                        imported_items.append((name, None))
+                elif child.type == "aliased_import":
+                    # from foo import bar as baz
+                    name = ""
+                    alias = None
+                    for ac in child.children:
+                        if ac.type in ("dotted_name", "identifier") and not name:
+                            name = _get_node_text(ac, source_bytes)
+                        elif ac.type == "identifier" and name:
+                            # This is the alias (after 'as')
+                            alias = _get_node_text(ac, source_bytes)
+                    if name:
+                        imported_items.append((name, alias))
+                elif child.type == "wildcard_import":
+                    # from foo import *
+                    imported_items.append(("*", None))
 
-        if module:
-            return Import(module=module, names=names, is_from=True)
+        # Create Import objects
+        if module and imported_items:
+            # Create separate Import for each item
+            for name, alias in imported_items:
+                imports.append(Import(module=module, names=[name], is_from=True, alias=alias))
 
-    return None
+    return imports
 
 
 def _extract_module_docstring(tree, source_bytes: bytes) -> str:
@@ -452,9 +492,9 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
                     elif dec_child.type == "class_definition":
                         symbols.extend(_parse_class(dec_child, source_bytes, "", inheritances))
             elif child.type in ("import_statement", "import_from_statement"):
-                imp = _parse_import(child, source_bytes)
-                if imp:
-                    imports.append(imp)
+                # Epic 10, Story 10.2.1: _parse_import now returns list
+                import_list = _parse_import(child, source_bytes)
+                imports.extend(import_list)
 
     elif language == "php":
         # PHP parsing
