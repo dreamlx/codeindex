@@ -1,10 +1,91 @@
 """Multi-language AST parser using tree-sitter."""
 
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 from tree_sitter import Language, Node, Parser
+
+
+class CallType(Enum):
+    """Call type enumeration (Epic 11).
+
+    Distinguishes between different types of function/method calls
+    for knowledge graph construction.
+    """
+
+    FUNCTION = "function"  # Function call: calculate()
+    METHOD = "method"  # Instance method: obj.method()
+    STATIC_METHOD = "static_method"  # Static method: Class.method()
+    CONSTRUCTOR = "constructor"  # Constructor: new Class() / __init__
+    DYNAMIC = "dynamic"  # Dynamic call: getattr(obj, name)()
+
+
+@dataclass
+class Call:
+    """Function/method call relationship (Epic 11).
+
+    Represents caller → callee relationships for knowledge graph construction.
+    Used by LoomGraph to build CALLS relations.
+
+    Attributes:
+        caller: Full name of calling function/method (with namespace)
+            Examples:
+            - "myproject.service.UserService.create_user"
+            - "com.example.UserController.handleRequest"
+
+        callee: Full name of called function/method (with namespace), None for dynamic
+            Examples:
+            - "pandas.read_csv" (alias resolved)
+            - "com.example.User.<init>" (constructor)
+            - None (unresolvable dynamic call)
+
+        line_number: Line number where call occurs (1-based)
+
+        call_type: Type of call (CallType enum)
+
+        arguments_count: Number of arguments (best-effort, None if uncertain)
+
+    Added in v0.13.0 for LoomGraph integration (Epic 11, Story 11.1).
+    """
+
+    caller: str
+    callee: Optional[str]
+    line_number: int
+    call_type: CallType
+    arguments_count: Optional[int] = None
+
+    @property
+    def is_dynamic(self) -> bool:
+        """Whether this is a dynamic call (callee unknown)."""
+        return self.call_type == CallType.DYNAMIC
+
+    @property
+    def is_resolved(self) -> bool:
+        """Whether the callee was successfully resolved."""
+        return self.callee is not None
+
+    def to_dict(self) -> dict:
+        """Convert Call to JSON-serializable dict."""
+        return {
+            "caller": self.caller,
+            "callee": self.callee,
+            "line_number": self.line_number,
+            "call_type": self.call_type.value,
+            "arguments_count": self.arguments_count,
+        }
+
+    @staticmethod
+    def from_dict(data: dict) -> "Call":
+        """Create Call from JSON dict."""
+        return Call(
+            caller=data["caller"],
+            callee=data.get("callee"),
+            line_number=data["line_number"],
+            call_type=CallType(data["call_type"]),
+            arguments_count=data.get("arguments_count"),
+        )
 
 
 @dataclass
@@ -122,6 +203,7 @@ class ParseResult:
         symbols: Extracted symbols (classes, functions, methods, etc.)
         imports: Import statements
         inheritances: Class inheritance relationships (added in v0.9.0)
+        calls: Function/method call relationships (added in v0.13.0, Epic 11)
         module_docstring: Module-level docstring
         namespace: Namespace (PHP only)
         error: Parse error message if any
@@ -132,6 +214,7 @@ class ParseResult:
     symbols: list[Symbol] = field(default_factory=list)
     imports: list[Import] = field(default_factory=list)
     inheritances: list[Inheritance] = field(default_factory=list)  # Added in v0.9.0
+    calls: list[Call] = field(default_factory=list)  # Added in v0.13.0 (Epic 11)
     module_docstring: str = ""
     namespace: str = ""  # PHP namespace
     error: str | None = None
@@ -144,6 +227,7 @@ class ParseResult:
             "symbols": [symbol.to_dict() for symbol in self.symbols],
             "imports": [imp.to_dict() for imp in self.imports],
             "inheritances": [inh.to_dict() for inh in self.inheritances],
+            "calls": [call.to_dict() for call in self.calls],  # Epic 11
             "module_docstring": self.module_docstring,
             "namespace": self.namespace,
             "error": self.error,
