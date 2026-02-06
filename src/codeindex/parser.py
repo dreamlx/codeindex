@@ -237,8 +237,23 @@ def _parse_function(
     )
 
 
-def _parse_class(node, source_bytes: bytes) -> list[Symbol]:
-    """Parse a class definition node and its methods."""
+def _parse_class(
+    node, source_bytes: bytes, parent_class: str = "", inheritances: list[Inheritance] | None = None
+) -> list[Symbol]:
+    """Parse a class definition node and its methods.
+
+    Args:
+        node: Tree-sitter class_definition node
+        source_bytes: Source code bytes
+        parent_class: Parent class name for nested classes (e.g., "Outer" for Outer.Inner)
+        inheritances: List to append Inheritance objects to (Epic 10, Story 10.1.1)
+
+    Returns:
+        List of Symbol objects (class + methods)
+    """
+    if inheritances is None:
+        inheritances = []
+
     symbols = []
     class_name = ""
     bases = []
@@ -247,17 +262,27 @@ def _parse_class(node, source_bytes: bytes) -> list[Symbol]:
         if child.type == "identifier":  # class name is 'identifier', not 'name'
             class_name = _get_node_text(child, source_bytes)
         elif child.type == "argument_list":
-            bases.append(_get_node_text(child, source_bytes))
+            # Extract base classes from argument_list
+            # Format: (BaseA, BaseB, Generic[T])
+            for arg_child in child.children:
+                if arg_child.type in ("identifier", "attribute", "subscript"):
+                    base_text = _get_node_text(arg_child, source_bytes)
+                    # Remove generic type parameters: List[str] -> List
+                    base_name = base_text.split("[")[0] if "[" in base_text else base_text
+                    bases.append(base_name)
+
+    # Build full class name (handle nested classes)
+    full_class_name = f"{parent_class}.{class_name}" if parent_class else class_name
 
     signature = f"class {class_name}"
     if bases:
-        signature += "".join(bases)
+        signature += f"({', '.join(bases)})"
 
     docstring = _extract_docstring(node, source_bytes)
 
     symbols.append(
         Symbol(
-            name=class_name,
+            name=full_class_name,
             kind="class",
             signature=signature,
             docstring=docstring,
@@ -266,13 +291,23 @@ def _parse_class(node, source_bytes: bytes) -> list[Symbol]:
         )
     )
 
-    # Parse methods
+    # Create Inheritance objects (Epic 10, Story 10.1.1)
+    for base in bases:
+        inheritances.append(Inheritance(child=full_class_name, parent=base))
+
+    # Parse methods and nested classes
     for child in node.children:
         if child.type == "block":
             for block_child in child.children:
                 if block_child.type == "function_definition":
-                    method = _parse_function(block_child, source_bytes, class_name)
+                    method = _parse_function(block_child, source_bytes, full_class_name)
                     symbols.append(method)
+                elif block_child.type == "class_definition":
+                    # Nested class (Epic 10, Story 10.1.1)
+                    nested_symbols = _parse_class(
+                        block_child, source_bytes, full_class_name, inheritances
+                    )
+                    symbols.extend(nested_symbols)
 
     return symbols
 
@@ -398,6 +433,7 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
 
     symbols: list[Symbol] = []
     imports: list[Import] = []
+    inheritances: list[Inheritance] = []  # Epic 10, Story 10.1.1
     module_docstring = ""
 
     # Language-specific parsing
@@ -408,13 +444,13 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
             if child.type == "function_definition":
                 symbols.append(_parse_function(child, source_bytes))
             elif child.type == "class_definition":
-                symbols.extend(_parse_class(child, source_bytes))
+                symbols.extend(_parse_class(child, source_bytes, "", inheritances))
             elif child.type == "decorated_definition":
                 for dec_child in child.children:
                     if dec_child.type == "function_definition":
                         symbols.append(_parse_function(dec_child, source_bytes))
                     elif dec_child.type == "class_definition":
-                        symbols.extend(_parse_class(dec_child, source_bytes))
+                        symbols.extend(_parse_class(dec_child, source_bytes, "", inheritances))
             elif child.type in ("import_statement", "import_from_statement"):
                 imp = _parse_import(child, source_bytes)
                 if imp:
@@ -484,6 +520,7 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
             path=path,
             symbols=symbols,
             imports=imports,
+            inheritances=inheritances,
             module_docstring=module_docstring,
             namespace=namespace,
             file_lines=file_lines,
@@ -493,6 +530,7 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
         path=path,
         symbols=symbols,
         imports=imports,
+        inheritances=inheritances,
         module_docstring=module_docstring,
         file_lines=file_lines,
     )

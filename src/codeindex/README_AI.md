@@ -772,11 +772,17 @@ Changed files:
 Changed files:
 - `parser.py`
 
+
+**Commit `8ca0a42`**: feat(parser): add Java throws declarations support (Story 7.1.2.3)
+
+Changed files:
+- `parser.py`
+
 ---
 
 ## Recent Changes
 
-**Commit `8ca0a42`**: feat(parser): add Java throws declarations support (Story 7.1.2.3)
+**Commit ``**: 
 
 Changed files:
 - `parser.py`
