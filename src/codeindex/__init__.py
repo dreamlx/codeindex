@@ -7,5 +7,5 @@ Usage:
     codeindex status          # Show indexing status
 """
 
-__version__ = "0.10.0"
+__version__ = "0.10.1"
 __all__ = ["__version__"]

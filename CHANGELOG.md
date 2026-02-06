@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-02-06
+
+### Fixed
+
+- **JSON Output Clean Stream** (Bug Fix)
+  - Fixed: `--output json` now produces clean JSON without progress messages
+  - Issue: console.print() statements were polluting stdout with scanning progress
+  - Solution: Force quiet mode when output format is JSON
+  - Impact: Enables direct piping to tools like jq or LoomGraph integration
+  - Tests: All 777 tests passing
+
 ## [0.10.0] - 2026-02-06
 
 ### Added
