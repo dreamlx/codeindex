@@ -23,7 +23,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e ".[dev]"
+        pip install -e ".[dev,all]"  # Install all language parsers for testing
 
     - name: Run tests
       run: pytest -v
