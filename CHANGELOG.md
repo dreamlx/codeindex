@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-02-06
+
+### Added
+
+- **Lazy Loading for Language Parsers** (Architecture Improvement)
+  - Language parsers only imported when actually needed
+  - Parser caching to avoid re-initialization
+  - Helpful error messages when language parser not installed
+  - 6 new tests for lazy loading behavior
+
+### Changed
+
+- **BREAKING**: Language parsers moved to optional dependencies
+  - Install: `pip install ai-codeindex[python]` for Python support
+  - Install: `pip install ai-codeindex[php]` for PHP support
+  - Install: `pip install ai-codeindex[java]` for Java support
+  - Install: `pip install ai-codeindex[all]` for all languages
+  - Core package only includes tree-sitter (no language parsers)
+
+### Fixed
+
+- PHP projects no longer require installing tree-sitter-java
+- Python projects no longer require installing tree-sitter-php
+- Reduced unnecessary dependencies and installation complexity
+
+### Migration
+
+- **Existing users**: Reinstall with language extras: `pip install --upgrade ai-codeindex[all]`
+- **New users**: Install only needed languages: `pip install ai-codeindex[python,php]`
+- **Development**: Use `pip install -e ".[all]"` for all languages
+
+### Technical Details
+
+- Removed module-level imports of all language parsers
+- Added `_get_parser()` function for lazy loading
+- Added `_PARSER_CACHE` dictionary for parser reuse
+- Updated `parse_file()` to use lazy-loaded parsers
+- Updated `java_parser.py` to use `_get_parser()` instead of `PARSERS` global
+
+### Tests
+
+- 783 tests passing (+6 new), 3 skipped
+- New test file: `tests/test_lazy_loading.py`
+- Validates parsers not imported at module load time
+- Validates caching behavior
+- Validates helpful error messages
+
 ## [0.10.1] - 2026-02-06
 
 ### Fixed
