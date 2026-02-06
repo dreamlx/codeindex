@@ -80,6 +80,7 @@ class TestImportSerialization:
             "module": "typing",
             "names": ["Optional", "Dict"],
             "is_from": True,
+            "alias": None,  # Epic 10: Added alias field
         }
 
     def test_import_to_dict_no_names(self):
@@ -95,6 +96,7 @@ class TestImportSerialization:
         assert result["module"] == "os"
         assert result["names"] == []
         assert result["is_from"] is False
+        assert result["alias"] is None  # Epic 10: Added alias field
 
 
 class TestParseResultSerialization:

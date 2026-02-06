@@ -37,11 +37,25 @@ class Symbol:
 
 @dataclass
 class Import:
-    """Represents an import statement."""
+    """Represents an import statement (extended for LoomGraph).
+
+    Attributes:
+        module: Module name (e.g., "numpy", "os.path")
+        names: Imported names (e.g., ["join", "exists"])
+        is_from: Whether it's a "from X import Y" statement
+        alias: Import alias (e.g., "np" in "import numpy as np")
+                Added in v0.9.0 for LoomGraph integration
+
+    Examples:
+        import numpy as np → Import("numpy", [], False, alias="np")
+        from typing import Dict as DictType → Import("typing", ["Dict"], True, alias="DictType")
+        import os → Import("os", [], False, alias=None)
+    """
 
     module: str
     names: list[str] = field(default_factory=list)
     is_from: bool = False
+    alias: str | None = None  # Added in v0.9.0 for LoomGraph integration
 
     def to_dict(self) -> dict:
         """Convert Import to JSON-serializable dict."""
@@ -49,6 +63,37 @@ class Import:
             "module": self.module,
             "names": self.names,
             "is_from": self.is_from,
+            "alias": self.alias,
+        }
+
+
+@dataclass
+class Inheritance:
+    """Class inheritance information for knowledge graph construction.
+
+    Represents parent-child relationships between classes/interfaces.
+    Used by LoomGraph to build INHERITS relations in knowledge graph.
+
+    Attributes:
+        child: Child class name (e.g., "AdminUser")
+        parent: Parent class/interface name (e.g., "BaseUser")
+
+    Examples:
+        Python: class AdminUser(BaseUser) → Inheritance("AdminUser", "BaseUser")
+        PHP: class AdminUser extends BaseUser → Inheritance("AdminUser", "BaseUser")
+        Java: class AdminUser extends BaseUser → Inheritance("AdminUser", "BaseUser")
+
+    Added in v0.9.0 for LoomGraph integration (Epic 10, Story 10.3).
+    """
+
+    child: str
+    parent: str
+
+    def to_dict(self) -> dict:
+        """Convert Inheritance to JSON-serializable dict."""
+        return {
+            "child": self.child,
+            "parent": self.parent,
         }
 
 
@@ -73,11 +118,23 @@ class Annotation:
 
 @dataclass
 class ParseResult:
-    """Result of parsing a file."""
+    """Result of parsing a file (extended for LoomGraph).
+
+    Attributes:
+        path: File path
+        symbols: Extracted symbols (classes, functions, methods, etc.)
+        imports: Import statements
+        inheritances: Class inheritance relationships (added in v0.9.0)
+        module_docstring: Module-level docstring
+        namespace: Namespace (PHP only)
+        error: Parse error message if any
+        file_lines: Number of lines in the file
+    """
 
     path: Path
     symbols: list[Symbol] = field(default_factory=list)
     imports: list[Import] = field(default_factory=list)
+    inheritances: list[Inheritance] = field(default_factory=list)  # Added in v0.9.0
     module_docstring: str = ""
     namespace: str = ""  # PHP namespace
     error: str | None = None
@@ -89,6 +146,7 @@ class ParseResult:
             "path": str(self.path),
             "symbols": [symbol.to_dict() for symbol in self.symbols],
             "imports": [imp.to_dict() for imp in self.imports],
+            "inheritances": [inh.to_dict() for inh in self.inheritances],
             "module_docstring": self.module_docstring,
             "namespace": self.namespace,
             "error": self.error,
