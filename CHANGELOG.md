@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-02-06
+
+### Added
+
+- **PHP LoomGraph Integration** (Epic 10 Part 2 Complete - MVP)
+  - PHP inheritance extraction: `extends` (single), `implements` (multiple interfaces)
+  - PHP import alias extraction: `use X as Y`, group imports `use A\{B as C, D}`
+  - 32 new tests (777 total passing, 3 skipped)
+  - PHP example file and JSON output demonstration
+
+- **PHP Inheritance Extraction** (Story 10.1.2)
+  - Extends relationships: `class Child extends Parent`
+  - Implements relationships: `class User implements Auth, Loggable`
+  - Combined: `class Admin extends User implements Authorizable`
+  - Namespace resolution: short names → full qualified names via use_map
+  - 17 comprehensive inheritance tests
+  - Real-world patterns: Laravel Models, Symfony Controllers
+
+- **PHP Import Alias Extraction** (Story 10.2.2)
+  - Alias stored in `alias` field (not `names` field)
+  - `names` field always empty `[]` for PHP (imports whole class)
+  - Group imports split into separate Import objects
+  - Mixed aliased/non-aliased imports: `use A\{B as C, D}`
+  - 15 import alias tests covering all PHP use patterns
+
+- **PHP LoomGraph Integration Testing** (Story 10.3)
+  - 16 integration tests validating LoomGraph format
+  - JSON format validation (inheritances, alias fields, data types)
+  - Real-world framework patterns (Laravel, Symfony)
+  - Edge cases (no inheritance, no imports, complex namespaces)
+  - Example files:
+    * `examples/loomgraph_sample.php` (254 lines)
+    * `examples/loomgraph_php_output.json` (sample JSON export)
+
+### Changed
+
+- **PHP Use Statement Parsing** (Breaking Change)
+  - Import alias now in `Import.alias` field instead of `Import.names`
+  - Aligns PHP with Python import handling for consistency
+  - `names` field is now always `[]` for PHP use statements
+  - Migration: Check `import.alias` instead of `import.names[0]`
+
+### Fixed
+
+- Fixed PHP import alias test failures caused by reserved keyword `OR`
+  - Tree-sitter correctly identifies `OR` as syntax error (logical OR operator)
+  - Updated tests to use valid PHP identifiers
+
 ## [0.9.0] - 2026-02-06
 
 ### Added
