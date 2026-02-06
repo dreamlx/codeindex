@@ -1,0 +1,230 @@
+{
+  "file": "examples/loomgraph_sample.py",
+  "summary": {
+    "total_symbols": 17,
+    "total_imports": 7,
+    "total_inheritances": 3
+  },
+  "symbols": [
+    {
+      "name": "BaseModel",
+      "kind": "class",
+      "signature": "class BaseModel",
+      "docstring": "Base model with common CRUD operations.",
+      "line_start": 25,
+      "line_end": 34,
+      "annotations": []
+    },
+    {
+      "name": "BaseModel.save",
+      "kind": "method",
+      "signature": "def save(self) -> bool",
+      "docstring": "Save model to database.",
+      "line_start": 28,
+      "line_end": 30,
+      "annotations": []
+    },
+    {
+      "name": "BaseModel.delete",
+      "kind": "method",
+      "signature": "def delete(self) -> None",
+      "docstring": "Delete model from database.",
+      "line_start": 32,
+      "line_end": 34,
+      "annotations": []
+    },
+    {
+      "name": "Loggable",
+      "kind": "class",
+      "signature": "class Loggable",
+      "docstring": "Mixin for logging capabilities.",
+      "line_start": 37,
+      "line_end": 42,
+      "annotations": []
+    },
+    {
+      "name": "Loggable.log",
+      "kind": "method",
+      "signature": "def log(self, message: str) -> None",
+      "docstring": "Log a message.",
+      "line_start": 40,
+      "line_end": 42,
+      "annotations": []
+    },
+    {
+      "name": "User",
+      "kind": "class",
+      "signature": "class User(BaseModel, Loggable)",
+      "docstring": "User account model with authentication.",
+      "line_start": 45,
+      "line_end": 76,
+      "annotations": []
+    },
+    {
+      "name": "User.__init__",
+      "kind": "method",
+      "signature": "def __init__(self, username: str, email: str)",
+      "docstring": "Initialize user account.\n\n        Args:\n            username: User's unique username\n            email: User's email address",
+      "line_start": 48,
+      "line_end": 57,
+      "annotations": []
+    },
+    {
+      "name": "User.authenticate",
+      "kind": "method",
+      "signature": "def authenticate(self, password: str) -> bool",
+      "docstring": "Authenticate user with password.\n\n        Args:\n            password: User's password\n\n        Returns:\n            True if authentication successful",
+      "line_start": 59,
+      "line_end": 68,
+      "annotations": []
+    },
+    {
+      "name": "User.get_permissions",
+      "kind": "method",
+      "signature": "def get_permissions(self) -> List[str]",
+      "docstring": "Get user permissions.\n\n        Returns:\n            List of permission names",
+      "line_start": 70,
+      "line_end": 76,
+      "annotations": []
+    },
+    {
+      "name": "AdminUser",
+      "kind": "class",
+      "signature": "class AdminUser(User)",
+      "docstring": "Admin user with elevated privileges.",
+      "line_start": 79,
+      "line_end": 124,
+      "annotations": []
+    },
+    {
+      "name": "AdminUser.grant_permission",
+      "kind": "method",
+      "signature": "def grant_permission(self, user_id: int, permission: str) -> bool",
+      "docstring": "Grant permission to another user.\n\n        Args:\n            user_id: Target user ID\n            permission: Permission name to grant\n\n        Returns:\n            True if permission granted successfully",
+      "line_start": 82,
+      "line_end": 93,
+      "annotations": []
+    },
+    {
+      "name": "AdminUser.revoke_permission",
+      "kind": "method",
+      "signature": "def revoke_permission(self, user_id: int, permission: str) -> bool",
+      "docstring": "Revoke permission from user.\n\n        Args:\n            user_id: Target user ID\n            permission: Permission name to revoke\n\n        Returns:\n            True if permission revoked successfully",
+      "line_start": 95,
+      "line_end": 105,
+      "annotations": []
+    },
+    {
+      "name": "AdminUser.AuditLog",
+      "kind": "class",
+      "signature": "class AuditLog",
+      "docstring": "Nested class for audit logging.",
+      "line_start": 107,
+      "line_end": 124,
+      "annotations": []
+    },
+    {
+      "name": "AdminUser.AuditLog.__init__",
+      "kind": "method",
+      "signature": "def __init__(self, admin_id: int)",
+      "docstring": "Initialize audit log.\n\n            Args:\n                admin_id: Admin user ID",
+      "line_start": 110,
+      "line_end": 116,
+      "annotations": []
+    },
+    {
+      "name": "AdminUser.AuditLog.record",
+      "kind": "method",
+      "signature": "def record(self, action: str) -> None",
+      "docstring": "Record admin action.\n\n            Args:\n                action: Action description",
+      "line_start": 118,
+      "line_end": 124,
+      "annotations": []
+    },
+    {
+      "name": "get_user_by_id",
+      "kind": "function",
+      "signature": "def get_user_by_id(user_id: int) -> Optional[User]",
+      "docstring": "Retrieve user by ID.\n\n    Args:\n        user_id: User ID to lookup\n\n    Returns:\n        User object if found, None otherwise",
+      "line_start": 127,
+      "line_end": 136,
+      "annotations": []
+    },
+    {
+      "name": "create_user",
+      "kind": "function",
+      "signature": "def create_user(username: str, email: str) -> User",
+      "docstring": "Create new user account.\n\n    Args:\n        username: Desired username\n        email: User's email\n\n    Returns:\n        Newly created User object",
+      "line_start": 139,
+      "line_end": 149,
+      "annotations": []
+    }
+  ],
+  "imports": [
+    {
+      "module": "logging",
+      "names": [],
+      "is_from": false,
+      "alias": null
+    },
+    {
+      "module": "os",
+      "names": [],
+      "is_from": false,
+      "alias": null
+    },
+    {
+      "module": "datetime",
+      "names": [
+        "datetime"
+      ],
+      "is_from": true,
+      "alias": "dt"
+    },
+    {
+      "module": "typing",
+      "names": [
+        "Dict"
+      ],
+      "is_from": true,
+      "alias": null
+    },
+    {
+      "module": "typing",
+      "names": [
+        "List"
+      ],
+      "is_from": true,
+      "alias": null
+    },
+    {
+      "module": "typing",
+      "names": [
+        "Optional"
+      ],
+      "is_from": true,
+      "alias": null
+    },
+    {
+      "module": "numpy",
+      "names": [],
+      "is_from": false,
+      "alias": "np"
+    }
+  ],
+  "inheritances": [
+    {
+      "child": "User",
+      "parent": "BaseModel"
+    },
+    {
+      "child": "User",
+      "parent": "Loggable"
+    },
+    {
+      "child": "AdminUser",
+      "parent": "User"
+    }
+  ],
+  "module_docstring": "Sample Python module for LoomGraph integration testing.\n\nThis module demonstrates all features that codeindex extracts for LoomGraph:\n- Symbols (classes, methods, functions)\n- Imports (with aliases)\n- Inheritances (single, multiple, nested)"
+}
