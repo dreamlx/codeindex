@@ -7,6 +7,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-02-06
+
+### Added
+
+- **LoomGraph Integration Support** (Epic 10 Complete - MVP)
+  - Knowledge graph data extraction for LoomGraph integration
+  - New data structures: `Inheritance` (child-parent relationships), `Import.alias` (import aliasing)
+  - Python inheritance extraction: single, multiple, nested class relationships
+  - Python import alias extraction: `import X as Y`, `from X import Y as Z`
+  - 67 new tests (729 total passing, 3 skipped)
+  - Integration validation tests for LoomGraph compatibility
+
+- **Data Structures** (Story 10.3)
+  - `Inheritance` dataclass with `child` and `parent` fields
+  - Extended `Import` with optional `alias` field
+  - `ParseResult.inheritances` list for inheritance tracking
+  - Full JSON serialization support via `to_dict()` methods
+
+- **Python Inheritance Extraction** (Story 10.1.1)
+  - Single inheritance: `class Child(Parent)`
+  - Multiple inheritance: `class Child(Parent1, Parent2)`
+  - Nested class inheritance with full paths: `Outer.Inner`
+  - Generic type handling: strips type parameters like `List[T]` → `List`
+  - 21 comprehensive inheritance tests
+
+- **Python Import Alias Extraction** (Story 10.2.1)
+  - Granular per-name import tracking (each import name becomes separate object)
+  - Module imports: `import numpy as np`
+  - From imports: `from datetime import datetime as dt`
+  - Mixed aliased/non-aliased imports in single statement
+  - 19 import alias tests
+
+- **LoomGraph Integration Validation** (Integration Testing)
+  - 13 comprehensive integration tests
+  - Validates JSON format matches LoomGraph requirements
+  - Real-world example: `examples/loomgraph_sample.py` (145 lines)
+  - Sample output: `examples/loomgraph_output.json`
+  - Tests cover: JSON format, data mapping, edge cases, real scenarios
+
+### Changed
+
+- **BREAKING**: Import parsing now creates separate Import objects for each imported name
+  - Enables granular alias tracking for knowledge graph construction
+  - Old: `from typing import Dict, List` → 1 Import with names=["Dict", "List"]
+  - New: `from typing import Dict, List` → 2 Imports, each with single name
+  - Backward compatible for non-aliased imports
+
+- Parser now tracks inheritance relationships during class parsing
+- JSON output includes new fields: `inheritances`, `alias` in imports
+
+### Documentation
+
+- Added `docs/planning/epic10-loomgraph-integration.md` (Epic 10 plan)
+- Updated README_AI.md files with new data structures
+- Added comprehensive example files for LoomGraph integration
+
+### Performance
+
+- No performance impact: inheritance/import extraction integrated into existing parsing flow
+- Parallel directory scanning maintained (3-4x speedup)
+
+### Future Work
+
+- Epic 10 remaining stories (deferred to v0.10.0+):
+  - Story 10.1.2: PHP inheritance extraction
+  - Story 10.1.3: Java inheritance extraction
+  - Story 10.2.2: PHP/Java import alias extraction
+- Epic 11 (future): Call relationship extraction
+
 ## [0.8.0] - 2026-02-06
 
 ### Added
