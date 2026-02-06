@@ -7,6 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-02-06
+
+### Added
+
+- **Java Inheritance Extraction for LoomGraph** (Epic 10 Part 3)
+  - Extract `extends` relationships (single inheritance)
+  - Extract `implements` relationships (multiple interfaces)
+  - Interface inheritance (`interface extends interface`)
+  - Generic type handling (strip type parameters like `<T>`, `<K,V>`)
+  - Nested class inheritance support (inner classes, static nested classes)
+  - Full qualified name resolution via import map
+  - Java standard library (`java.lang.*`) implicit imports
+  - 25 comprehensive tests covering all scenarios
+
+### Technical Implementation
+
+- **Package Namespace Separation**
+  - Added `_extract_package_namespace()` helper function
+  - Correctly handles nested classes: `com.example.Outer.Inner` → package `com.example`
+  - Ensures type resolution uses correct package scope
+
+- **AST Traversal Optimization**
+  - Fixed `super_interfaces` and `extends_interfaces` node access
+  - Use child iteration instead of `child_by_field_name()`
+  - Properly handle `type_list` children and skip comma separators
+
+- **Import Resolution Priority**
+  - 0. Already fully qualified name (contains `.`)
+  - 1. Java standard library (`java.lang.*`)
+  - 2. Explicit imports from `import` statements
+  - 3. Same package classes
+
+### Test Coverage
+
+- 25/25 Java inheritance tests passing (100%)
+- 212/212 total Java tests passing (no regression)
+- Test categories:
+  - Basic inheritance (6 tests): extends, implements, combinations
+  - Generic types (4 tests): single/multiple type parameters, bounded types
+  - Import resolution (5 tests): explicit, java.lang, same package, FQN
+  - Nested classes (3 tests): inner class, nested interface, static nested
+  - Real-world frameworks (4 tests): Spring, JPA, Lombok
+  - Edge cases (3 tests): enum, record, annotation
+
+### LoomGraph Milestone
+
+- ✅ **Three-language coverage complete**
+  - Python (v0.9.0): Inheritance + Import Alias
+  - PHP (v0.10.0): Inheritance + Import Alias
+  - Java (v0.12.0): Inheritance extraction
+
+### Development Methodology
+
+- **Agile Task Splitting Strategy**
+  - Story 10.1.3: Basic inheritance (22 tests)
+  - Story 10.1.4: Nested class support (3 tests)
+  - Incremental delivery, risk reduction, faster feedback
+  - Completed in 3 hours vs 2 days estimated
+
+### Documentation
+
+- Epic 10 Part 3 design document with complete AC definitions
+- Updated README_AI.md with inheritance extraction details
+- Archived completed epics and reorganized planning docs
+
 ## [0.11.0] - 2026-02-06
 
 ### Added
