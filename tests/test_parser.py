@@ -286,9 +286,10 @@ class TestController {}
     assert "App\\Model\\User" in modules
     assert "Illuminate\\Http\\Request" in modules
 
-    # Check alias
+    # Check alias (Epic 10, Story 10.2.2: alias now in alias field)
     user_import = [imp for imp in result.imports if imp.module == "App\\Model\\User"][0]
-    assert "UserModel" in user_import.names
+    assert user_import.alias == "UserModel"
+    assert user_import.names == []  # PHP use imports whole class, not specific members
 
 
 def test_parse_php_group_use():

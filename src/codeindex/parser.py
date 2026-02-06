@@ -512,14 +512,13 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
                 use_imports = _parse_php_use(child, source_bytes)
                 imports.extend(use_imports)
                 # Build use_map for inheritance resolution
+                # Epic 10, Story 10.2.2: Now using imp.alias field correctly
                 for imp in use_imports:
                     # Extract class name from full path: App\Model\User -> User
                     short_name = imp.module.split("\\")[-1]
-                    # TEMP: names field currently stores alias (Story 10.2.2 will fix this)
-                    # After Story 10.2.2, this will be: if imp.alias:
-                    if imp.names and len(imp.names) > 0:
-                        # imp.names[0] is the alias in current format
-                        use_map[imp.names[0]] = imp.module
+                    # If there's an alias, use it as the key; otherwise use short name
+                    if imp.alias:
+                        use_map[imp.alias] = imp.module
                     else:
                         use_map[short_name] = imp.module
 
@@ -928,13 +927,20 @@ def _parse_php_namespace(node, source_bytes: bytes) -> str:
 
 
 def _parse_php_use(node, source_bytes: bytes) -> list[Import]:
-    """
-    Parse PHP use statement.
+    """Parse PHP use statement.
+
+    Epic 10, Story 10.2.2: Updated to store alias in alias field (not names field)
+    for consistency with Python import handling and LoomGraph integration.
 
     Handles:
     - use App\\Service\\UserService;
     - use App\\Model\\User as UserModel;
     - use App\\Repository\\{UserRepository, OrderRepository};
+
+    Returns:
+        List of Import objects with:
+        - names: always empty [] (PHP use imports entire class, not specific members)
+        - alias: the alias if present (e.g., "UserModel"), None otherwise
     """
     imports = []
     base_namespace = ""
@@ -961,11 +967,15 @@ def _parse_php_use(node, source_bytes: bytes) -> list[Import]:
                 if base_namespace:
                     module = f"{base_namespace}\\{module}"
 
-                imports.append(Import(
-                    module=module,
-                    names=[alias] if alias else [],
-                    is_from=True,  # PHP use is similar to Python's from...import
-                ))
+                # Epic 10, Story 10.2.2: alias now in alias field, names always empty
+                imports.append(
+                    Import(
+                        module=module,
+                        names=[],  # PHP use imports whole class, not specific members
+                        is_from=True,  # PHP use is similar to Python's from...import
+                        alias=alias if alias else None,
+                    )
+                )
 
         elif child.type == "namespace_use_group":
             # Group import: {UserRepository, OrderRepository}
@@ -984,11 +994,15 @@ def _parse_php_use(node, source_bytes: bytes) -> list[Import]:
 
                     if name:
                         full_module = f"{base_namespace}\\{name}" if base_namespace else name
-                        imports.append(Import(
-                            module=full_module,
-                            names=[alias] if alias else [],
-                            is_from=True,
-                        ))
+                        # Epic 10, Story 10.2.2: alias now in alias field
+                        imports.append(
+                            Import(
+                                module=full_module,
+                                names=[],  # PHP use imports whole class
+                                is_from=True,
+                                alias=alias if alias else None,
+                            )
+                        )
 
     return imports
 
