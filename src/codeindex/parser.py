@@ -1101,6 +1101,7 @@ def _resolve_java_type(
     Resolve a short type name to its full qualified name.
 
     Resolution priority:
+    0. Already fully qualified (contains '.')
     1. java.lang.* (implicit imports)
     2. Explicit imports from import_map
     3. Same package (namespace)
@@ -1124,7 +1125,13 @@ def _resolve_java_type(
         'com.example.base.BaseService'
         >>> _resolve_java_type("LocalClass", "com.example", {})
         'com.example.LocalClass'
+        >>> _resolve_java_type("com.example.base.BaseUser", "com.example", {})
+        'com.example.base.BaseUser'
     """
+    # 0. Already fully qualified (contains '.')
+    if "." in short_name:
+        return short_name
+
     # 1. java.lang implicit imports
     if short_name in JAVA_LANG_CLASSES:
         return f"java.lang.{short_name}"
@@ -1505,7 +1512,7 @@ def _extract_java_inheritances(
     """
     inheritances = []
 
-    # Extract superclass (extends)
+    # Extract superclass (extends) - this is a named field
     superclass_node = node.child_by_field_name("superclass")
     if superclass_node:
         parent_name = _extract_type_from_node(superclass_node, source_bytes)
@@ -1515,49 +1522,64 @@ def _extract_java_inheritances(
             parent_full = _resolve_java_type(parent_name, namespace, import_map)
             inheritances.append(Inheritance(child=child_name, parent=parent_full))
 
-    # Extract super_interfaces (implements for classes)
-    interfaces_node = node.child_by_field_name("super_interfaces")
-    if interfaces_node:
-        # super_interfaces contains a type_list, traverse it
-        types_to_extract = []
-        if interfaces_node.type == "type_list":
-            types_to_extract = interfaces_node.children
-        else:
-            # Find type_list child
-            for child in interfaces_node.children:
-                if child.type == "type_list":
-                    types_to_extract = child.children
+    # Extract super_interfaces and extends_interfaces by traversing children
+    # These are NOT named fields, just child nodes with specific types
+    for child in node.children:
+        # Handle super_interfaces (implements for classes)
+        if child.type == "super_interfaces":
+            # Find type_list child (super_interfaces = implements + type_list)
+            type_list = None
+            for subchild in child.children:
+                if subchild.type == "type_list":
+                    type_list = subchild
                     break
 
-        for type_child in types_to_extract:
-            interface_name = _extract_type_from_node(type_child, source_bytes)
-            if interface_name and interface_name.strip() and interface_name != ',':
-                # Strip generics and resolve full name
-                interface_name = _strip_generic_type(interface_name)
-                interface_full = _resolve_java_type(interface_name, namespace, import_map)
-                inheritances.append(Inheritance(child=child_name, parent=interface_full))
+            if type_list:
+                # Extract only type nodes from type_list (skip commas)
+                for type_node in type_list.children:
+                    if type_node.type in (
+                        "type_identifier",
+                        "generic_type",
+                        "scoped_type_identifier"
+                    ):
+                        interface_name = _extract_type_from_node(type_node, source_bytes)
+                        if interface_name:
+                            # Strip generics and resolve full name
+                            interface_name = _strip_generic_type(interface_name)
+                            interface_full = _resolve_java_type(
+                                interface_name, namespace, import_map
+                            )
+                            inheritances.append(
+                                Inheritance(child=child_name, parent=interface_full)
+                            )
 
-    # Extract extends_interfaces (extends for interfaces)
-    extends_node = node.child_by_field_name("extends_interfaces")
-    if extends_node:
-        # extends_interfaces contains a type_list, traverse it
-        types_to_extract = []
-        if extends_node.type == "type_list":
-            types_to_extract = extends_node.children
-        else:
-            # Find type_list child
-            for child in extends_node.children:
-                if child.type == "type_list":
-                    types_to_extract = child.children
+        # Handle extends_interfaces (extends for interfaces)
+        elif child.type == "extends_interfaces":
+            # Find type_list child (extends_interfaces = extends + type_list)
+            type_list = None
+            for subchild in child.children:
+                if subchild.type == "type_list":
+                    type_list = subchild
                     break
 
-        for type_child in types_to_extract:
-            extended_interface = _extract_type_from_node(type_child, source_bytes)
-            if extended_interface and extended_interface.strip() and extended_interface != ',':
-                # Strip generics and resolve full name
-                extended_interface = _strip_generic_type(extended_interface)
-                extended_full = _resolve_java_type(extended_interface, namespace, import_map)
-                inheritances.append(Inheritance(child=child_name, parent=extended_full))
+            if type_list:
+                # Extract only type nodes from type_list (skip commas)
+                for type_node in type_list.children:
+                    if type_node.type in (
+                        "type_identifier",
+                        "generic_type",
+                        "scoped_type_identifier"
+                    ):
+                        extended_interface = _extract_type_from_node(type_node, source_bytes)
+                        if extended_interface:
+                            # Strip generics and resolve full name
+                            extended_interface = _strip_generic_type(extended_interface)
+                            extended_full = _resolve_java_type(
+                                extended_interface, namespace, import_map
+                            )
+                            inheritances.append(
+                                Inheritance(child=child_name, parent=extended_full)
+                            )
 
     return inheritances
 
