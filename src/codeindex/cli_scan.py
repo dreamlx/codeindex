@@ -131,6 +131,10 @@ def scan(
     """
     path = path.resolve()
 
+    # Force quiet mode when outputting JSON (stdout must be clean)
+    if output == "json":
+        quiet = True
+
     # Check if path exists (handle JSON error output)
     if not path.exists():
         if output == "json":
