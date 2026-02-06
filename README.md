@@ -40,16 +40,44 @@ codeindex automatically generates intelligent documentation (`README_AI.md`) for
 
 ## 📦 Installation
 
+codeindex uses **lazy loading** - language parsers are only imported when needed. Install only the languages you use to keep dependencies minimal.
+
+### Basic Installation (Core Only)
+
+```bash
+# Install core only (no language parsers)
+pip install ai-codeindex
+```
+
+### Language-Specific Installation
+
+Install only the languages you need:
+
+```bash
+# Python projects
+pip install ai-codeindex[python]
+
+# PHP projects
+pip install ai-codeindex[php]
+
+# Java projects
+pip install ai-codeindex[java]
+
+# Multiple languages
+pip install ai-codeindex[python,php]
+
+# All languages
+pip install ai-codeindex[all]
+```
+
 ### Using pipx (Recommended)
 
 ```bash
-pipx install ai-codeindex
-```
+# All languages
+pipx install ai-codeindex[all]
 
-### Using pip
-
-```bash
-pip install ai-codeindex
+# Or specific languages
+pipx install ai-codeindex[python,php]
 ```
 
 ### From Source
@@ -57,7 +85,7 @@ pip install ai-codeindex
 ```bash
 git clone https://github.com/yourusername/codeindex.git
 cd codeindex
-pip install -e .
+pip install -e ".[all]"  # Development mode with all languages
 ```
 
 ---

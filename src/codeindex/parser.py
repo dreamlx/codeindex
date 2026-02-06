@@ -4,9 +4,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict
 
-import tree_sitter_java as tsjava
-import tree_sitter_php as tsphp
-import tree_sitter_python as tspython
 from tree_sitter import Language, Node, Parser
 
 
@@ -154,18 +151,6 @@ class ParseResult:
         }
 
 
-# Initialize languages
-PY_LANGUAGE = Language(tspython.language())
-PHP_LANGUAGE = Language(tsphp.language_php())
-JAVA_LANGUAGE = Language(tsjava.language())
-
-# Language-specific parsers
-PARSERS: Dict[str, Parser] = {
-    "python": Parser(PY_LANGUAGE),
-    "php": Parser(PHP_LANGUAGE),
-    "java": Parser(JAVA_LANGUAGE),
-}
-
 # File extension to language mapping
 FILE_EXTENSIONS: Dict[str, str] = {
     ".py": "python",
@@ -173,6 +158,59 @@ FILE_EXTENSIONS: Dict[str, str] = {
     ".phtml": "php",
     ".java": "java",
 }
+
+# Parser cache for lazy loading (avoids re-initialization)
+_PARSER_CACHE: Dict[str, Parser] = {}
+
+
+def _get_parser(language: str) -> Parser | None:
+    """Get or create a parser for the specified language (lazy loading).
+
+    This function implements lazy loading to avoid importing all language
+    parsers at module load time. Only the needed parser is imported and
+    initialized when first used.
+
+    Args:
+        language: Language name ("python", "php", "java")
+
+    Returns:
+        Parser instance for the language, or None if unsupported
+
+    Raises:
+        ImportError: If the tree-sitter library for the language is not installed
+
+    Example:
+        parser = _get_parser("python")  # Only imports tree-sitter-python
+    """
+    # Return cached parser if available
+    if language in _PARSER_CACHE:
+        return _PARSER_CACHE[language]
+
+    # Lazy import and initialize parser based on language
+    try:
+        if language == "python":
+            import tree_sitter_python as tspython
+            lang = Language(tspython.language())
+        elif language == "php":
+            import tree_sitter_php as tsphp
+            lang = Language(tsphp.language_php())
+        elif language == "java":
+            import tree_sitter_java as tsjava
+            lang = Language(tsjava.language())
+        else:
+            return None
+
+        # Create and cache parser
+        parser = Parser(lang)
+        _PARSER_CACHE[language] = parser
+        return parser
+
+    except ImportError as e:
+        # Provide helpful error message
+        raise ImportError(
+            f"tree-sitter-{language} is not installed. "
+            f"Install it with: pip install tree-sitter-{language}"
+        ) from e
 
 
 def _get_node_text(node, source_bytes: bytes) -> str:
@@ -445,17 +483,17 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
             path=path, error=f"Unsupported file type: {path.suffix}", file_lines=file_lines
         )
 
-    # Validate language
-    if language not in PARSERS:
+    # Get appropriate parser (lazy loading)
+    try:
+        parser = _get_parser(language)
+    except ImportError as e:
         return ParseResult(
-            path=path, error=f"Unsupported language: {language}", file_lines=file_lines
+            path=path, error=str(e), file_lines=file_lines
         )
 
-    # Get appropriate parser
-    parser = PARSERS.get(language)
     if not parser:
         return ParseResult(
-            path=path, error=f"No parser for language: {language}", file_lines=file_lines
+            path=path, error=f"Unsupported language: {language}", file_lines=file_lines
         )
 
     try:
