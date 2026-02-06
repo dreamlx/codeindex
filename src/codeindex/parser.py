@@ -549,14 +549,21 @@ def build_alias_map(imports: list[Import]) -> dict[str, str]:
         >>> imports = [
         ...     Import(module="pandas", alias="pd"),
         ...     Import(module="numpy", alias="np"),
+        ...     Import(module="numpy", names=["array"], is_from=True, alias="np_array"),
         ... ]
         >>> build_alias_map(imports)
-        {'pd': 'pandas', 'np': 'numpy'}
+        {'pd': 'pandas', 'np': 'numpy', 'np_array': 'numpy.array'}
     """
     alias_map = {}
     for imp in imports:
         if imp.alias:
-            alias_map[imp.alias] = imp.module
+            # Handle from-import with alias: from numpy import array as np_array
+            if imp.is_from and imp.names:
+                # Map alias to module.name: np_array → numpy.array
+                alias_map[imp.alias] = f"{imp.module}.{imp.names[0]}"
+            else:
+                # Regular import with alias: import pandas as pd
+                alias_map[imp.alias] = imp.module
     return alias_map
 
 
@@ -567,12 +574,24 @@ def resolve_alias(callee: str, alias_map: dict[str, str]) -> str:
         >>> resolve_alias("pd.read_csv", {"pd": "pandas"})
         'pandas.read_csv'
 
+        >>> resolve_alias("np_array", {"np_array": "numpy.array"})
+        'numpy.array'
+
         >>> resolve_alias("helper", {})
         'helper'
     """
-    if not callee or "." not in callee:
+    if not callee:
         return callee
 
+    # Direct match (for from-import aliases like np_array)
+    if callee in alias_map:
+        return alias_map[callee]
+
+    # No dot, not in alias_map
+    if "." not in callee:
+        return callee
+
+    # Split and check prefix (for module aliases like pd.read_csv)
     parts = callee.split(".", 1)
     prefix = parts[0]
     suffix = parts[1] if len(parts) > 1 else ""
@@ -626,13 +645,23 @@ def _determine_python_call_type(func_node: Node, source_bytes: bytes) -> CallTyp
         return CallType.FUNCTION
 
     elif func_node.type == "attribute":
-        # obj.method() or Class.method()
+        # obj.method() or Class.method() or Outer.Inner() (nested class)
+        # Check the attribute part (method/class name)
+        attr_node = func_node.child_by_field_name("attribute")
+        if attr_node:
+            attr_name = _get_node_text(attr_node, source_bytes)
+            # Constructor: Outer.Inner() → Inner starts with uppercase
+            if attr_name and attr_name[0].isupper():
+                return CallType.CONSTRUCTOR
+
+        # Check the object part
         obj_node = func_node.child_by_field_name("object")
         if obj_node and obj_node.type == "identifier":
             obj_name = _get_node_text(obj_node, source_bytes)
-            # Class method: ClassName.method()
+            # Static method: ClassName.method()
             if obj_name and obj_name[0].isupper():
                 return CallType.STATIC_METHOD
+
         return CallType.METHOD
 
     return CallType.FUNCTION
@@ -645,6 +674,7 @@ def _extract_call_name(func_node: Node, source_bytes: bytes) -> str:
         - identifier: "helper" → "helper"
         - attribute: obj.method → "obj.method"
         - attribute: pd.read_csv → "pd.read_csv"
+        - attribute: super().method → "super.method"
     """
     if func_node.type == "identifier":
         return _get_node_text(func_node, source_bytes)
@@ -665,6 +695,17 @@ def _extract_call_name(func_node: Node, source_bytes: bytes) -> str:
             elif current.type == "identifier":
                 parts.insert(0, _get_node_text(current, source_bytes))
                 break
+            elif current.type == "call":
+                # Special case: super().method() → extract as "super.method"
+                func_child = current.child_by_field_name("function")
+                if func_child and func_child.type == "identifier":
+                    func_name = _get_node_text(func_child, source_bytes)
+                    if func_name == "super":
+                        parts.insert(0, "super")
+                        break
+                # For other calls, just use generic name
+                parts.insert(0, "<call>")
+                break
             else:
                 break
 
@@ -674,15 +715,20 @@ def _extract_call_name(func_node: Node, source_bytes: bytes) -> str:
 
 
 def _parse_python_call(
-    node: Node, source_bytes: bytes, caller: str, alias_map: dict[str, str]
+    node: Node,
+    source_bytes: bytes,
+    caller: str,
+    alias_map: dict[str, str],
+    parent_map: dict[str, str],
 ) -> Optional[Call]:
     """Parse a single Python call node.
 
     Args:
         node: Tree-sitter call node
         source_bytes: Source code bytes
-        caller: Name of calling function/method
+        caller: Name of calling function/method (e.g., "Calculator.add" or "Child.method")
         alias_map: Import alias mapping
+        parent_map: Parent class mapping (for super() resolution)
 
     Returns:
         Call object or None if cannot parse
@@ -696,6 +742,23 @@ def _parse_python_call(
     callee_raw = _extract_call_name(func_node, source_bytes)
     if not callee_raw:
         return None
+
+    # Resolve self.method() to ClassName.method() (AC2: method call with self)
+    if callee_raw.startswith("self.") and "." in caller:
+        # Extract class name from caller (e.g., "Calculator.add" → "Calculator")
+        class_name = caller.rsplit(".", 1)[0]
+        # Replace self with class name
+        callee_raw = callee_raw.replace("self.", f"{class_name}.", 1)
+
+    # Resolve super().method() to Parent.method() (AC2: super method call)
+    if callee_raw.startswith("super.") and "." in caller:
+        # Extract class name from caller (e.g., "Child.method" → "Child")
+        class_name = caller.rsplit(".", 1)[0]
+        # Look up parent class
+        if class_name in parent_map:
+            parent_class = parent_map[class_name]
+            # Replace super with parent class name
+            callee_raw = callee_raw.replace("super.", f"{parent_class}.", 1)
 
     # Resolve alias (CRITICAL: Epic 11, Story 11.1, AC4)
     callee = resolve_alias(callee_raw, alias_map)
@@ -725,6 +788,7 @@ def _extract_python_calls(
     source_bytes: bytes,
     context: str,
     alias_map: dict[str, str],
+    parent_map: dict[str, str],
 ) -> list[Call]:
     """Extract Python call relationships (Epic 11, Story 11.1).
 
@@ -733,8 +797,9 @@ def _extract_python_calls(
     Args:
         node: Tree-sitter AST node
         source_bytes: Source code bytes
-        context: Current context (function/method/class name)
+        context: Current context (function/method/class name, e.g., "Child.method")
         alias_map: Import alias mapping
+        parent_map: Parent class mapping (for super() resolution)
 
     Returns:
         List of Call objects
@@ -743,13 +808,13 @@ def _extract_python_calls(
 
     # Process call nodes
     if node.type == "call":
-        call = _parse_python_call(node, source_bytes, context, alias_map)
+        call = _parse_python_call(node, source_bytes, context, alias_map, parent_map)
         if call:
             calls.append(call)
 
     # Recurse into children
     for child in node.children:
-        calls.extend(_extract_python_calls(child, source_bytes, context, alias_map))
+        calls.extend(_extract_python_calls(child, source_bytes, context, alias_map, parent_map))
 
     return calls
 
@@ -829,7 +894,7 @@ def _extract_decorator_calls(
 
 
 def _extract_python_calls_from_tree(
-    tree, source_bytes: bytes, imports: list[Import]
+    tree, source_bytes: bytes, imports: list[Import], inheritances: list[Inheritance]
 ) -> list[Call]:
     """Extract all Python calls from parse tree.
 
@@ -837,12 +902,18 @@ def _extract_python_calls_from_tree(
         tree: Tree-sitter parse tree
         source_bytes: Source code bytes
         imports: Import list (for alias resolution)
+        inheritances: Inheritance list (for super() resolution)
 
     Returns:
         List of Call objects
     """
     # Build alias map from imports (Epic 11, AC4)
     alias_map = build_alias_map(imports)
+
+    # Build parent map for super() resolution (child → parent)
+    parent_map = {}
+    for inh in inheritances:
+        parent_map[inh.child] = inh.parent
 
     calls = []
     root = tree.root_node
@@ -860,7 +931,7 @@ def _extract_python_calls_from_tree(
             # Extract calls within function
             if func_name:
                 calls.extend(
-                    _extract_python_calls(child, source_bytes, func_name, alias_map)
+                    _extract_python_calls(child, source_bytes, func_name, alias_map, parent_map)
                 )
 
         elif child.type == "class_definition":
@@ -908,9 +979,49 @@ def _extract_python_calls_from_tree(
                                 # Extract calls within method
                                 calls.extend(
                                     _extract_python_calls(
-                                        method_node, source_bytes, context, alias_map
+                                        method_node, source_bytes, context, alias_map, parent_map
                                     )
                                 )
+
+                        elif method_node.type == "decorated_definition":
+                            # Handle decorated methods
+                            # First extract decorators
+                            for dec_node in method_node.children:
+                                if dec_node.type == "decorator":
+                                    if _is_simple_decorator(dec_node):
+                                        decorator_name = _extract_decorator_name(
+                                            dec_node, source_bytes
+                                        )
+                                        if decorator_name:
+                                            calls.append(
+                                                Call(
+                                                    caller=class_name,
+                                                    callee=decorator_name,
+                                                    line_number=dec_node.start_point[0] + 1,
+                                                    call_type=CallType.FUNCTION,
+                                                    arguments_count=1,
+                                                )
+                                            )
+
+                            # Then process the function itself
+                            for dec_child in method_node.children:
+                                if dec_child.type == "function_definition":
+                                    method_name = ""
+                                    for node in dec_child.children:
+                                        if node.type == "identifier":
+                                            method_name = _get_node_text(node, source_bytes)
+                                            break
+                                    if method_name:
+                                        context = f"{class_name}.{method_name}"
+                                        calls.extend(
+                                            _extract_python_calls(
+                                                dec_child,
+                                                source_bytes,
+                                                context,
+                                                alias_map,
+                                                parent_map,
+                                            )
+                                        )
 
         elif child.type == "decorated_definition":
             # Handle decorated functions/classes
@@ -944,7 +1055,7 @@ def _extract_python_calls_from_tree(
                         # Extract calls within function
                         calls.extend(
                             _extract_python_calls(
-                                dec_child, source_bytes, func_name, alias_map
+                                dec_child, source_bytes, func_name, alias_map, parent_map
                             )
                         )
                 elif dec_child.type == "class_definition":
@@ -978,7 +1089,11 @@ def _extract_python_calls_from_tree(
                                         )
                                         calls.extend(
                                             _extract_python_calls(
-                                                method_node, source_bytes, context, alias_map
+                                                method_node,
+                                                source_bytes,
+                                                context,
+                                                alias_map,
+                                                parent_map,
                                             )
                                         )
 
@@ -1068,7 +1183,7 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
                 imports.extend(import_list)
 
         # Epic 11, Story 11.1: Extract call relationships
-        calls = _extract_python_calls_from_tree(tree, source_bytes, imports)
+        calls = _extract_python_calls_from_tree(tree, source_bytes, imports, inheritances)
 
     elif language == "php":
         # PHP parsing (Epic 10, Story 10.1.2: inheritance extraction)
