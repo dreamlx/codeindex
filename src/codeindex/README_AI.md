@@ -55,6 +55,12 @@
 - **tech_debt_formatters.py** - ReportFormatter, ConsoleFormatter, MarkdownFormatter
 - **writer.py** - WriteResult, format_symbols_for_prompt, format_imports_for_prompt
 
+
+**Commit ``**: 
+
+Changed files:
+- `parser.py`
+
 ---
 
 ## Recent Changes
