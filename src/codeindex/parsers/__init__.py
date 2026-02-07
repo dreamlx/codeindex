@@ -5,10 +5,12 @@ Each language has its own parser module that implements the BaseLanguageParser i
 """
 
 from .base import BaseLanguageParser
+from .python_parser import PythonParser
 from .utils import count_arguments, get_node_text
 
 __all__ = [
     "BaseLanguageParser",
+    "PythonParser",
     "get_node_text",
     "count_arguments",
 ]
