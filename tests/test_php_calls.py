@@ -5,9 +5,7 @@ Tests for extracting function/method call relationships from PHP code.
 Following TDD approach with comprehensive coverage of PHP-specific features.
 """
 
-import pytest
-from pathlib import Path
-from codeindex.parser import parse_file, CallType
+from codeindex.parser import CallType, parse_file
 
 
 class TestBasicFunctionCalls:
@@ -82,11 +80,11 @@ function load_data() {
         result = parse_file(php_file)
 
         # Should not extract var_dump or print_r (built-in functions)
-        var_dump_call = next(
+        _var_dump_call = next(
             (c for c in result.calls if c.callee == "var_dump"),
             None
         )
-        print_r_call = next(
+        _print_r_call = next(
             (c for c in result.calls if c.callee == "print_r"),
             None
         )
@@ -131,7 +129,7 @@ function main() {
         php_file = tmp_path / "test.php"
         php_file.write_text(code)
 
-        result = parse_file(php_file)
+        _result = parse_file(php_file)
 
         # Variable function calls are dynamic
         # Implementation may mark as DYNAMIC with callee=None
@@ -319,7 +317,7 @@ function process() {
         php_file = tmp_path / "test.php"
         php_file.write_text(code)
 
-        result = parse_file(php_file)
+        _result = parse_file(php_file)
 
         # Variable method calls are dynamic
         # May be marked as DYNAMIC or extracted if detectable
@@ -425,7 +423,7 @@ function create() {
         php_file = tmp_path / "test.php"
         php_file.write_text(code)
 
-        result = parse_file(php_file)
+        _result = parse_file(php_file)
 
         # Anonymous classes have no meaningful callee
         # Implementation may skip or mark as special
@@ -600,7 +598,7 @@ function main() {
         php_file = tmp_path / "test.php"
         php_file.write_text(code)
 
-        result = parse_file(php_file)
+        _result = parse_file(php_file)
 
         # Closure calls may be marked as DYNAMIC
 
@@ -615,7 +613,7 @@ function main() {
         php_file = tmp_path / "test.php"
         php_file.write_text(code)
 
-        result = parse_file(php_file)
+        _result = parse_file(php_file)
 
         # array_map is built-in, may or may not be extracted
 

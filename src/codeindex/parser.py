@@ -3533,7 +3533,9 @@ def _parse_php_scoped_call(
         # Regular class name
         # Check if starts with backslash (fully qualified)
         if scope_name.startswith("\\"):
-            callee = f"{scope_name.lstrip('\\')}::{method_name}"
+            # Extract without backslash (Python 3.10 compatible)
+            clean_scope = scope_name.lstrip("\\")
+            callee = f"{clean_scope}::{method_name}"
         elif scope_name in use_map:
             # Resolve via use_map
             full_class = use_map[scope_name]

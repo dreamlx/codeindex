@@ -6,9 +6,8 @@ JSON serialization, and CLI integration.
 """
 
 import json
-from pathlib import Path
-import pytest
-from codeindex.parser import parse_file, Call, CallType
+
+from codeindex.parser import Call, CallType, parse_file
 
 
 class TestJSONSerialization:
