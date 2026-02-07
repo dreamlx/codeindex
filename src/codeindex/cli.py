@@ -11,6 +11,7 @@ from . import __version__
 from .cli_config import init, list_dirs, status
 from .cli_docs import docs
 from .cli_hooks import hooks
+from .cli_parse import parse
 from .cli_scan import scan, scan_all
 from .cli_symbols import affected, index, symbols
 from .cli_tech_debt import tech_debt
@@ -26,6 +27,7 @@ def main():
 # Register commands from specialized modules
 main.add_command(scan)
 main.add_command(scan_all)
+main.add_command(parse)
 main.add_command(init)
 main.add_command(status)
 main.add_command(list_dirs)

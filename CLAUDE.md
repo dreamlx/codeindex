@@ -136,6 +136,10 @@ which python3
 # 🚀 Most common: Generate all indexes
 codeindex scan-all --fallback
 
+# 📄 Parse single file (NEW in v0.13.0)
+codeindex parse src/myfile.py | jq .                  # Parse Python file
+codeindex parse Controller.php | jq '.symbols'       # Extract symbols only
+
 # View what will be scanned
 codeindex list-dirs
 
@@ -617,6 +621,9 @@ codeindex/
 ```bash
 # Generate all indexes
 codeindex scan-all --fallback
+
+# Parse single file (NEW in v0.13.0)
+codeindex parse src/myfile.py | jq .
 
 # Check what will be scanned
 codeindex list-dirs
