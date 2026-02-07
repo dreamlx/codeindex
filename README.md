@@ -1,9 +1,9 @@
 # codeindex
 
 [![PyPI version](https://badge.fury.io/py/ai-codeindex.svg)](https://badge.fury.io/py/ai-codeindex)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://github.com/yourusername/codeindex/workflows/Tests/badge.svg)](https://github.com/yourusername/codeindex/actions)
+[![Tests](https://github.com/dreamlx/codeindex/workflows/Tests/badge.svg)](https://github.com/dreamlx/codeindex/actions)
 
 **AI-native code indexing tool for large codebases.**
 
@@ -83,7 +83,7 @@ pipx install ai-codeindex[python,php]
 ### From Source
 
 ```bash
-git clone https://github.com/yourusername/codeindex.git
+git clone https://github.com/dreamlx/codeindex.git
 cd codeindex
 pip install -e ".[all]"  # Development mode with all languages
 ```
@@ -443,74 +443,28 @@ Want to add support for your favorite framework? See [CLAUDE.md](CLAUDE.md#frame
 
 ---
 
-## 🎯 What's New in v0.4.0
+## 📋 Recent Updates
 
-### KISS Universal Description Generator
+**Current version**: v0.12.1
 
-**Story 4.4.5** introduces a completely new approach to module descriptions - zero assumptions, zero domain knowledge, completely universal.
+### Key Features
 
-**Before (v0.3.x):**
-```markdown
-| Admin/Controller | 后台管理模块：系统管理和配置功能 |  ← Generic, unhelpful
-| Agent/Controller | 用户管理相关的控制器目录 |        ← Can't differentiate
-| Retail/Marketing | Module directory |               ← No information
-```
+- 🔗 **Call Relationship Extraction** (v0.12.0): Function/method call graphs and dependency analysis
+- 🛣️ **Framework Route Extraction**: Auto-detect routes from ThinkPHP and Spring frameworks
+- 🤖 **AI Docstring Extraction**: Multi-language documentation normalization (PHP, Python)
+- 🎯 **KISS Universal Descriptions**: Language-agnostic module summaries with actual symbol names
+- 📊 **Technical Debt Analysis**: Detect code quality issues and complexity metrics
+- 🚀 **Automated Release Workflow**: One-command releases with GitHub Actions + PyPI Trusted Publisher
 
-**After (v0.4.0):**
-```markdown
-| Admin/Controller | Admin/Controller: 36 modules (AdminJurUsers, Permission, SystemConfig, ...) |
-| Agent/Controller | Agent/Controller: 13 modules (Agent, Commission, Withdrawal, ...) |
-| Retail/Marketing | Retail/Marketing: 3 modules (BigWheel, Coupon, Lottery, ...) |
-```
+### Latest Improvements
 
-**Benefits:**
-- ✅ **Universal**: Works for all languages (Python, PHP, Java, Go, TypeScript, Rust...)
-- ✅ **Specific**: Lists actual module/class names instead of generic descriptions
-- ✅ **Differentiated**: Each directory description is unique
-- ✅ **Traceable**: Original symbol names preserved, easy to search
-- ✅ **Zero maintenance**: No hardcoded business domain keywords to maintain
+- ✅ Makefile automation for development and releases
+- ✅ Git hooks for code quality (pre-commit, post-commit, pre-push)
+- ✅ Modular CLI architecture (6 focused modules)
+- ✅ Adaptive symbol extraction (5-150 symbols per file)
+- ✅ Parallel scanning for faster indexing
 
-**Validation Results:**
-- PHP Project (ThinkPHP 5.0): ⭐⭐⭐⭐⭐
-- Python Project (codeindex itself): ⭐⭐⭐⭐⭐
-- Code reduction: -78 lines (-17%)
-- Test coverage: 299 passed, 1 skipped
-
-**Example: PROJECT_INDEX.md**
-```markdown
-| Path | Purpose |
-|------|---------|
-| `src/codeindex/` | src/codeindex: 28 modules (adaptive_config, ai_helper, parser, scanner, ...) |
-| `tests/` | codeindex/tests: 24 modules (test_adaptive_config, test_parser, ...) |
-```
-
-See [docs/evaluation/story-4.4.5-kiss-validation.md](docs/evaluation/story-4.4.5-kiss-validation.md) for detailed validation report.
-
----
-
-## 🏗️ Architecture Improvements (v0.3.1)
-
-codeindex v0.3.1 features a **completely refactored CLI architecture** with specialized modules following the Single Responsibility Principle:
-
-### Modular CLI Design
-
-```
-src/codeindex/
-├── cli.py              (36 lines, -97%)  # Main entry point
-├── cli_common.py       (10 lines)        # Shared utilities
-├── cli_scan.py         (587 lines)       # Scanning operations
-├── cli_config.py       (97 lines)        # Configuration management
-├── cli_symbols.py      (226 lines)       # Symbol indexing
-└── cli_tech_debt.py    (238 lines)       # Technical debt analysis
-```
-
-### Benefits
-
-- ✅ **Easier to maintain**: Each module has a single, clear responsibility
-- ✅ **Better code organization**: 1062 lines → 36 lines in main CLI entry point
-- ✅ **100% backward compatible**: All commands and options preserved
-- ✅ **Zero breaking changes**: All 263 tests passing
-- ✅ **Extensible**: Easy to add new commands without bloating main file
+**See**: [CHANGELOG.md](CHANGELOG.md) for complete version history
 
 ---
 
@@ -524,10 +478,12 @@ src/codeindex/
 - **[Git Hooks Integration](docs/guides/git-hooks-integration.md)** - Automated code quality checks
 
 ### Developer Guides
-- **[Contributing](docs/guides/contributing.md)** - Development setup and guidelines
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Development setup, TDD workflow, code style guidelines
+- **[CLAUDE.md](CLAUDE.md)** - Quick reference for Claude Code and contributors
+- **[Design Philosophy](docs/architecture/design-philosophy.md)** - Core design principles and architecture
+- **[Release Automation](docs/development/QUICK_START_RELEASE.md)** - 5-minute automated release workflow
+- **[Multi-Language Support](docs/development/multi-language-support-workflow.md)** - Guide for adding new language support
 - **[Requirements Workflow](docs/development/requirements-workflow.md)** - Planning, issues, and development process
-- **[CLAUDE.md](CLAUDE.md)** - Quick reference for AI Code and developers
-- **[Architecture](docs/architecture/)** - Design decisions and ADRs
 
 ### Planning
 - **[Strategic Roadmap](docs/planning/ROADMAP.md)** - Long-term vision and priorities
@@ -892,7 +848,7 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ```bash
 # Clone and install
-git clone https://github.com/yourusername/codeindex.git
+git clone https://github.com/dreamlx/codeindex.git
 cd codeindex
 
 # Install with dev dependencies
@@ -967,9 +923,9 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 📞 Support
 
-- **Questions**: [GitHub Discussions](https://github.com/yourusername/codeindex/discussions)
-- **Bugs**: [GitHub Issues](https://github.com/yourusername/codeindex/issues)
-- **Feature Requests**: [GitHub Issues](https://github.com/yourusername/codeindex/issues/new?labels=enhancement)
+- **Questions**: [GitHub Discussions](https://github.com/dreamlx/codeindex/discussions)
+- **Bugs**: [GitHub Issues](https://github.com/dreamlx/codeindex/issues)
+- **Feature Requests**: [GitHub Issues](https://github.com/dreamlx/codeindex/issues/new?labels=enhancement)
 
 ---
 
@@ -977,7 +933,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 If you find codeindex useful, please star the repository to show your support!
 
-[![Star History Chart](https://api.star-history.com/svg?repos=yourusername/codeindex&type=Date)](https://star-history.com/#yourusername/codeindex&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=dreamlx/codeindex&type=Date)](https://star-history.com/#dreamlx/codeindex&Date)
 
 ---
 
