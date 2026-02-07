@@ -49,7 +49,7 @@ class User {
         # Should extract: UserService.createUser → User.save
         save_call = next((c for c in result.calls if "save" in (c.callee or "")), None)
         assert save_call is not None
-        assert save_call.caller == "UserService.createUser"
+        assert save_call.caller == "com.example.UserService.createUser"
         assert save_call.callee == "com.example.User.save"
         assert save_call.call_type == CallType.METHOD
 
@@ -78,7 +78,7 @@ public class Service {
         # Should extract: Service.process → Utils.formatDate
         call = next((c for c in result.calls if "formatDate" in (c.callee or "")), None)
         assert call is not None
-        assert call.caller == "Service.process"
+        assert call.caller == "com.example.Service.process"
         assert call.callee == "com.example.Utils.formatDate"
         assert call.call_type == CallType.STATIC_METHOD
 
@@ -143,7 +143,7 @@ public class Service {
         # Note: Generic types stripped (ArrayList<String> → ArrayList)
         add_call = next((c for c in result.calls if "add" in (c.callee or "")), None)
         assert add_call is not None
-        assert add_call.caller == "Service.process"
+        assert add_call.caller == "com.example.Service.process"
         # Callee should be ArrayList.add (generic type stripped)
         assert "ArrayList.add" in add_call.callee or "List.add" in add_call.callee
 
@@ -170,7 +170,7 @@ public class Service {
         # Should extract: Service.process → Runnable.run
         run_call = next((c for c in result.calls if "run" in (c.callee or "")), None)
         assert run_call is not None
-        assert run_call.caller == "Service.process"
+        assert run_call.caller == "com.example.Service.process"
         assert run_call.callee == "com.example.Runnable.run"
         assert run_call.call_type == CallType.METHOD
 
@@ -235,7 +235,7 @@ class Service {
             None
         )
         assert constructor_call is not None
-        assert constructor_call.caller == "Service.create"
+        assert constructor_call.caller == "com.example.model.Service.create"
         assert constructor_call.callee == "com.example.model.User.<init>"
 
     def test_constructor_with_arguments(self, tmp_path):
@@ -389,7 +389,7 @@ public class Service {
         # Should extract: Service.organize → java.util.Collections.sort
         sort_call = next((c for c in result.calls if "sort" in (c.callee or "")), None)
         assert sort_call is not None
-        assert sort_call.caller == "Service.organize"
+        assert sort_call.caller == "com.example.Service.organize"
         assert sort_call.callee == "java.util.Collections.sort"
 
     def test_static_import_wildcard(self, tmp_path):
@@ -413,7 +413,7 @@ public class Calculator {
         # Should extract: Calculator.calc → java.lang.Math.sqrt
         sqrt_call = next((c for c in result.calls if "sqrt" in (c.callee or "")), None)
         assert sqrt_call is not None
-        assert sqrt_call.caller == "Calculator.calc"
+        assert sqrt_call.caller == "com.example.Calculator.calc"
         assert sqrt_call.callee == "java.lang.Math.sqrt"
 
     def test_static_import_same_package(self, tmp_path):
@@ -441,7 +441,7 @@ public class Service {
         # Should extract: Service.process → com.example.Utils.helper
         helper_call = next((c for c in result.calls if "helper" in (c.callee or "")), None)
         assert helper_call is not None
-        assert helper_call.caller == "Service.process"
+        assert helper_call.caller == "com.example.Service.process"
         assert helper_call.callee == "com.example.Utils.helper"
 
     def test_ambiguous_static_import(self, tmp_path):

@@ -1276,11 +1276,17 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
         # Extract module docstring from first JavaDoc comment
         module_docstring = _extract_java_module_docstring(tree, source_bytes)
 
+        # Epic 11, Story 11.2: Extract Java call relationships
+        calls = _extract_java_calls_from_tree(
+            tree, source_bytes, imports, inheritances, namespace, import_map
+        )
+
         return ParseResult(
             path=path,
             symbols=symbols,
             imports=imports,
             inheritances=inheritances,
+            calls=calls,  # Epic 11, Story 11.2
             module_docstring=module_docstring,
             namespace=namespace,
             file_lines=file_lines,
@@ -2656,3 +2662,461 @@ def _parse_java_package(node: Node, source_bytes: bytes) -> str:
         if child.type == "scoped_identifier" or child.type == "identifier":
             return _get_node_text(child, source_bytes)
     return ""
+
+
+# ============================================================================
+# Epic 11, Story 11.2: Java Call Extraction
+# ============================================================================
+
+
+def _build_java_static_import_map(root: Node, source_bytes: bytes) -> dict[str, str]:
+    """Build mapping of statically imported method names to full qualified names.
+
+    Args:
+        root: Tree-sitter root node
+        source_bytes: Source code bytes
+
+    Returns:
+        Dictionary mapping method names to full qualified names
+
+    Examples:
+        import static java.util.Collections.sort;
+        -> {"sort": "java.util.Collections.sort"}
+
+        import static java.lang.Math.*;
+        -> Will need runtime resolution based on actual usage
+    """
+    static_import_map = {}
+
+    for child in root.children:
+        if child.type == "import_declaration":
+            # Check if it's a static import
+            is_static = False
+            import_path = ""
+
+            for import_child in child.children:
+                if import_child.type == "static":
+                    is_static = True
+                elif import_child.type == "scoped_identifier":
+                    import_path = _get_node_text(import_child, source_bytes)
+                elif import_child.type == "asterisk_import":
+                    # Wildcard static import: import static java.lang.Math.*;
+                    # We'll mark this package for later resolution
+                    if is_static and import_path:
+                        static_import_map[f"_wildcard_{import_path}"] = import_path
+
+            # Handle specific static import: import static pkg.Class.method;
+            if is_static and import_path and "." in import_path:
+                method_name = import_path.split(".")[-1]
+                static_import_map[method_name] = import_path
+
+    return static_import_map
+
+
+def _resolve_java_static_import(
+    method_name: str,
+    static_import_map: dict[str, str]
+) -> str | None:
+    """Resolve statically imported method name to full qualified name.
+
+    Args:
+        method_name: Method name to resolve
+        static_import_map: Static import mapping
+
+    Returns:
+        Full qualified name or None if not found
+    """
+    # Direct match
+    if method_name in static_import_map:
+        return static_import_map[method_name]
+
+    # Check wildcard imports
+    for key, package in static_import_map.items():
+        if key.startswith("_wildcard_"):
+            # For wildcard, assume method belongs to this package
+            # This is best-effort; actual resolution would need type analysis
+            return f"{package}.{method_name}"
+
+    return None
+
+
+def _parse_java_method_call(
+    node: Node,
+    source_bytes: bytes,
+    caller: str,
+    import_map: dict[str, str],
+    static_import_map: dict[str, str],
+    namespace: str,
+    parent_map: dict[str, str]
+) -> Optional[Call]:
+    """Parse a Java method invocation node.
+
+    Args:
+        node: method_invocation node
+        source_bytes: Source code bytes
+        caller: Calling method name (e.g., "UserService.createUser")
+        import_map: Regular import mapping
+        static_import_map: Static import mapping
+        namespace: Current package namespace
+        parent_map: Parent class mapping for super() resolution
+
+    Returns:
+        Call object or None
+    """
+    # Collect all identifiers in order
+    # For "user.save()", we get: ["user", "save"]
+    # For "method()", we get: ["method"]
+    # For chained calls "obj.m1().m2()", process only the outermost level
+    identifiers = []
+    has_super = False
+    object_expr = None  # Track the object part for chained calls
+
+    for child in node.children:
+        if child.type == "identifier":
+            identifiers.append(_get_node_text(child, source_bytes))
+        elif child.type == "super":
+            has_super = True
+        elif child.type == "field_access":
+            # field_access contains object.field structure
+            for field_child in child.children:
+                if field_child.type == "identifier":
+                    identifiers.append(_get_node_text(field_child, source_bytes))
+        elif child.type == "method_invocation":
+            # Nested method call (chained): obj.m1().m2()
+            # The nested invocation will be processed recursively
+            # For this level, we just note that the object part is a method call
+            object_expr = child
+
+    if not identifiers and not object_expr:
+        return None
+
+    # Build callee_raw
+    callee_raw = ""
+
+    if has_super and identifiers:
+        # super.method() - resolve to parent class
+        method_name = identifiers[-1]  # Last identifier is method name
+        if "." in caller:
+            class_name = caller.rsplit(".", 1)[0]
+            if class_name in parent_map:
+                parent_class = parent_map[class_name]
+                callee_raw = f"{parent_class}.{method_name}"
+        if not callee_raw:
+            # Fallback: use namespace
+            callee_raw = f"{namespace}.Parent.{method_name}"
+
+    elif object_expr and identifiers:
+        # Chained call: obj.m1().m2()
+        # object_expr is the nested method_invocation (m1())
+        # identifiers contains the method name for current level (m2)
+        # We need to infer the type from the chain
+        # Simple heuristic: extract the first object from the nested chain
+        def get_chain_object(node):
+            """Extract the base object from a method chain."""
+            for child in node.children:
+                if child.type == "identifier":
+                    return _get_node_text(child, source_bytes)
+                elif child.type == "method_invocation":
+                    # Recursively get from nested chain
+                    return get_chain_object(child)
+            return None
+
+        base_obj = get_chain_object(object_expr)
+        if base_obj and identifiers:
+            method_name = identifiers[-1]
+            callee_raw = f"{base_obj}.{method_name}"
+        elif identifiers:
+            # Fallback: just use method name
+            callee_raw = identifiers[-1]
+
+    elif len(identifiers) == 1:
+        # Simple method call: method()
+        callee_raw = identifiers[0]
+
+    elif len(identifiers) >= 2:
+        # obj.method() or Class.method()
+        # First identifier is object/class, last is method
+        obj_name = identifiers[0]
+        method_name = identifiers[-1]
+        callee_raw = f"{obj_name}.{method_name}"
+
+    if not callee_raw:
+        return None
+
+    # Resolve callee to full qualified name
+    callee = callee_raw
+
+    # Case 1: Static import resolution
+    if "." not in callee_raw:
+        static_resolved = _resolve_java_static_import(callee_raw, static_import_map)
+        if static_resolved:
+            callee = static_resolved
+        else:
+            # Assume it's in same package
+            callee = f"{namespace}.{callee_raw}"
+
+    # Case 2: Class.method() or obj.method() - resolve class via import_map
+    elif "." in callee_raw:
+        parts = callee_raw.split(".")
+        class_part = parts[0]
+        method_part = ".".join(parts[1:])
+
+        if class_part in import_map:
+            # Resolve via import_map
+            full_class = import_map[class_part]
+            callee = f"{full_class}.{method_part}"
+        elif class_part[0].isupper():
+            # Uppercase - assume it's in same package
+            callee = f"{namespace}.{callee_raw}"
+        else:
+            # Lowercase - try capitalizing (simple type inference heuristic)
+            # E.g., "user.save()" → try "User.save()"
+            capitalized = class_part.capitalize()
+            if capitalized in import_map:
+                full_class = import_map[capitalized]
+                callee = f"{full_class}.{method_part}"
+            else:
+                # Assume capitalized class in same package
+                callee = f"{namespace}.{capitalized}.{method_part}"
+
+    # Determine call type
+    if "." in callee_raw:
+        # Check if object part is uppercase (Class.method)
+        first_part = callee_raw.split(".")[0]
+        if first_part[0].isupper() or first_part == "super":
+            call_type = CallType.STATIC_METHOD
+        else:
+            call_type = CallType.METHOD
+    else:
+        call_type = CallType.FUNCTION
+
+    # Extract argument count
+    args_count = None
+    for child in node.children:
+        if child.type == "argument_list":
+            args_count = sum(
+                1 for c in child.children
+                if c.type not in (",", "(", ")")
+            )
+
+    return Call(
+        caller=caller,
+        callee=callee,
+        line_number=node.start_point[0] + 1,
+        call_type=call_type,
+        arguments_count=args_count
+    )
+
+
+def _parse_java_constructor_call(
+    node: Node,
+    source_bytes: bytes,
+    caller: str,
+    import_map: dict[str, str],
+    namespace: str
+) -> Optional[Call]:
+    """Parse a Java object creation expression (constructor call).
+
+    Args:
+        node: object_creation_expression node
+        source_bytes: Source code bytes
+        caller: Calling method name
+        import_map: Import mapping
+        namespace: Current package namespace
+
+    Returns:
+        Call object or None
+    """
+    # Extract type being instantiated
+    type_name = ""
+
+    for child in node.children:
+        if child.type == "type_identifier":
+            type_name = _get_node_text(child, source_bytes)
+        elif child.type == "generic_type":
+            # Handle generics: ArrayList<String> -> ArrayList
+            for generic_child in child.children:
+                if generic_child.type == "type_identifier":
+                    type_name = _get_node_text(generic_child, source_bytes)
+                    break
+        elif child.type == "scoped_type_identifier":
+            # Handle scoped types: java.util.ArrayList
+            type_name = _get_node_text(child, source_bytes)
+
+    if not type_name:
+        return None
+
+    # Resolve type to full qualified name
+    if "." in type_name:
+        # Already fully qualified
+        full_type = type_name
+    elif type_name in import_map:
+        # Resolve via import_map
+        full_type = import_map[type_name]
+    else:
+        # Assume same package
+        full_type = f"{namespace}.{type_name}"
+
+    # Format as constructor: ClassName.<init>
+    callee = f"{full_type}.<init>"
+
+    # Extract argument count
+    args_count = None
+    for child in node.children:
+        if child.type == "argument_list":
+            args_count = sum(
+                1 for c in child.children
+                if c.type not in (",", "(", ")")
+            )
+
+    return Call(
+        caller=caller,
+        callee=callee,
+        line_number=node.start_point[0] + 1,
+        call_type=CallType.CONSTRUCTOR,
+        arguments_count=args_count
+    )
+
+
+def _extract_java_calls(
+    node: Node,
+    source_bytes: bytes,
+    caller: str,
+    import_map: dict[str, str],
+    static_import_map: dict[str, str],
+    namespace: str,
+    parent_map: dict[str, str]
+) -> list[Call]:
+    """Recursively extract Java calls from AST node.
+
+    Args:
+        node: Current AST node
+        source_bytes: Source code bytes
+        caller: Current method context
+        import_map: Import mapping
+        static_import_map: Static import mapping
+        namespace: Package namespace
+        parent_map: Parent class mapping
+
+    Returns:
+        List of Call objects
+    """
+    calls = []
+
+    # Extract calls from this node
+    if node.type == "method_invocation":
+        call = _parse_java_method_call(
+            node, source_bytes, caller, import_map,
+            static_import_map, namespace, parent_map
+        )
+        if call:
+            calls.append(call)
+
+    elif node.type == "object_creation_expression":
+        call = _parse_java_constructor_call(
+            node, source_bytes, caller, import_map, namespace
+        )
+        if call:
+            calls.append(call)
+
+    # Recursively process children
+    for child in node.children:
+        calls.extend(
+            _extract_java_calls(
+                child, source_bytes, caller, import_map,
+                static_import_map, namespace, parent_map
+            )
+        )
+
+    return calls
+
+
+def _extract_java_calls_from_tree(
+    tree,
+    source_bytes: bytes,
+    imports: list[Import],
+    inheritances: list[Inheritance],
+    namespace: str,
+    import_map: dict[str, str]
+) -> list[Call]:
+    """Extract all Java call relationships from parse tree.
+
+    Args:
+        tree: Tree-sitter parse tree
+        source_bytes: Source code bytes
+        imports: Import list
+        inheritances: Inheritance list
+        namespace: Package namespace
+        import_map: Import mapping (already built)
+
+    Returns:
+        List of Call objects
+    """
+    # Build static import map
+    root = tree.root_node
+    static_import_map = _build_java_static_import_map(root, source_bytes)
+
+    # Build parent map for super() resolution
+    parent_map = {}
+    for inh in inheritances:
+        parent_map[inh.child] = inh.parent
+
+    calls = []
+
+    # Traverse classes and methods
+    for child in root.children:
+        if child.type in ("class_declaration", "interface_declaration"):
+            # Extract class name
+            class_name = ""
+            for node in child.children:
+                if node.type == "identifier":
+                    class_name = _get_node_text(node, source_bytes)
+                    break
+
+            if not class_name:
+                continue
+
+            # Full class name with namespace
+            full_class_name = f"{namespace}.{class_name}" if namespace else class_name
+
+            # Find class body
+            body_node = None
+            for node in child.children:
+                if node.type in ("class_body", "interface_body"):
+                    body_node = node
+                    break
+
+            if not body_node:
+                continue
+
+            # Process methods in class
+            for method_node in body_node.children:
+                if method_node.type == "method_declaration":
+                    # Extract method name
+                    method_name = ""
+                    for node in method_node.children:
+                        if node.type == "identifier":
+                            method_name = _get_node_text(node, source_bytes)
+                            break
+
+                    if method_name:
+                        caller = f"{full_class_name}.{method_name}"
+                        # Extract calls from method body
+                        calls.extend(
+                            _extract_java_calls(
+                                method_node, source_bytes, caller,
+                                import_map, static_import_map, namespace, parent_map
+                            )
+                        )
+
+                elif method_node.type == "constructor_declaration":
+                    # Constructor
+                    caller = f"{full_class_name}.<init>"
+                    calls.extend(
+                        _extract_java_calls(
+                            method_node, source_bytes, caller,
+                            import_map, static_import_map, namespace, parent_map
+                        )
+                    )
+
+    return calls
