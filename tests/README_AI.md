@@ -81,3 +81,14 @@
 - **test_tech_debt_formatters.py** - TestConsoleFormatter, TestMarkdownFormatter, TestJSONFormatter
 - **test_tech_debt_reporter.py** - TestFileReport, TestTechDebtReport, TestTechDebtReporter
 - **test_thinkphp_route_extractor.py** - TestThinkPHPRouteLineNumbers, test_extract_routes_only_public_methods
+
+---
+
+## Recent Changes
+
+**Commit ``**: 
+
+Changed files:
+- `test_call_integration.py`
+- `test_java_calls.py`
+- `test_php_calls.py`
