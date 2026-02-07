@@ -34,13 +34,22 @@ python3 -m venv .venv
 source .venv/bin/activate  # or `.venv\Scripts\activate` on Windows
 
 # Install dependencies with dev extras
-pip install -e ".[dev,all]"
+make install-dev
+# or: pip install -e ".[dev,all]"
+
+# Install Git hooks (pre-push checks)
+make install-hooks
 
 # Verify installation
 codeindex --version
 pytest --version
 ruff --version
+
+# See all available commands
+make help
 ```
+
+**Note**: We use Makefile for common tasks. Run `make help` to see all available commands.
 
 ### 3. Create a Feature Branch
 
@@ -78,17 +87,62 @@ Before committing:
 
 ```bash
 # ✅ All tests pass
-pytest -v
+make test
+# or: pytest -v
 
-# ✅ Code style check
-ruff check src/
-
-# ✅ Type check (optional but recommended)
-mypy src/codeindex/
+# ✅ Code style check and auto-fix
+make lint-fix
+# or: ruff check --fix src/
 
 # ✅ Test coverage (for core modules)
-pytest --cov=src/codeindex --cov-report=term-missing
+make test-cov
+# or: pytest --cov=src/codeindex --cov-report=term-missing
 # Core modules: ≥90%, Overall: ≥80%
+```
+
+**Note**: Git hooks will automatically run these checks before push if you ran `make install-hooks`.
+
+---
+
+## ⚙️ Makefile Commands
+
+We use Makefile for common development tasks. Run `make help` to see all commands:
+
+### Development Commands
+
+```bash
+make install          # Install package (editable mode)
+make install-dev      # Install with dev dependencies
+make install-hooks    # Install Git hooks (pre-push)
+make test             # Run all tests
+make test-fast        # Run tests without coverage (quick)
+make test-cov         # Run tests with coverage report
+make lint             # Run linter (ruff)
+make lint-fix         # Auto-fix lint issues
+make format           # Format code with ruff
+make clean            # Clean build artifacts
+make status           # Show git and version status
+```
+
+### Build & Release Commands
+
+```bash
+make build            # Build distribution packages
+make check-dist       # Check distribution with twine
+make check-version    # Verify version consistency
+make release VERSION=X.X.X  # Full release workflow (maintainers only)
+```
+
+### Git Hooks
+
+After running `make install-hooks`, the pre-push hook will automatically:
+- Run linter checks
+- Run all tests
+- Check version consistency (master branch only)
+
+**Skip hooks** (emergency only):
+```bash
+git push --no-verify
 ```
 
 ---
@@ -339,7 +393,9 @@ Your PR should:
 
 ## 🌍 Adding Language Support
 
-See the detailed guide in [CLAUDE.md](CLAUDE.md) Part 4.
+See the detailed guide in:
+- **[Multi-Language Support Workflow](docs/development/multi-language-support-workflow.md)** - Complete guide with environment setup, TDD phases, and testing standards
+- **[CLAUDE.md](CLAUDE.md) Part 4** - Claude Code integration patterns
 
 **Quick steps**:
 1. Add tree-sitter parser dependency
@@ -349,6 +405,57 @@ See the detailed guide in [CLAUDE.md](CLAUDE.md) Part 4.
 5. Add examples
 
 **Languages priority**: See [ROADMAP.md](docs/planning/ROADMAP.md).
+
+---
+
+## 🚀 Release Process (Maintainers Only)
+
+### Automated Release Workflow
+
+We use an **automated release system** that handles version management, testing, building, and PyPI publishing in one command.
+
+**Quick Release** (5 minutes):
+
+```bash
+# 1. Prepare release documentation
+vim docs/planning/ROADMAP.md        # Update version and Epic status
+vim CHANGELOG.md                    # Add changelog for new version
+vim RELEASE_NOTES_vX.X.X.md        # Create release notes
+
+git add docs/ CHANGELOG.md RELEASE_NOTES_vX.X.X.md
+git commit -m "docs: prepare vX.X.X release documentation"
+
+# 2. Merge to master
+git checkout master
+git merge develop --no-ff -m "Merge develop to master for vX.X.X release"
+
+# 3. One-command release
+make release VERSION=X.X.X
+
+# GitHub Actions will automatically:
+# ✅ Run tests on Python 3.10, 3.11, 3.12
+# ✅ Build distribution packages
+# ✅ Publish to PyPI (using Trusted Publisher)
+# ✅ Create GitHub Release with assets
+```
+
+**Documentation**:
+- **[Quick Start Release Guide](docs/development/QUICK_START_RELEASE.md)** - 5-minute automated release workflow
+- **[Complete Release Workflow](docs/development/release-workflow.md)** - Detailed release process documentation
+
+**What `make release` does**:
+1. Pre-release checks (tests, lint, version files)
+2. Update version in `pyproject.toml`
+3. Commit version bump
+4. Create Git tag `vX.X.X`
+5. Push to origin (master + tag)
+6. Trigger GitHub Actions for automated publishing
+
+**Requirements**:
+- Clean working directory (no uncommitted changes)
+- On master branch
+- All tests passing
+- `RELEASE_NOTES_vX.X.X.md` exists
 
 ---
 

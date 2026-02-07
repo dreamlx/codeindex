@@ -886,28 +886,54 @@ Or see [examples/CLAUDE.md.template](examples/CLAUDE.md.template) for the full t
 
 ## 🤝 Contributing
 
-We welcome contributions! See [CONTRIBUTING.md](docs/guides/contributing.md) for:
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-- Development setup
-- TDD workflow
-- Code style guidelines
-- How to add new languages
-- Release process
-
-### Quick Start for Contributors
+### 🚀 Quick Start for Contributors
 
 ```bash
 # Clone and install
 git clone https://github.com/yourusername/codeindex.git
 cd codeindex
-pip install -e ".[dev]"
+
+# Install with dev dependencies
+make install-dev
+# or: pip install -e ".[dev,all]"
+
+# Install Git hooks (pre-push checks)
+make install-hooks
 
 # Run tests
-pytest
+make test
+# or: pytest
 
-# Lint and format
-ruff check src/
-ruff format src/
+# Lint and auto-fix
+make lint-fix
+# or: ruff check --fix src/
+
+# See all available commands
+make help
+```
+
+### 📚 Developer Documentation
+
+- **[Quick Start Release Guide](docs/development/QUICK_START_RELEASE.md)** - 5-minute automated release workflow
+- **[Release Workflow](docs/development/release-workflow.md)** - Complete release process documentation
+- **[Multi-Language Support](docs/development/multi-language-support-workflow.md)** - Guide for adding new language support
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Development setup, TDD workflow, code style guidelines
+- **[Makefile](Makefile)** - Run `make help` to see all available commands
+
+### 🎯 Release Process (Maintainers)
+
+```bash
+# Automated one-command release
+make release VERSION=0.13.0
+
+# GitHub Actions will automatically:
+# ✅ Run tests on Python 3.10, 3.11, 3.12
+# ✅ Build and publish to PyPI
+# ✅ Create GitHub Release
+
+# See: docs/development/QUICK_START_RELEASE.md
 ```
 
 ---
