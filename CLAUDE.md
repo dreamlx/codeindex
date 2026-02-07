@@ -92,6 +92,44 @@ search_for_pattern(
 
 ## 🛠️ Part 2: Development Workflow
 
+### ⚠️ CRITICAL: Always Use Virtual Environment
+
+**Before any development work**, you MUST activate the virtual environment:
+
+```bash
+# Activate virtual environment (REQUIRED)
+source .venv/bin/activate  # macOS/Linux
+# .venv\Scripts\activate   # Windows
+
+# Verify activation (should show .venv path)
+which python3  # → /path/to/codeindex/.venv/bin/python3
+
+# Install dependencies if needed
+pip install -e ".[dev,all]"
+```
+
+**Why critical**:
+- ❌ **Without venv**: pip fails on macOS (PEP 668 protection: "externally-managed-environment")
+- ❌ **Without venv**: pre-push hook tests fail with `ModuleNotFoundError: No module named 'click'`
+- ❌ **Without venv**: `make release` pre-release checks fail
+- ✅ **With venv**: All commands work correctly
+
+**Common symptoms of not using venv**:
+- `ModuleNotFoundError: No module named 'click'`
+- `ModuleNotFoundError: No module named 'pytest_bdd'`
+- `error: externally-managed-environment` when running pip
+- Tests fail during `git push` (pre-push hook)
+
+**Always check before working**:
+```bash
+# Quick check - should show .venv in path
+which python3
+# ✅ Good: /Users/xxx/codeindex/.venv/bin/python3
+# ❌ Bad:  /opt/homebrew/bin/python3 (system Python)
+```
+
+---
+
 ### Quick Start Commands
 
 ```bash
@@ -768,7 +806,19 @@ See `CHANGELOG.md` for complete history.
    - Violates GitFlow
    - ✅ Correct: Create feature branch, merge after review
 
+6. **Run commands without activating virtual environment**
+   - pre-push hooks fail with `ModuleNotFoundError`
+   - pip install fails with "externally-managed-environment" error
+   - `make release` pre-release checks fail
+   - ✅ Correct: Always `source .venv/bin/activate` first
+
 ### ✅ Best Practices
+
+**Environment setup flow** (do this FIRST):
+```
+Check current Python → source .venv/bin/activate → Verify venv active →
+which python3 (check .venv in path) → Ready to work
+```
 
 **Code understanding flow**:
 ```
