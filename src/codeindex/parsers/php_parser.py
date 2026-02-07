@@ -19,6 +19,66 @@ class PhpParser(BaseLanguageParser):
     Supports PHP classes, methods, properties, functions, and namespace handling.
     """
 
+    def parse(self, path):
+        """Parse a PHP source file.
+
+        Overrides BaseLanguageParser.parse() to add namespace extraction.
+
+        Args:
+            path: Path to the source file
+
+        Returns:
+            ParseResult containing symbols, imports, calls, inheritances, and namespace
+        """
+        from pathlib import Path
+
+        from ..parser import ParseResult
+
+        try:
+            source_bytes = Path(path).read_bytes()
+        except Exception as e:
+            return ParseResult(path=path, error=str(e), file_lines=0)
+
+        # Calculate file lines
+        file_lines = source_bytes.count(b"\n") + (
+            1 if source_bytes and not source_bytes.endswith(b"\n") else 0
+        )
+
+        # Parse with tree-sitter
+        tree = self.parser.parse(source_bytes)
+
+        # Extract all information
+        try:
+            symbols = self.extract_symbols(tree, source_bytes)
+            imports = self.extract_imports(tree, source_bytes)
+            inheritances = self.extract_inheritances(tree, source_bytes)
+            calls = self.extract_calls(tree, source_bytes, symbols, imports)
+
+            # Extract namespace (PHP)
+            namespace = ""
+            root = tree.root_node
+            for child in root.children:
+                if child.type == "namespace_definition":
+                    namespace = self._parse_php_namespace(child, source_bytes)
+                    break
+
+            return ParseResult(
+                path=path,
+                symbols=symbols,
+                imports=imports,
+                inheritances=inheritances,
+                calls=calls,
+                file_lines=file_lines,
+                namespace=namespace,
+            )
+        except Exception as e:
+            # Return partial result with error
+            return ParseResult(
+                path=path,
+                error=f"Parse error: {str(e)}",
+                file_lines=file_lines,
+            )
+
     def extract_symbols(self, tree: Tree, source_bytes: bytes) -> list:
         """Extract symbols (classes, functions, methods, properties) from the parse tree.
 
