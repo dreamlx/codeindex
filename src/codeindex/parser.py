@@ -1231,11 +1231,17 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
                 module_docstring = _extract_php_docstring(child, source_bytes)
                 break
 
+        # Epic 11, Story 11.3: Extract PHP call relationships
+        calls = _extract_php_calls_from_tree(
+            tree, source_bytes, imports, inheritances, namespace, use_map
+        )
+
         return ParseResult(
             path=path,
             symbols=symbols,
             imports=imports,
             inheritances=inheritances,
+            calls=calls,  # Epic 11, Story 11.3
             module_docstring=module_docstring,
             namespace=namespace,
             file_lines=file_lines,
@@ -2684,7 +2690,7 @@ def _build_java_static_import_map(root: Node, source_bytes: bytes) -> dict[str, 
         -> {"sort": "java.util.Collections.sort"}
 
         import static java.lang.Math.*;
-        -> Will need runtime resolution based on actual usage
+        -> {"_wildcard_java.lang.Math": "java.lang.Math"}
     """
     static_import_map = {}
 
@@ -2693,22 +2699,27 @@ def _build_java_static_import_map(root: Node, source_bytes: bytes) -> dict[str, 
             # Check if it's a static import
             is_static = False
             import_path = ""
+            has_wildcard = False
 
             for import_child in child.children:
                 if import_child.type == "static":
                     is_static = True
                 elif import_child.type == "scoped_identifier":
                     import_path = _get_node_text(import_child, source_bytes)
-                elif import_child.type == "asterisk_import":
-                    # Wildcard static import: import static java.lang.Math.*;
-                    # We'll mark this package for later resolution
-                    if is_static and import_path:
-                        static_import_map[f"_wildcard_{import_path}"] = import_path
+                elif import_child.type in ("asterisk", "asterisk_import"):
+                    # Wildcard import marker
+                    has_wildcard = True
+
+            # Handle wildcard static import: import static java.lang.Math.*;
+            if is_static and import_path and has_wildcard:
+                static_import_map[f"_wildcard_{import_path}"] = import_path
 
             # Handle specific static import: import static pkg.Class.method;
-            if is_static and import_path and "." in import_path:
+            elif is_static and import_path and "." in import_path:
                 method_name = import_path.split(".")[-1]
-                static_import_map[method_name] = import_path
+                # First import wins for ambiguous cases
+                if method_name not in static_import_map:
+                    static_import_map[method_name] = import_path
 
     return static_import_map
 
@@ -2763,10 +2774,22 @@ def _parse_java_method_call(
     Returns:
         Call object or None
     """
+    # Helper function to recursively extract identifiers from field_access
+    def extract_field_identifiers(field_node):
+        """Recursively extract all identifiers from field_access chain."""
+        ids = []
+        for child in field_node.children:
+            if child.type == "identifier":
+                ids.append(_get_node_text(child, source_bytes))
+            elif child.type == "field_access":
+                # Recursive extraction for nested field_access
+                ids.extend(extract_field_identifiers(child))
+        return ids
+
     # Collect all identifiers in order
     # For "user.save()", we get: ["user", "save"]
     # For "method()", we get: ["method"]
-    # For chained calls "obj.m1().m2()", process only the outermost level
+    # For "java.lang.Math.sqrt()", we get: ["java", "lang", "Math", "sqrt"]
     identifiers = []
     has_super = False
     object_expr = None  # Track the object part for chained calls
@@ -2777,10 +2800,9 @@ def _parse_java_method_call(
         elif child.type == "super":
             has_super = True
         elif child.type == "field_access":
-            # field_access contains object.field structure
-            for field_child in child.children:
-                if field_child.type == "identifier":
-                    identifiers.append(_get_node_text(field_child, source_bytes))
+            # field_access contains object.field structure (possibly nested)
+            # Extract all identifiers recursively
+            identifiers.extend(extract_field_identifiers(child))
         elif child.type == "method_invocation":
             # Nested method call (chained): obj.m1().m2()
             # The nested invocation will be processed recursively
@@ -2792,6 +2814,7 @@ def _parse_java_method_call(
 
     # Build callee_raw
     callee_raw = ""
+    skip_resolution = False  # Flag for already-resolved callees
 
     if has_super and identifiers:
         # super.method() - resolve to parent class
@@ -2800,10 +2823,13 @@ def _parse_java_method_call(
             class_name = caller.rsplit(".", 1)[0]
             if class_name in parent_map:
                 parent_class = parent_map[class_name]
+                # parent_class is already FQN (e.g., "com.example.Parent")
                 callee_raw = f"{parent_class}.{method_name}"
+                skip_resolution = True  # Already fully qualified
         if not callee_raw:
             # Fallback: use namespace
             callee_raw = f"{namespace}.Parent.{method_name}"
+            skip_resolution = True
 
     elif object_expr and identifiers:
         # Chained call: obj.m1().m2()
@@ -2834,50 +2860,59 @@ def _parse_java_method_call(
         callee_raw = identifiers[0]
 
     elif len(identifiers) >= 2:
-        # obj.method() or Class.method()
-        # First identifier is object/class, last is method
-        obj_name = identifiers[0]
-        method_name = identifiers[-1]
-        callee_raw = f"{obj_name}.{method_name}"
+        # obj.method() or Class.method() or java.lang.Math.sqrt()
+        # All identifiers joined by dots
+        callee_raw = ".".join(identifiers)
 
     if not callee_raw:
         return None
 
     # Resolve callee to full qualified name
-    callee = callee_raw
+    if skip_resolution:
+        # Already fully qualified (e.g., from super resolution)
+        callee = callee_raw
+    else:
+        callee = callee_raw
 
-    # Case 1: Static import resolution
-    if "." not in callee_raw:
-        static_resolved = _resolve_java_static_import(callee_raw, static_import_map)
-        if static_resolved:
-            callee = static_resolved
-        else:
-            # Assume it's in same package
-            callee = f"{namespace}.{callee_raw}"
-
-    # Case 2: Class.method() or obj.method() - resolve class via import_map
-    elif "." in callee_raw:
-        parts = callee_raw.split(".")
-        class_part = parts[0]
-        method_part = ".".join(parts[1:])
-
-        if class_part in import_map:
-            # Resolve via import_map
-            full_class = import_map[class_part]
-            callee = f"{full_class}.{method_part}"
-        elif class_part[0].isupper():
-            # Uppercase - assume it's in same package
-            callee = f"{namespace}.{callee_raw}"
-        else:
-            # Lowercase - try capitalizing (simple type inference heuristic)
-            # E.g., "user.save()" → try "User.save()"
-            capitalized = class_part.capitalize()
-            if capitalized in import_map:
-                full_class = import_map[capitalized]
-                callee = f"{full_class}.{method_part}"
+        # Case 1: Static import resolution
+        if "." not in callee_raw:
+            static_resolved = _resolve_java_static_import(callee_raw, static_import_map)
+            if static_resolved:
+                callee = static_resolved
             else:
-                # Assume capitalized class in same package
-                callee = f"{namespace}.{capitalized}.{method_part}"
+                # Assume it's in same package
+                callee = f"{namespace}.{callee_raw}"
+
+        # Case 2: Class.method() or obj.method() - resolve class via import_map
+        elif "." in callee_raw:
+            parts = callee_raw.split(".")
+
+            # Check if already FQN (e.g., java.lang.Math.sqrt)
+            # FQN typically has 3+ parts and starts with lowercase package
+            if len(parts) >= 3 and parts[0][0].islower():
+                # Likely already FQN - keep as is
+                callee = callee_raw
+            else:
+                class_part = parts[0]
+                method_part = ".".join(parts[1:])
+
+                if class_part in import_map:
+                    # Resolve via import_map
+                    full_class = import_map[class_part]
+                    callee = f"{full_class}.{method_part}"
+                elif class_part[0].isupper():
+                    # Uppercase - assume it's in same package
+                    callee = f"{namespace}.{callee_raw}"
+                else:
+                    # Lowercase - try capitalizing (simple type inference heuristic)
+                    # E.g., "user.save()" → try "User.save()"
+                    capitalized = class_part.capitalize()
+                    if capitalized in import_map:
+                        full_class = import_map[capitalized]
+                        callee = f"{full_class}.{method_part}"
+                    else:
+                        # Assume capitalized class in same package
+                        callee = f"{namespace}.{capitalized}.{method_part}"
 
     # Determine call type
     if "." in callee_raw:
@@ -3120,3 +3155,466 @@ def _extract_java_calls_from_tree(
                     )
 
     return calls
+
+
+# ============================================================================
+# Epic 11, Story 11.3: PHP Call Extraction
+# ============================================================================
+
+def _extract_php_calls_from_tree(
+    tree,
+    source_bytes: bytes,
+    imports: list[Import],
+    inheritances: list[Inheritance],
+    namespace: str,
+    use_map: dict[str, str]
+) -> list[Call]:
+    """Extract all PHP call relationships from parse tree.
+
+    Args:
+        tree: Tree-sitter parse tree
+        source_bytes: Source code bytes
+        imports: Import list
+        inheritances: Inheritance list
+        namespace: PHP namespace
+        use_map: Use statement mapping
+
+    Returns:
+        List of Call objects
+    """
+    # Build parent map for parent:: resolution
+    parent_map = {}
+    for inh in inheritances:
+        parent_map[inh.child] = inh.parent
+
+    calls = []
+    root = tree.root_node
+
+    # Process top-level functions
+    for child in root.children:
+        if child.type == "function_definition":
+            # Extract function name
+            func_name = ""
+            for node in child.children:
+                if node.type == "name":
+                    func_name = _get_node_text(node, source_bytes)
+                    break
+
+            if func_name:
+                caller = f"{namespace}\\{func_name}" if namespace else func_name
+                # Extract calls from function body
+                calls.extend(
+                    _extract_php_calls(
+                        child, source_bytes, caller,
+                        use_map, namespace, parent_map, current_class=""
+                    )
+                )
+
+        elif child.type == "class_declaration":
+            # Extract class name
+            class_name = ""
+            for node in child.children:
+                if node.type == "name":
+                    class_name = _get_node_text(node, source_bytes)
+                    break
+
+            if not class_name:
+                continue
+
+            # Full class name with namespace
+            full_class_name = f"{namespace}\\{class_name}" if namespace else class_name
+
+            # Find class body
+            body_node = None
+            for node in child.children:
+                if node.type == "declaration_list":
+                    body_node = node
+                    break
+
+            if not body_node:
+                continue
+
+            # Process methods in class
+            for method_node in body_node.children:
+                if method_node.type == "method_declaration":
+                    # Extract method name
+                    method_name = ""
+                    for node in method_node.children:
+                        if node.type == "name":
+                            method_name = _get_node_text(node, source_bytes)
+                            break
+
+                    if method_name:
+                        caller = f"{full_class_name}::{method_name}"
+                        # Extract calls from method body
+                        calls.extend(
+                            _extract_php_calls(
+                                method_node, source_bytes, caller,
+                                use_map, namespace, parent_map, full_class_name
+                            )
+                        )
+
+    return calls
+
+
+def _extract_php_calls(
+    node: Node,
+    source_bytes: bytes,
+    caller: str,
+    use_map: dict[str, str],
+    namespace: str,
+    parent_map: dict[str, str],
+    current_class: str
+) -> list[Call]:
+    """Extract PHP calls from a function/method body.
+
+    Args:
+        node: Function or method node
+        source_bytes: Source code bytes
+        caller: Calling function/method name
+        use_map: Use statement mapping
+        namespace: Current namespace
+        parent_map: Parent class mapping
+        current_class: Current class name (for $this resolution)
+
+    Returns:
+        List of Call objects
+    """
+    calls = []
+
+    # Recursively find all call nodes
+    def traverse(n):
+        # Function call
+        if n.type == "function_call_expression":
+            call = _parse_php_function_call(
+                n, source_bytes, caller, use_map, namespace
+            )
+            if call:
+                calls.append(call)
+
+        # Member call expression ($obj->method())
+        elif n.type == "member_call_expression":
+            call = _parse_php_member_call(
+                n, source_bytes, caller, use_map, namespace, current_class
+            )
+            if call:
+                calls.append(call)
+
+        # Scoped call expression (Class::method())
+        elif n.type == "scoped_call_expression":
+            call = _parse_php_scoped_call(
+                n, source_bytes, caller, use_map, namespace, parent_map, current_class
+            )
+            if call:
+                calls.append(call)
+
+        # Object creation (new Class())
+        elif n.type == "object_creation_expression":
+            call = _parse_php_object_creation(
+                n, source_bytes, caller, use_map, namespace
+            )
+            if call:
+                calls.append(call)
+
+        # Recurse into children
+        for child in n.children:
+            traverse(child)
+
+    traverse(node)
+    return calls
+
+
+def _parse_php_function_call(
+    node: Node,
+    source_bytes: bytes,
+    caller: str,
+    use_map: dict[str, str],
+    namespace: str
+) -> Optional[Call]:
+    """Parse PHP function call expression.
+
+    Args:
+        node: function_call_expression node
+        source_bytes: Source code bytes
+        caller: Calling function/method name
+        use_map: Use statement mapping
+        namespace: Current namespace
+
+    Returns:
+        Call object or None
+    """
+    # Extract function name
+    func_name = None
+    args_count = None
+
+    for child in node.children:
+        if child.type in ("name", "qualified_name"):
+            func_name = _get_node_text(child, source_bytes)
+        elif child.type == "arguments":
+            # Count arguments
+            args_count = sum(
+                1 for c in child.children
+                if c.type not in (",", "(", ")")
+            )
+
+    if not func_name:
+        return None
+
+    # Resolve function name via use_map if needed
+    callee = func_name
+
+    # Check if it's a namespaced function
+    if "\\" in func_name:
+        # Already qualified, keep as is
+        # Remove leading backslash if present
+        callee = func_name.lstrip("\\")
+    elif func_name in use_map:
+        # Resolve via use_map
+        callee = use_map[func_name]
+    else:
+        # Assume it's in current namespace or global
+        # For now, keep simple name (don't add namespace for built-in functions)
+        callee = func_name
+
+    return Call(
+        caller=caller,
+        callee=callee,
+        line_number=node.start_point[0] + 1,
+        call_type=CallType.FUNCTION,
+        arguments_count=args_count
+    )
+
+
+def _parse_php_member_call(
+    node: Node,
+    source_bytes: bytes,
+    caller: str,
+    use_map: dict[str, str],
+    namespace: str,
+    current_class: str
+) -> Optional[Call]:
+    """Parse PHP member call expression ($obj->method()).
+
+    Args:
+        node: member_call_expression node
+        source_bytes: Source code bytes
+        caller: Calling function/method name
+        use_map: Use statement mapping
+        namespace: Current namespace
+        current_class: Current class name
+
+    Returns:
+        Call object or None
+    """
+    # Extract object and method name
+    object_name = None
+    method_name = None
+    args_count = None
+
+    for child in node.children:
+        if child.type == "variable_name" and not object_name:
+            # This is the object ($this, $user, etc.)
+            object_name = _get_node_text(child, source_bytes)
+        elif child.type == "name":
+            # This is the method name
+            method_name = _get_node_text(child, source_bytes)
+        elif child.type == "arguments":
+            # Count arguments
+            args_count = sum(
+                1 for c in child.children
+                if c.type not in (",", "(", ")")
+            )
+
+    if not method_name:
+        return None
+
+    # Determine the class
+    if object_name == "$this" and current_class:
+        # $this->method() in current class
+        callee = f"{current_class}::{method_name}"
+        call_type = CallType.METHOD
+    else:
+        # Try to infer class from variable name
+        # For now, capitalize variable name as heuristic
+        if object_name and object_name.startswith("$"):
+            var_name = object_name[1:]  # Remove $
+            # Capitalize first letter as class name heuristic
+            class_name = var_name.capitalize()
+
+            # Check if this class is in use_map
+            if class_name in use_map:
+                full_class = use_map[class_name]
+                callee = f"{full_class}::{method_name}"
+            else:
+                # Assume it's in current namespace
+                callee = f"{class_name}::{method_name}"
+
+            call_type = CallType.METHOD
+        else:
+            # Can't determine class, use dynamic
+            return Call(
+                caller=caller,
+                callee=None,
+                line_number=node.start_point[0] + 1,
+                call_type=CallType.DYNAMIC,
+                arguments_count=args_count
+            )
+
+    return Call(
+        caller=caller,
+        callee=callee,
+        line_number=node.start_point[0] + 1,
+        call_type=call_type,
+        arguments_count=args_count
+    )
+
+
+def _parse_php_scoped_call(
+    node: Node,
+    source_bytes: bytes,
+    caller: str,
+    use_map: dict[str, str],
+    namespace: str,
+    parent_map: dict[str, str],
+    current_class: str
+) -> Optional[Call]:
+    """Parse PHP scoped call expression (Class::method() or parent::method()).
+
+    Args:
+        node: scoped_call_expression node
+        source_bytes: Source code bytes
+        caller: Calling function/method name
+        use_map: Use statement mapping
+        namespace: Current namespace
+        parent_map: Parent class mapping
+        current_class: Current class name
+
+    Returns:
+        Call object or None
+    """
+    # Extract scope and method name
+    scope_name = None
+    method_name = None
+    args_count = None
+
+    for child in node.children:
+        if child.type in ("name", "qualified_name", "relative_scope") and not scope_name:
+            # This is the class/scope name
+            scope_name = _get_node_text(child, source_bytes)
+        elif child.type == "name" and scope_name:
+            # This is the method name (second name node)
+            method_name = _get_node_text(child, source_bytes)
+        elif child.type == "arguments":
+            # Count arguments
+            args_count = sum(
+                1 for c in child.children
+                if c.type not in (",", "(", ")")
+            )
+
+    if not method_name:
+        return None
+
+    # Resolve scope
+    if scope_name == "parent" and current_class:
+        # parent::method() - resolve to parent class
+        if current_class in parent_map:
+            parent_class = parent_map[current_class]
+            callee = f"{parent_class}::{method_name}"
+        else:
+            # Can't resolve parent, use as-is
+            callee = f"parent::{method_name}"
+    elif scope_name == "self" and current_class:
+        # self::method() - same as current class
+        callee = f"{current_class}::{method_name}"
+    elif scope_name == "static" and current_class:
+        # static::method() - late static binding, use current class
+        callee = f"{current_class}::{method_name}"
+    elif scope_name:
+        # Regular class name
+        # Check if starts with backslash (fully qualified)
+        if scope_name.startswith("\\"):
+            callee = f"{scope_name.lstrip('\\')}::{method_name}"
+        elif scope_name in use_map:
+            # Resolve via use_map
+            full_class = use_map[scope_name]
+            callee = f"{full_class}::{method_name}"
+        elif namespace:
+            # Assume it's in current namespace
+            callee = f"{namespace}\\{scope_name}::{method_name}"
+        else:
+            callee = f"{scope_name}::{method_name}"
+    else:
+        return None
+
+    return Call(
+        caller=caller,
+        callee=callee,
+        line_number=node.start_point[0] + 1,
+        call_type=CallType.STATIC_METHOD,
+        arguments_count=args_count
+    )
+
+
+def _parse_php_object_creation(
+    node: Node,
+    source_bytes: bytes,
+    caller: str,
+    use_map: dict[str, str],
+    namespace: str
+) -> Optional[Call]:
+    """Parse PHP object creation expression (new Class()).
+
+    Args:
+        node: object_creation_expression node
+        source_bytes: Source code bytes
+        caller: Calling function/method name
+        use_map: Use statement mapping
+        namespace: Current namespace
+
+    Returns:
+        Call object or None
+    """
+    # Extract class name and arguments
+    class_name = None
+    args_count = None
+
+    for child in node.children:
+        if child.type in ("name", "qualified_name"):
+            class_name = _get_node_text(child, source_bytes)
+        elif child.type == "arguments":
+            # Count arguments
+            args_count = sum(
+                1 for c in child.children
+                if c.type not in (",", "(", ")")
+            )
+
+    if not class_name:
+        return None
+
+    # Skip anonymous classes
+    if class_name == "class":
+        return None
+
+    # Resolve class name
+    if class_name.startswith("\\"):
+        # Fully qualified name
+        full_class = class_name.lstrip("\\")
+    elif class_name in use_map:
+        # Resolve via use_map
+        full_class = use_map[class_name]
+    elif namespace:
+        # Assume it's in current namespace
+        full_class = f"{namespace}\\{class_name}"
+    else:
+        full_class = class_name
+
+    # Constructor callee
+    callee = f"{full_class}::__construct"
+
+    return Call(
+        caller=caller,
+        callee=callee,
+        line_number=node.start_point[0] + 1,
+        call_type=CallType.CONSTRUCTOR,
+        arguments_count=args_count
+    )
