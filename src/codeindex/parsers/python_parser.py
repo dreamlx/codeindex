@@ -943,7 +943,7 @@ class PythonParser(BaseLanguageParser):
 
             elif child.type == "decorated_definition":
                 # Handle decorated functions/classes
-                # decorated_definition contains: decorator* + (function_definition | ...))
+                # decorated_definition contains: decorator* + (function_definition | class_definition)
 
                 # First, extract decorators from decorated_definition node itself
                 for dec_node in child.children:
