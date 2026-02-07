@@ -2,16 +2,16 @@
 """Test hierarchical processing on current codeindex project with proper config."""
 
 import sys
-import os
 from pathlib import Path
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from codeindex.config import Config
-from codeindex.scanner import find_all_directories, scan_directory
-from codeindex.hierarchical import build_directory_hierarchy, create_processing_batches
 from rich.console import Console
+
+from codeindex.config import Config
+from codeindex.hierarchical import build_directory_hierarchy, create_processing_batches
+from codeindex.scanner import find_all_directories, scan_directory
 
 console = Console()
 
@@ -33,7 +33,7 @@ def test_codeindex_with_subdirs():
         console.print(f"[red]❌ {src_dir} not found[/red]")
         return
 
-    console.print(f"\n📂 Analyzing src/codeindex...")
+    console.print("\n📂 Analyzing src/codeindex...")
 
     # Create a temporary config that includes all subdirs
     temp_config = Config()
@@ -60,7 +60,7 @@ def test_codeindex_with_subdirs():
         for info in dir_info.values():
             level_counts[info.level] = level_counts.get(info.level, 0) + 1
 
-        console.print(f"[green]✓ Hierarchy built:[/green]")
+        console.print("[green]✓ Hierarchy built:[/green]")
         console.print(f"  Total directories: {len(dir_info)}")
         console.print(f"  Root directories: {len(roots)}")
         console.print(f"  Levels range from {min(level_counts.keys())} to {max(level_counts.keys())}")
