@@ -187,7 +187,7 @@
 **Tests**: 662 passing (184 new tests), 3 skipped
 
 **Documentation**:
-- Release notes: `RELEASE_NOTES_v0.8.0.md`
+- Release notes: `docs/releases/RELEASE_NOTES_v0.8.0.md`
 - Updated README_AI.md files
 
 **See**: CHANGELOG.md v0.8.0 entry
@@ -234,7 +234,7 @@
 **Tests**: 729 passing (67 new tests), 3 skipped
 
 **Documentation**:
-- Release notes: `RELEASE_NOTES_v0.9.0.md`
+- Release notes: `docs/releases/RELEASE_NOTES_v0.9.0.md`
 - Epic plan: `docs/planning/epic10-loomgraph-integration.md`
 - Updated README_AI.md files
 
@@ -277,7 +277,7 @@
 **Tests**: 777 passing (48 new tests), 3 skipped
 
 **Documentation**:
-- Release notes: `RELEASE_NOTES_v0.10.0.md`
+- Release notes: `docs/releases/RELEASE_NOTES_v0.10.0.md`
 - Epic plans: `docs/planning/completed/epic10-loomgraph-integration/`
   - `part1-python-plan.md` (v0.9.0)
   - `part2-php-plan.md` (v0.10.0)
