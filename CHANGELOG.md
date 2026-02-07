@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Single File Parse Command** (Epic 12 - Story 12.1)
+  - New `codeindex parse <file>` command for parsing individual source files
+  - JSON output with structured data (symbols, imports, namespace)
+  - Support for Python, PHP, and Java files
+  - Exit codes: 0 (success), 1 (file error), 2 (unsupported language), 3 (parse error)
+  - Enables loose coupling: codeindex (CLI) → LoomGraph (CLI) → LightRAG (API)
+  - 20 comprehensive tests covering:
+    - Basic functionality (Python, PHP, Java parsing)
+    - JSON format validation
+    - Error handling (file not found, unsupported language, syntax errors, permissions)
+    - Framework features (ThinkPHP routes, Spring annotations, inheritance)
+    - Performance benchmarks (<0.5s for small files, <3s for large files)
+  - Integration example script: `examples/parse_integration_example.sh`
+
 ## [0.12.0] - 2026-02-07
 
 ### Added
