@@ -352,248 +352,50 @@ gh pr create --title "feat: Java parser support" --body "Closes #2"
 
 ## 🎨 Part 2.5: Design Philosophy & Principles
 
-### Core Design Philosophy
+**⚠️ WHEN TO READ THIS SECTION**:
 
-**"ParseResult is a programmable data structure, not just text for AI"**
+You MUST read the detailed design philosophy document when:
+- 🏗️ **Adding new language support** (e.g., Java, Go, TypeScript)
+- 🔧 **Implementing new features** that involve ParseResult or core architecture
+- 🐛 **Debugging performance issues** or considering optimization
+- 🤔 **Discussing parallelization strategies** (ThreadPool vs ProcessPool)
+- 💡 **Making architectural decisions** (e.g., AI vs programmatic approach)
+- ❓ **Questioning existing design choices** ("Why is it designed this way?")
 
-codeindex's core value proposition:
-1. **Extract structured, programmable code information** (our role)
-2. **Support multiple automated analyses** (route extraction, symbol scoring, dependency analysis)
-3. **Provide AI enhancement** (AI understands semantics, writes documentation)
+**Quick triggers** - Read design doc if you encounter:
+- Questions about "Why not use ProcessPool for Java?"
+- Confusion about ParseResult's purpose
+- Debates about AI vs programmatic analysis
+- Performance optimization discussions
+- New language integration planning
+
+---
+
+### Core Principles (Quick Reference)
 
 **Key principle**: We extract structure (What), AI understands semantics (Why)
 
----
+**Architecture**: 3 layers
+1. Structure Extraction (tree-sitter) → ParseResult
+2. Automated Analysis (programmatic) → Routes, scoring, debt
+3. AI Enhancement (semantic) → Documentation
 
-### Architecture Layers
+**Performance**: AI invocation is the bottleneck (99% of time), not parsing
 
-```
-┌─────────────────────────────────────────────────────┐
-│  Layer 1: Structure Extraction (tree-sitter)        │
-│  - Parse source code to AST                         │
-│  - Extract symbols, signatures, annotations         │
-│  - Build ParseResult (programmable data structure)  │
-│  - Languages: Python, PHP, Java (future: Go, Rust) │
-└─────────────────────────────────────────────────────┘
-           ↓
-┌─────────────────────────────────────────────────────┐
-│  Layer 2: Automated Analysis (programmatic)         │
-│  - Route extraction (Spring/ThinkPHP/Laravel)       │
-│  - Symbol scoring (importance ranking)              │
-│  - Dependency analysis (import graphs)              │
-│  - Technical debt detection                         │
-└─────────────────────────────────────────────────────┘
-           ↓
-┌─────────────────────────────────────────────────────┐
-│  Layer 3: AI Enhancement (semantic understanding)   │
-│  - Understand business intent                       │
-│  - Summarize architecture and design patterns       │
-│  - Write README documentation                       │
-│  - Extract and normalize docstrings                 │
-└─────────────────────────────────────────────────────┘
-```
+**Parallelization**: ThreadPool for all languages (I/O bound, not CPU bound)
 
 ---
 
-### ParseResult Multi-Purpose Design
+### 📖 Full Documentation
 
-**Data Structure**:
-```python
-@dataclass
-class ParseResult:
-    symbols: list[Symbol]      # Classes, functions, methods
-    imports: list[Import]      # Import statements
-    namespace: str             # Package name/namespace
-    annotations: list          # Decorators/annotations (Java/Python)
-```
+**Read the complete design philosophy**:
+- **File**: `docs/architecture/design-philosophy.md`
+- **Use Read tool**: Always read this file before making architectural decisions
+- **Covers**: ParseResult design, performance architecture, common pitfalls, language support
 
-**Usage 1: Format for AI** → Generate README_AI.md
-**Usage 2: Route extraction** → Programmatically traverse symbols/annotations (Story 7.2)
-**Usage 3: Symbol scoring** → Rank importance based on annotations (Story 7.4)
-**Usage 4: Fallback mode** → Generate README without AI
-**Usage 5: Global symbol index** → PROJECT_SYMBOLS.md
-**Usage 6: Dependency analysis** → Analyze import relationships
-
-**Critical insight**: ParseResult is not just for AI consumption—it's a programmable data structure for automated analysis.
-
----
-
-### Performance Architecture
-
-#### The Real Bottleneck: AI Invocation (not tree-sitter)
-
-**Time breakdown**:
-```
-Directory scan:       0.05s (10 files)
-tree-sitter parsing:  0.1s  (10 files, ThreadPool)
-Format prompt:        0.01s
-AI invocation:        10s   ← 99% of time!
-Write file:           0.01s
-
-Total: ~10s
-```
-
-**Key insights**:
-1. ✅ **tree-sitter is fast** - even large Java files parse in milliseconds
-2. ✅ **AI invocation is slow** - I/O bound, waiting for network/process response
-3. ✅ **ThreadPool is sufficient** - I/O operations not limited by Python GIL
-4. ❌ **ProcessPool NOT needed** - AI invocation is I/O bound, not CPU bound
-
----
-
-### Parallelization Strategy
-
-**Current implementation**: `src/codeindex/parallel.py`
-
-```python
-def parse_files_parallel(files, config):
-    """Use ThreadPoolExecutor for parallel parsing"""
-    with ThreadPoolExecutor(max_workers=config.parallel_workers) as executor:
-        # Parse files in parallel (tree-sitter fast, no bottleneck)
-        results = list(executor.map(parse_file, files))
-```
-
-**Why ThreadPool instead of ProcessPool?**
-1. ✅ tree-sitter parsing is fast (milliseconds), not a bottleneck
-2. ✅ AI invocation is I/O bound (not limited by GIL)
-3. ✅ ThreadPool starts quickly, lower memory overhead
-4. ❌ ProcessPool for CPU-bound tasks, not applicable here
-
-**Real optimization target**: Parallelize scanning multiple directories (scan-all)
-```
-Current: Sequential processing of 50 directories × 10s = 500s
-Optimized: Parallel processing with 8 workers = 62.5s (8x faster)
-```
-
----
-
-### Adding New Language Support
-
-#### ⚠️ CRITICAL: Common Misconceptions
-
-**❌ WRONG**: "Different languages need different parallelization strategies"
-- Java files are large → need ProcessPool
-- Python files are small → use ThreadPool
-
-**✅ CORRECT**: All languages use the same strategy
-- AI Command handles all languages uniformly
-- tree-sitter is fast for all languages
-- Bottleneck is AI invocation (I/O bound)
-- ThreadPool works for all languages
-
-**Do NOT do this**:
-```yaml
-# ❌ WRONG design
-parallel_strategy:
-  python: threads
-  java: processes    # Incorrect!
-  go: threads
-```
-
-**Correct approach**:
-```yaml
-# ✅ CORRECT design
-parallel_workers: 8  # Unified config for all languages
-```
-
----
-
-#### Checklist for Adding New Language (e.g., Go)
-
-**Step 1: tree-sitter integration** (Required)
-```python
-# src/codeindex/parser.py
-import tree_sitter_go as tsgo
-
-GO_LANGUAGE = Language(tsgo.language())
-PARSERS["go"] = Parser(GO_LANGUAGE)
-FILE_EXTENSIONS[".go"] = "go"
-```
-
-**Step 2: Symbol extraction** (Required)
-Priority:
-- P0 (Must have): Classes, functions/methods, signatures, basic docstrings
-- P1 (Important): Annotations/decorators, import statements, namespaces
-- P2 (Optional): Generics, exceptions, lambdas, advanced features
-
-**Reason**: P0 info sufficient for README, P1 needed for route extraction and symbol scoring
-
-**Step 3: DO NOT add language-specific parallelization** ❌
-- All languages use the same ThreadPool
-- No need to distinguish by language
-- AI Command handles all languages
-
-**Step 4: Framework-specific features** (Optional)
-If framework route extraction needed (e.g., Gin for Go):
-- Create extractor plugin: `src/codeindex/extractors/gin_extractor.py`
-- Depend on ParseResult.symbols annotations
-- Follow ThinkPHP extractor plugin pattern
-
----
-
-### Common Design Pitfalls
-
-#### Pitfall 1: Over-reliance on AI ❌
-
-**Wrong idea**: "Let AI do everything, we just pass source code"
-
-**Problems**:
-- ❌ Cannot support route extraction (needs programmatic traversal)
-- ❌ Cannot support symbol scoring (needs structured data)
-- ❌ Cannot support fallback mode
-- ❌ Increases AI costs
-
-**Correct approach**: We extract structure, AI understands semantics
-
----
-
-#### Pitfall 2: Misidentifying bottlenecks ❌
-
-**Wrong idea**: "Java file parsing is slow, need ProcessPool optimization"
-
-**Reality**:
-- ✅ tree-sitter is very fast (even large files are milliseconds)
-- ✅ Real bottleneck is AI invocation (seconds, I/O bound)
-- ✅ ThreadPool is already sufficient
-
-**Correct optimization**: Parallelize multiple directory scanning, not single file parsing
-
----
-
-#### Pitfall 3: Language-specific parallelization ❌
-
-**Wrong idea**: "Java files large, need ProcessPool; Python files small, use ThreadPool"
-
-**Reality**:
-- ✅ AI Command handles all languages uniformly
-- ✅ Bottleneck is AI invocation (not parsing)
-- ✅ I/O bound tasks best served by ThreadPool
-
-**Correct approach**: Unified ThreadPool with reasonable worker count
-
----
-
-### Key Takeaways for Future Development
-
-1. **ParseResult is multi-purpose** - Not just for AI, also for programs
-2. **We extract structure, AI understands semantics** - Clear division of labor
-3. **Bottleneck is AI invocation, not tree-sitter** - Don't over-optimize parsing
-4. **ThreadPool works for all languages** - No need for language-specific strategies
-5. **Annotation extraction is necessary** - Supports route extraction and symbol scoring
-
----
-
-### Essential Reading
-
-**Before adding new features, read**:
-- Serena memory: `design_philosophy` (this document's source)
-- Epic planning docs: `docs/planning/epic*.md`
-- Architecture decisions: Search for "ADR-" in documentation
-
-**When confused about design decisions**:
-```python
-# Read design philosophy memory
-mcp__serena__read_memory(memory_file_name="design_philosophy")
+```bash
+# When to read
+Read(file_path="docs/architecture/design-philosophy.md")
 ```
 
 ---
@@ -682,103 +484,41 @@ codeindex status
 
 ## 🔌 Part 4: Extension Development
 
-### Framework Route Extraction (v0.5.0+)
+### Adding Framework Support
 
-**Quick overview**: Plugin-based architecture for extracting framework routes
+**Plugin-based route extraction** for web frameworks (ThinkPHP, Spring, Laravel, etc.)
 
-**Architecture**:
-```
-src/codeindex/
-├── route_extractor.py      # Base class
-├── route_registry.py       # Auto-discovery
-└── extractors/
-    ├── thinkphp.py        # ✅ Reference implementation
-    ├── laravel.py         # 🔄 TODO
-    └── fastapi.py         # 🔄 TODO
-```
+**Quick steps**:
+1. Write tests first: `tests/extractors/test_myframework.py`
+2. Implement extractor: `src/codeindex/extractors/myframework.py`
+3. Auto-registered via `extractors/__init__.py`
 
-**How to add a framework**:
-1. Write tests first (`tests/extractors/test_myframework.py`)
-2. Implement extractor (`src/codeindex/extractors/myframework.py`)
-3. Export in `extractors/__init__.py`
-4. Auto-registered!
-
-**Detailed guide**: See `CLAUDE.md` section 🛣️ Framework Route Extraction (lines 225-899) or ask for the full guide.
-
-**Reference**:
-- Example: `src/codeindex/extractors/thinkphp.py`
-- Tests: `tests/extractors/test_thinkphp.py`
-- Base class: `src/codeindex/route_extractor.py`
-
-### Git Hooks Management (v0.5.0+)
-
-**Quick overview**: Built-in Git Hooks for code quality and auto-documentation
-
-**Architecture**:
-```
-┌─────────────────────────────────────┐
-│  HookManager                        │
-│  ├── install()                      │
-│  ├── uninstall()                    │
-│  └── status()                       │
-├─────────────────────────────────────┤
-│  .git/hooks/                        │
-│  ├── pre-commit  (lint + debug)    │
-│  ├── post-commit (auto README)     │
-│  └── pre-push    (placeholder)     │
-└─────────────────────────────────────┘
-```
-
-**Features**:
-- Marker-based detection (`# codeindex-managed hook`)
-- Automatic backup of custom hooks
-- Template-based script generation
-- CLI management (`codeindex hooks install/uninstall/status`)
-
-**Detailed guide**: See `CLAUDE.md` section 🪝 Git Hooks Management (lines 901-1738) or ask for the full guide.
-
-**Reference**:
-- Implementation: `src/codeindex/cli_hooks.py`
-- Tests: `tests/test_cli_hooks.py`
-- User guide: `docs/guides/git-hooks-integration.md`
+**Reference implementation**: `src/codeindex/extractors/thinkphp.py`
 
 ---
 
-## 📈 Version History (Highlights)
+### Git Hooks Integration
 
-### v0.6.0 (2026-02-04)
-- **BREAKING**: Removed AI Enhancement (multi-turn dialogue)
-- **Epic 9**: AI-Powered Docstring Extraction (hybrid + all-AI modes)
-- PHP + Python docstring support
-- Cost-effective: ~$0.15 per 250 directories
-- 415 tests passing, 3 skipped
+**Built-in hooks** for code quality and auto-documentation
 
-### v0.5.0 (2026-02-03)
-- **Epic 6 P3.1**: Git Hooks Integration
-- ThinkPHP route extraction (framework plugin architecture)
-- Configuration upgrade guide
-- 394 tests passing
+**Features**:
+- pre-commit: lint + debug checks
+- post-commit: auto README updates
+- pre-push: test validation
 
-### v0.4.0 (2026-02-02)
-- KISS Universal Description Generator
-- PROJECT_INDEX quality improvements
-- Cross-language, cross-architecture support
-- 299 tests passing
+**Management**: `codeindex hooks install/uninstall/status`
 
-### v0.3.1 (2026-01-28)
-- CLI module split (1062 → 31 lines in cli.py)
-- 6 focused modules
+**User guide**: `docs/guides/git-hooks-integration.md`
 
-### v0.3.0 (2026-01-27)
-- Technical debt analysis
-- 283 tests passing
+---
 
-### v0.2.0 (2025-01-15)
-- Adaptive symbol extraction (5-150 symbols/file)
-- 7-tier file size classification
-- 280% coverage improvement for large files
+## 📈 Version History
 
-See `CHANGELOG.md` for complete history.
+**Current version**: v0.12.1
+
+For complete version history, see:
+- **[CHANGELOG.md](CHANGELOG.md)** - Detailed changes for each version
+- **[RELEASE_NOTES_v*.md](.)** - Major release highlights
 
 ---
 
