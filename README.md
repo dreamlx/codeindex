@@ -14,7 +14,8 @@ codeindex automatically generates intelligent documentation (`README_AI.md`) for
 ## ✨ Features
 
 - 🚀 **AI-Powered Documentation**: Generate comprehensive README files using Claude, GPT, or any AI CLI
-- 🌳 **Tree-sitter Parsing**: Accurate symbol extraction (classes, functions, methods, imports) for Python & PHP
+- 🌳 **Tree-sitter Parsing**: Accurate symbol extraction (classes, functions, methods, imports) for Python, PHP & Java
+- 📄 **Single File Parse** (v0.13.0+): Parse individual files with JSON output for loose coupling with downstream tools
 - ⚡ **Parallel Scanning**: Scan multiple directories concurrently for fast indexing
 - 🎯 **Smart Filtering**: Include/exclude patterns with glob support
 - 🔧 **Flexible Integration**: Works with any AI CLI tool via configurable commands
@@ -251,7 +252,72 @@ When errors occur, the JSON response includes structured error information:
 - 📊 **Analytics**: Analyze codebase metrics across versions
 - 🧪 **Testing**: Verify expected code structure in tests
 
-### 6. Check Status
+### 6. Parse Single Files
+
+**NEW in v0.13.0**: Parse individual source files for loose coupling with downstream tools.
+
+```bash
+# Parse a Python file
+codeindex parse src/auth/user.py
+
+# Parse a PHP file
+codeindex parse Application/Controller/User.php
+
+# Parse a Java file
+codeindex parse src/main/java/User.java
+
+# Pretty print with jq
+codeindex parse myfile.py | jq .
+
+# Extract specific fields
+codeindex parse myfile.py | jq '.symbols[] | {name, kind}'
+```
+
+**JSON Output Structure** (single file):
+
+```json
+{
+  "file_path": "src/auth/user.py",
+  "language": "python",
+  "symbols": [
+    {
+      "name": "User",
+      "kind": "class",
+      "signature": "class User:",
+      "docstring": "User authentication model",
+      "line_start": 10,
+      "line_end": 50,
+      "annotations": []
+    }
+  ],
+  "imports": [
+    {"module": "typing", "names": ["Dict"], "is_from": true, "alias": null}
+  ],
+  "namespace": "",
+  "error": null
+}
+```
+
+**Exit Codes**:
+- `0`: Success (includes partial parse with errors)
+- `1`: File not found or permission denied
+- `2`: Unsupported language
+- `3`: Parse error
+
+**Integration Example** (with LoomGraph):
+
+```bash
+# Parse and pipe to downstream tool
+codeindex parse myfile.py | loomgraph import --format codeindex
+
+# Batch parse multiple files
+find src/ -name "*.py" -exec codeindex parse {} \; | \
+  jq -s '.' > all_symbols.json
+```
+
+**See also**: `examples/parse_integration_example.sh` for more usage examples.
+
+### 7. Check Status
 
 ```bash
 codeindex status
@@ -269,7 +335,7 @@ Indexing Status
 Indexed: 3/4 (75%)
 ```
 
-### 7. Generate Symbol Indexes (v0.1.2+)
+### 8. Generate Symbol Indexes (v0.1.2+)
 
 **Global symbol index** - Find any class/function across your codebase:
 
@@ -304,7 +370,7 @@ codeindex affected --json  # For scripting/CI
 - Suggests which README_AI.md files need regeneration
 - JSON output for CI/CD integration
 
-### 8. Analyze Technical Debt (v0.3.0+)
+### 9. Analyze Technical Debt (v0.3.0+)
 
 **NEW in v0.3.0**: Detect code quality issues and technical debt patterns.
 
@@ -362,7 +428,7 @@ File Details
      → Split into 3-5 smaller files
 ```
 
-### 9. Framework Route Extraction (v0.5.0+)
+### 10. Framework Route Extraction (v0.5.0+)
 
 **NEW in v0.5.0**: Automatically detect and extract routes from web frameworks with line numbers and descriptions.
 
