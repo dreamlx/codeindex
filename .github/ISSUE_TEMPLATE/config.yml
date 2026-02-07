@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Documentation
+    url: https://github.com/dreamlx/codeindex/blob/master/README.md
+    about: Read the documentation for usage guides and examples
+  - name: 💬 Discussions
+    url: https://github.com/dreamlx/codeindex/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 🗺️ Roadmap
+    url: https://github.com/dreamlx/codeindex/blob/master/docs/planning/ROADMAP.md
+    about: View the strategic roadmap and upcoming features
