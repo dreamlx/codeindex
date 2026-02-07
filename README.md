@@ -315,7 +315,9 @@ find src/ -name "*.py" -exec codeindex parse {} \; | \
   jq -s '.' > all_symbols.json
 ```
 
-**See also**: `examples/parse_integration_example.sh` for more usage examples.
+**See also**:
+- Quick examples: `examples/parse_integration_example.sh`
+- **For LoomGraph developers**: See [`docs/guides/loomgraph-integration.md`](docs/guides/loomgraph-integration.md) for detailed integration guide with Python/Node.js code examples
 
 ### 7. Check Status
 
