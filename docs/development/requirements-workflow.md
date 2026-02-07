@@ -477,7 +477,14 @@ gh issue view 3  # Story 7.2
 
 ## Issue Templates
 
-Create `.github/ISSUE_TEMPLATE/` directory with the following templates:
+✅ **Issue templates are now available** in `.github/ISSUE_TEMPLATE/`:
+- `epic.md` - Major features (2+ weeks)
+- `feature.md` - User stories and features
+- `bug.md` - Bug reports
+- `enhancement.md` - Improvements to existing features
+- `config.yml` - GitHub issue selector configuration
+
+The templates below show the expected structure. To use them, create a new issue on GitHub and select the appropriate template.
 
 ### epic.md
 
@@ -882,10 +889,35 @@ A: After each story completion (mark ✅). Full review quarterly.
 
 ---
 
+## 📌 Current Status (2026-02-07)
+
+**Strategy Adopted**: **方案B + 策略1** (Lightweight, Future-Focused)
+
+**Key Decisions**:
+- ✅ Issue templates created (`.github/ISSUE_TEMPLATE/`)
+- ✅ Lightweight issue management: Only create issues for future work
+- ✅ Past epics documented via ROADMAP.md and completion reports
+- ✅ Epic issues created at design phase (after planning doc exists)
+- ✅ Story issues only for complex stories or those needing discussion
+
+**Cleanup Actions Needed**:
+- ⏳ Close legacy Epic 9 issues (#1-#6) - completed in v0.6.0
+- ⏳ Create milestones for v0.12.0, v0.13.0
+- ⏳ Create Epic issue for next major work
+
+**How to Close Old Issues** (when network available):
+```bash
+gh issue close 1 --comment "✅ Completed in v0.6.0. See CHANGELOG.md and docs/planning/completed/epic9-docstring-extraction/"
+gh issue close 2 3 4 5 6 --comment "✅ Completed as part of Epic 9 (v0.6.0)."
+```
+
+---
+
 **Document Status**: ✅ Active
-**Last Updated**: 2026-02-03
+**Last Updated**: 2026-02-07
 **Maintained By**: Development team
 **Related Documents**:
 - `CLAUDE.md` - Developer guide
 - `docs/planning/ROADMAP.md` - Strategic roadmap
 - `docs/planning/epic*.md` - Epic plans
+- `.github/ISSUE_TEMPLATE/` - Issue templates (NEW)

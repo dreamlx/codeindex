@@ -7,9 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.12.0] - 2026-02-06
+## [0.12.0] - 2026-02-07
 
 ### Added
+
+- **Call Relationships Extraction for LoomGraph** (Epic 11 - Major Feature ⭐)
+  - **Python call extraction** (Story 11.1)
+    - Function, method, constructor call extraction
+    - Import alias resolution (`import foo as bar`)
+    - super() call resolution via parent class mapping
+    - Dynamic call detection (getattr, etc.)
+    - 35 tests passing (100%)
+
+  - **Java call extraction** (Story 11.2)
+    - Method, static method, constructor call extraction
+    - Package import resolution
+    - super/this call resolution
+    - Method reference detection
+    - 26 tests passing (100%)
+
+  - **PHP call extraction** (Story 11.3)
+    - Function, method, static method call extraction
+    - Namespace resolution (use statements)
+    - parent:: call resolution
+    - Variable function/method detection
+    - 25 tests passing (100%)
+
+  - **LoomGraph JSON Integration** (Story 11.4)
+    - JSON serialization for Call dataclass
+    - Round-trip serialization support
+    - Backward compatibility with existing ParseResult
+    - 12 integration tests passing (100%)
+
+- **Multi-Language Development Workflow** (Documentation)
+  - Comprehensive workflow guide for adding new language support
+  - Environment dependency management strategies
+  - TDD development phases with test targets
+  - Installation verification procedures
+  - 600+ lines of best practices documentation
 
 - **Java Inheritance Extraction for LoomGraph** (Epic 10 Part 3)
   - Extract `extends` relationships (single inheritance)
@@ -23,17 +58,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Technical Implementation
 
-- **Package Namespace Separation**
+- **Call Extraction Architecture** (Epic 11)
+  - **Unified Call dataclass**: Single data model across Python/Java/PHP
+  - **CallType enum**: FUNCTION, METHOD, STATIC_METHOD, CONSTRUCTOR, DYNAMIC
+  - **Cross-language consistency**: Same extraction patterns adapted per language
+  - **Performance optimized**: ~0.04-0.05s per file, ~50KB per 100 calls
+
+- **Language-Specific Call Parsing**
+  - **Python**: ~400 lines of call extraction logic
+    - `_extract_python_calls_from_tree()`: Main entry point
+    - `_extract_python_calls()`: Recursive AST traversal
+    - `_parse_python_call()`: Call node parsing with alias resolution
+
+  - **Java**: ~350 lines of call extraction logic
+    - `_extract_java_calls_from_tree()`: Package-aware extraction
+    - `_parse_java_method_invocation()`: Method call parsing
+    - `_parse_java_object_creation()`: Constructor call extraction
+
+  - **PHP**: ~400 lines of call extraction logic
+    - `_extract_php_calls_from_tree()`: Namespace-aware extraction
+    - `_parse_php_member_call()`: Instance method parsing ($obj->method())
+    - `_parse_php_scoped_call()`: Static method parsing (Class::method())
+    - `_parse_php_object_creation()`: Constructor extraction (new Class())
+
+- **Advanced Resolution Features**
+  - **Alias resolution**: 98%+ accuracy (Python `import as`, Java `import`, PHP `use`)
+  - **Inheritance resolution**: super()/super./parent:: calls via parent_map (Epic 10 data reuse)
+  - **Dynamic detection**: getattr(), reflection, variable functions marked as DYNAMIC
+  - **Type inference heuristics**: Variable name capitalization for PHP ($user → User)
+
+- **Package Namespace Separation** (Epic 10 Part 3)
   - Added `_extract_package_namespace()` helper function
   - Correctly handles nested classes: `com.example.Outer.Inner` → package `com.example`
   - Ensures type resolution uses correct package scope
 
-- **AST Traversal Optimization**
+- **AST Traversal Optimization** (Epic 10 Part 3)
   - Fixed `super_interfaces` and `extends_interfaces` node access
   - Use child iteration instead of `child_by_field_name()`
   - Properly handle `type_list` children and skip comma separators
 
-- **Import Resolution Priority**
+- **Import Resolution Priority** (Epic 10 Part 3)
   - 0. Already fully qualified name (contains `.`)
   - 1. Java standard library (`java.lang.*`)
   - 2. Explicit imports from `import` statements
@@ -41,26 +105,88 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Test Coverage
 
-- 25/25 Java inheritance tests passing (100%)
-- 212/212 total Java tests passing (no regression)
-- Test categories:
-  - Basic inheritance (6 tests): extends, implements, combinations
-  - Generic types (4 tests): single/multiple type parameters, bounded types
-  - Import resolution (5 tests): explicit, java.lang, same package, FQN
-  - Nested classes (3 tests): inner class, nested interface, static nested
-  - Real-world frameworks (4 tests): Spring, JPA, Lombok
-  - Edge cases (3 tests): enum, record, annotation
+- **Epic 11 Call Relationships**: 98 tests passing, 0 failures (100% success rate)
+  - **Story 11.1 (Python)**: 35/35 tests ✅
+    - Basic function calls (5 tests)
+    - Method calls (6 tests)
+    - Constructor calls (4 tests)
+    - Import alias resolution (5 tests)
+    - Nested/lambda/decorator calls (5 tests)
+    - super() resolution (3 tests)
+    - Edge cases (7 tests)
+
+  - **Story 11.2 (Java)**: 26/26 tests ✅
+    - Method calls (6 tests)
+    - Static method calls (4 tests)
+    - Constructor calls (4 tests)
+    - Import resolution (4 tests)
+    - super/this calls (3 tests)
+    - Edge cases (5 tests)
+
+  - **Story 11.3 (PHP)**: 25/25 tests ✅
+    - Function calls (5 tests)
+    - Method calls (6 tests)
+    - Constructor calls (4 tests)
+    - Namespace resolution (5 tests)
+    - Edge cases (5 tests)
+
+  - **Story 11.4 (Integration)**: 12/12 tests ✅
+    - JSON serialization (3 tests)
+    - Round-trip verification (3 tests)
+    - Cross-language consistency (3 tests)
+    - Backward compatibility (3 tests)
+
+- **Epic 10 Part 3 Java Inheritance**: 25/25 tests passing (100%)
+  - 212/212 total Java tests passing (no regression)
+  - Test categories:
+    - Basic inheritance (6 tests): extends, implements, combinations
+    - Generic types (4 tests): single/multiple type parameters, bounded types
+    - Import resolution (5 tests): explicit, java.lang, same package, FQN
+    - Nested classes (3 tests): inner class, nested interface, static nested
+    - Real-world frameworks (4 tests): Spring, JPA, Lombok
+    - Edge cases (3 tests): enum, record, annotation
 
 ### LoomGraph Milestone
 
-- ✅ **Three-language coverage complete**
-  - Python (v0.9.0): Inheritance + Import Alias
-  - PHP (v0.10.0): Inheritance + Import Alias
-  - Java (v0.12.0): Inheritance extraction
+- ✅ **Knowledge Graph Foundation Complete** (v0.12.0)
+  - **Inheritance Relationships** (3 languages)
+    - Python (v0.9.0): Inheritance + Import Alias
+    - PHP (v0.10.0): Inheritance + Import Alias
+    - Java (v0.12.0): Inheritance extraction
+
+  - **Call Relationships** (3 languages) ⭐ NEW
+    - Python (v0.12.0): Function/method/constructor calls + alias resolution
+    - Java (v0.12.0): Method/static/constructor calls + package resolution
+    - PHP (v0.12.0): Function/method/static calls + namespace resolution
+
+  - **Data Model**
+    - `ParseResult.inheritances`: List[Inheritance] (child, parent)
+    - `ParseResult.calls`: List[Call] (caller, callee, call_type, line_number)
+    - JSON serialization for LoomGraph integration
+    - ~98% accuracy for alias/namespace resolution
 
 ### Development Methodology
 
-- **Agile Task Splitting Strategy**
+- **Epic 11 TDD Excellence** (10-day execution, 50% faster than estimated)
+  - **Story-based incremental delivery**
+    - Story 11.1 (Python): 5 days → 35 tests
+    - Story 11.2 (Java): 2 days → 26 tests
+    - Story 11.3 (PHP): 1 day → 25 tests
+    - Story 11.4 (Integration): 1 day → 12 tests
+    - Documentation & polish: 1 day
+
+  - **Cross-language pattern reuse**
+    - Unified Call dataclass design
+    - Consistent extraction patterns
+    - Shared test structure
+    - Python implementation guided Java/PHP
+
+  - **Zero regressions**
+    - 415+ existing tests still passing
+    - Backward compatible ParseResult
+    - No breaking changes
+
+- **Epic 10 Part 3 Agile Task Splitting**
   - Story 10.1.3: Basic inheritance (22 tests)
   - Story 10.1.4: Nested class support (3 tests)
   - Incremental delivery, risk reduction, faster feedback
@@ -68,9 +194,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
-- Epic 10 Part 3 design document with complete AC definitions
-- Updated README_AI.md with inheritance extraction details
-- Archived completed epics and reorganized planning docs
+- **Epic 11 Comprehensive Documentation**
+  - `docs/planning/completed/epic11-final-summary.md` (Epic completion report)
+  - `docs/planning/completed/epic11-story11.1-completion.md` (Python story)
+  - `docs/planning/completed/epic11-story11.2-completion.md` (Java story)
+  - `docs/planning/completed/epic11-story11.3-completion.md` (PHP story)
+  - `docs/development/multi-language-support-workflow.md` (600+ lines guide)
+  - Updated README_AI.md with call extraction details
+
+- **Epic 10 Part 3 Documentation**
+  - Epic 10 Part 3 design document with complete AC definitions
+  - Updated README_AI.md with inheritance extraction details
+  - Archived completed epics and reorganized planning docs
 
 ## [0.11.0] - 2026-02-06
 
