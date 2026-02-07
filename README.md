@@ -11,6 +11,12 @@ codeindex automatically generates intelligent documentation (`README_AI.md`) for
 
 ---
 
+> **🤝 For LoomGraph Developers**: Looking to integrate codeindex for code parsing? Start here:
+> - **Quick Start**: [`FOR_LOOMGRAPH.md`](FOR_LOOMGRAPH.md) (5 min read)
+> - **Complete Guide**: [`docs/guides/loomgraph-integration.md`](docs/guides/loomgraph-integration.md) (20 min, with code examples)
+
+---
+
 ## ✨ Features
 
 - 🚀 **AI-Powered Documentation**: Generate comprehensive README files using Claude, GPT, or any AI CLI
@@ -255,6 +261,8 @@ When errors occur, the JSON response includes structured error information:
 ### 6. Parse Single Files
 
 **NEW in v0.13.0**: Parse individual source files for loose coupling with downstream tools.
+
+> **💡 For LoomGraph Integration**: See complete guide at [`docs/guides/loomgraph-integration.md`](docs/guides/loomgraph-integration.md)
 
 ```bash
 # Parse a Python file
