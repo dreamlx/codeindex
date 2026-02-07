@@ -1,0 +1,71 @@
+#!/bin/bash
+# codeindex pre-push hook
+# Runs tests and linter before allowing push
+
+# Colors
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
+RESET='\033[0m'
+
+echo -e "${CYAN}🔍 Running pre-push checks...${RESET}"
+echo ""
+
+# Get the current branch
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+# Skip checks for non-critical branches (optional)
+if [[ "$BRANCH" == "feature/"* ]] || [[ "$BRANCH" == "fix/"* ]]; then
+    echo -e "${YELLOW}⚠ Feature/fix branch detected, running quick checks only${RESET}"
+    QUICK_MODE=true
+else
+    QUICK_MODE=false
+fi
+
+# Check 1: Run linter
+echo -e "${CYAN}[1/2] Running linter...${RESET}"
+if ! ruff check src/ tests/; then
+    echo -e "${RED}✗ Lint errors found${RESET}"
+    echo -e "${YELLOW}→ Fix with: make lint-fix${RESET}"
+    exit 1
+fi
+echo -e "${GREEN}✓ Lint check passed${RESET}"
+echo ""
+
+# Check 2: Run tests
+if [ "$QUICK_MODE" = true ]; then
+    echo -e "${CYAN}[2/2] Running quick tests...${RESET}"
+    if ! pytest -x --tb=short -q; then
+        echo -e "${RED}✗ Tests failed${RESET}"
+        exit 1
+    fi
+else
+    echo -e "${CYAN}[2/2] Running all tests...${RESET}"
+    if ! pytest -v --tb=short; then
+        echo -e "${RED}✗ Tests failed${RESET}"
+        exit 1
+    fi
+fi
+echo -e "${GREEN}✓ All tests passed${RESET}"
+echo ""
+
+# If pushing to master, extra checks
+if [ "$BRANCH" = "master" ]; then
+    echo -e "${CYAN}📋 Master branch checks...${RESET}"
+
+    # Check version consistency
+    PYPROJECT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+    LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+
+    if [ -n "$LATEST_TAG" ] && [ "$PYPROJECT_VERSION" != "$LATEST_TAG" ]; then
+        echo -e "${YELLOW}⚠ Version mismatch:${RESET}"
+        echo "  pyproject.toml: $PYPROJECT_VERSION"
+        echo "  Latest tag:     $LATEST_TAG"
+        echo ""
+        echo -e "${YELLOW}→ This is OK if you're about to create a new release${RESET}"
+    fi
+fi
+
+echo -e "${GREEN}✓ All pre-push checks passed!${RESET}"
+exit 0

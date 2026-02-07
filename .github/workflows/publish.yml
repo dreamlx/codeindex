@@ -75,12 +75,24 @@ jobs:
       id: version
       run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-    - name: Extract changelog
-      id: changelog
+    - name: Prepare release notes
+      id: release_notes
       run: |
         VERSION=${{ steps.version.outputs.VERSION }}
-        sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | head -n -1 > release_notes.md
-        cat release_notes.md
+        RELEASE_NOTES_FILE="RELEASE_NOTES_v${VERSION}.md"
+
+        if [ -f "$RELEASE_NOTES_FILE" ]; then
+          echo "Using $RELEASE_NOTES_FILE"
+          cp "$RELEASE_NOTES_FILE" release_notes.md
+        else
+          echo "Warning: $RELEASE_NOTES_FILE not found, extracting from CHANGELOG.md"
+          sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | head -n -1 > release_notes.md
+        fi
+
+        # Preview release notes
+        echo "=== Release Notes Preview ==="
+        head -50 release_notes.md
+        echo "..."
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
@@ -90,3 +102,5 @@ jobs:
         draft: false
         prerelease: false
         token: ${{ secrets.GITHUB_TOKEN }}
+        name: "Release v${{ steps.version.outputs.VERSION }}"
+        tag_name: "v${{ steps.version.outputs.VERSION }}"
