@@ -25,12 +25,17 @@ fi
 
 # Check 1: Run linter
 echo -e "${CYAN}[1/2] Running linter...${RESET}"
-if ! ruff check src/ tests/; then
-    echo -e "${RED}✗ Lint errors found${RESET}"
-    echo -e "${YELLOW}→ Fix with: make lint-fix${RESET}"
-    exit 1
+if command -v ruff &> /dev/null; then
+    if ! ruff check src/ tests/; then
+        echo -e "${RED}✗ Lint errors found${RESET}"
+        echo -e "${YELLOW}→ Fix with: make lint-fix${RESET}"
+        exit 1
+    fi
+    echo -e "${GREEN}✓ Lint check passed${RESET}"
+else
+    echo -e "${YELLOW}⚠ ruff not found, skipping lint check${RESET}"
+    echo -e "${YELLOW}→ Install: pip install ruff${RESET}"
 fi
-echo -e "${GREEN}✓ Lint check passed${RESET}"
 echo ""
 
 # Check 2: Run tests
