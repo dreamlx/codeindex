@@ -12,7 +12,7 @@ maintainers = [
     {name = "codeindex team", email = "noreply@github.com"}
 ]
 keywords = ["ai", "code", "index", "llm", "documentation", "tree-sitter", "code-analysis"]
-urls = {Homepage = "https://github.com/yourusername/codeindex", Documentation = "https://github.com/yourusername/codeindex", Repository = "https://github.com/yourusername/codeindex", Changelog = "https://github.com/yourusername/codeindex/blob/master/CHANGELOG.md"}
+urls = {Homepage = "https://github.com/dreamlx/codeindex", Documentation = "https://github.com/dreamlx/codeindex", Repository = "https://github.com/dreamlx/codeindex", Changelog = "https://github.com/dreamlx/codeindex/blob/master/CHANGELOG.md"}
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
