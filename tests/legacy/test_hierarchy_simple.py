@@ -16,6 +16,7 @@ print(f"Creating test structure in: {test_dir}")
 
 # Clean up first
 import shutil
+
 if test_dir.exists():
     shutil.rmtree(test_dir)
 
@@ -44,8 +45,8 @@ print("✅ Test structure created")
 
 # Now test
 from codeindex.config import Config
-from codeindex.scanner import find_all_directories, scan_directory
 from codeindex.hierarchical import build_directory_hierarchy, create_processing_batches
+from codeindex.scanner import find_all_directories
 
 config = Config()
 config.languages = ["python"]

@@ -7,9 +7,10 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from codeindex.hierarchical import scan_directories_hierarchical, build_directory_hierarchy
-from codeindex.config import Config
 from rich.console import Console
+
+from codeindex.config import Config
+from codeindex.hierarchical import build_directory_hierarchy, scan_directories_hierarchical
 
 console = Console()
 
@@ -36,7 +37,7 @@ def test_hierarchy():
     # Build hierarchy
     dir_info, roots = build_directory_hierarchy(test_dirs)
 
-    print(f"\n📊 Results:")
+    print("\n📊 Results:")
     print(f"  Total directories: {len(dir_info)}")
     print(f"  Root directories: {len(roots)}")
 
@@ -45,12 +46,12 @@ def test_hierarchy():
     for info in dir_info.values():
         level_counts[info.level] = level_counts.get(info.level, 0) + 1
 
-    print(f"\n📏 Levels found:")
+    print("\n📏 Levels found:")
     for level in sorted(level_counts.keys()):
         print(f"  Level {level}: {level_counts[level]} directories")
 
     # Show some examples
-    print(f"\n📝 Example hierarchy:")
+    print("\n📝 Example hierarchy:")
     for root in roots[:3]:
         print(f"\nRoot: {root.name}")
         for child in dir_info[root].children:

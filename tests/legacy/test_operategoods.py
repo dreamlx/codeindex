@@ -2,8 +2,9 @@
 """Debug OperateGoods.class.php symbol filtering."""
 
 from pathlib import Path
-from src.codeindex.parser import parse_file
+
 from src.codeindex.config import Config
+from src.codeindex.parser import parse_file
 from src.codeindex.smart_writer import SmartWriter
 
 # Parse the file
@@ -29,7 +30,7 @@ config = Config.load(config_path)
 writer = SmartWriter(config.indexing)
 filtered_symbols = writer._filter_symbols(result.symbols)
 
-print(f"\n=== After filtering ===")
+print("\n=== After filtering ===")
 print(f"Filtered symbols count: {len(filtered_symbols)}")
 print(f"Adaptive enabled: {config.indexing.symbols.adaptive_symbols.enabled}")
 
@@ -43,11 +44,11 @@ else:
     limit = config.indexing.symbols.max_per_file
     print(f"Fixed limit: {limit}")
 
-print(f"\n=== Final display ===")
+print("\n=== Final display ===")
 print(f"Will display: {min(limit, len(filtered_symbols))} symbols")
 print(f"Will truncate: {max(0, len(filtered_symbols) - limit)} symbols")
 
 # Show first few filtered symbols
-print(f"\n=== First 5 filtered symbols ===")
+print("\n=== First 5 filtered symbols ===")
 for i, sym in enumerate(filtered_symbols[:5]):
     print(f"{i+1}. {sym.name} ({sym.kind})")
