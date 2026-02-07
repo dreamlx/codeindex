@@ -3,7 +3,7 @@
 **创建日期**: 2026-02-07
 **分支**: `feature/epic13-parser-refactoring`
 **当前状态**: 🟡 进行中
-**完成度**: 20% (Phase 1/5)
+**完成度**: 35% (Phase 2.1/5 - 进行中)
 
 ---
 
@@ -12,11 +12,13 @@
 | 阶段 | 状态 | 预计工时 | 实际工时 | 完成日期 |
 |------|------|----------|----------|----------|
 | Phase 1: 基础架构 | ✅ 完成 | 4h | ~4h | 2026-02-07 |
-| Phase 2: 拆分语言模块 | ⏳ 待开始 | 8h | - | - |
+| Phase 2.1: PythonParser | ✅ 完成 | 3h | ~3h | 2026-02-07 |
+| Phase 2.2: PhpParser | ⏳ 待开始 | 2.5h | - | - |
+| Phase 2.3: JavaParser | ⏳ 待开始 | 2.5h | - | - |
 | Phase 3: 重构核心接口 | 📋 计划中 | 3h | - | - |
 | Phase 4: 测试验证 | 📋 计划中 | 4h | - | - |
 | Phase 5: 清理优化 | 📋 计划中 | 2h | - | - |
-| **总计** | **20%** | **21h** | **4h** | - |
+| **总计** | **35%** | **21h** | **7h** | - |
 
 ---
 
@@ -57,9 +59,57 @@ docs/planning/active/
 
 ---
 
-## 🔜 下一步：Phase 2 - 拆分语言模块
+## ✅ Phase 2.1 完成详情 (PythonParser)
 
-### Phase 2.1: 创建 PythonParser (预计 3 小时)
+### 提交记录
+
+1. **44ed3e0** - refactor(parser): Phase 2.1 - Create PythonParser class
+   - 创建 `src/codeindex/parsers/python_parser.py` (~1020 行)
+   - 移动 15 个 Python 特定函数从 `parser.py`
+   - 实现 PythonParser 类（继承 BaseLanguageParser）
+
+2. **3067404** - docs: auto-update README_AI.md (Git Hook)
+   - 自动更新 `src/codeindex/parsers/README_AI.md`
+
+### 已移动的函数
+
+**符号提取** (5个):
+- `_extract_docstring()` - 提取 docstring
+- `_parse_function()` - 解析函数定义
+- `_parse_class()` - 解析类定义
+- `_parse_import()` - 解析 import 语句
+- `_extract_module_docstring()` - 提取模块级 docstring
+
+**调用关系** (10个):
+- `build_alias_map()` → `_build_alias_map()` - 构建别名映射
+- `resolve_alias()` → `_resolve_alias()` - 解析导入别名
+- `_determine_python_call_type()` - 判断调用类型
+- `_extract_call_name()` - 提取调用名称
+- `_parse_python_call()` - 解析单个调用
+- `_extract_python_calls()` - 递归提取调用
+- `_is_simple_decorator()` - 检查简单装饰器
+- `_extract_decorator_name()` - 提取装饰器名称
+- `_extract_decorator_calls()` - 提取装饰器调用
+- `_extract_python_calls_from_tree()` - 从解析树提取所有调用
+
+### 实现的方法
+
+- `extract_symbols(tree, source_bytes)` - 提取符号
+- `extract_imports(tree, source_bytes)` - 提取导入
+- `extract_calls(tree, source_bytes, symbols, imports)` - 提取调用关系
+- `extract_inheritances(tree, source_bytes)` - 提取继承关系
+- `parse(path)` - 解析文件（override，添加 module_docstring）
+
+### 验证结果
+
+- ✅ 35 个核心测试通过（parser, lazy_loading, call_integration, legacy）
+- ✅ Python 语法验证通过
+- ✅ Pre-commit 检查通过 (ruff lint, debug check)
+- ✅ Git hook 自动更新 README_AI.md
+
+---
+
+## 🔜 下一步：Phase 2.2 - 创建 PhpParser (预计 2.5 小时)
 
 **任务**:
 1. 创建 `src/codeindex/parsers/python_parser.py`
@@ -119,8 +169,14 @@ class PythonParser(BaseLanguageParser):
 - Phase 1 今天完成，Phase 2-5 分多次完成
 - 降低一次性大改动的风险
 
+**今日继续**:
+- ✅ Phase 2.1: 创建 PythonParser (完成，~3小时)
+  - 创建 python_parser.py (1020 行)
+  - 移动 15 个 Python 函数
+  - 35 个测试通过
+
 **下次继续**:
-- Phase 2.1: 创建 PythonParser (~3 小时)
+- Phase 2.2: 创建 PhpParser (~2.5 小时)
 
 ---
 
@@ -171,12 +227,14 @@ src/codeindex/
 - [x] 测试基础导入
 - [x] 提交代码
 
-### Phase 2 ⏳
-- [ ] 创建 PythonParser
-- [ ] 创建 PhpParser
-- [ ] 创建 JavaParser
-- [ ] 运行语言特定测试
-- [ ] 提交代码
+### Phase 2 🔄
+- [x] 创建 PythonParser (~1020 行)
+- [ ] 创建 PhpParser (~1000 行)
+- [ ] 创建 JavaParser (~1000 行)
+- [x] 运行 Python 测试 (35 个通过)
+- [ ] 运行 PHP 测试
+- [ ] 运行 Java 测试
+- [x] 提交 Phase 2.1 代码
 
 ### Phase 3 📋
 - [ ] 简化 parser.py 为统一入口
@@ -208,6 +266,6 @@ src/codeindex/
 
 ---
 
-**最后更新**: 2026-02-07 22:30
+**最后更新**: 2026-02-07 23:45
 **更新人**: Claude Sonnet 4.5
-**下次继续**: Phase 2.1 - 创建 PythonParser
+**下次继续**: Phase 2.2 - 创建 PhpParser
