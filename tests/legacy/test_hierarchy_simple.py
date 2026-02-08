@@ -15,7 +15,7 @@ test_dir = here / "test_hierarchical_test"
 print(f"Creating test structure in: {test_dir}")
 
 # Clean up first
-import shutil
+import shutil  # noqa: E402
 
 if test_dir.exists():
     shutil.rmtree(test_dir)
@@ -44,9 +44,12 @@ parallel_workers: 4
 print("✅ Test structure created")
 
 # Now test
-from codeindex.config import Config
-from codeindex.hierarchical import build_directory_hierarchy, create_processing_batches
-from codeindex.scanner import find_all_directories
+from codeindex.config import Config  # noqa: E402
+from codeindex.hierarchical import (  # noqa: E402
+    build_directory_hierarchy,
+    create_processing_batches,
+)
+from codeindex.scanner import find_all_directories  # noqa: E402
 
 config = Config()
 config.languages = ["python"]

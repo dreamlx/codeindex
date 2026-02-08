@@ -75,7 +75,10 @@ def test_codeindex_with_subdirs():
                     console.print(f"{info.path.name}/ (level {info.level})")
                 else:
                     prefix = "└── " if level > 0 else ""
-                    console.print(f"{indent}{prefix}{info.path.name}/ (level {info.level}, {len(info.children)} children)")
+                    console.print(
+                        f"{indent}{prefix}{info.path.name}/ "
+                        f"(level {info.level}, {len(info.children)} children)"
+                    )
 
                 for child in sorted(info.children, key=lambda p: p.name):
                     if len(info.children) <= 10 or level == 0:  # Limit output
