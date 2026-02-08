@@ -47,6 +47,14 @@ class PhpParser(BaseLanguageParser):
         # Parse with tree-sitter
         tree = self.parser.parse(source_bytes)
 
+        # Check for syntax errors (tree-sitter doesn't throw exceptions)
+        if tree.root_node.has_error:
+            return ParseResult(
+                path=path,
+                error="Syntax error in source file",
+                file_lines=file_lines,
+            )
+
         # Extract all information
         try:
             symbols = self.extract_symbols(tree, source_bytes)
