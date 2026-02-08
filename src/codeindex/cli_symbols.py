@@ -191,7 +191,7 @@ def index(root: Path, output: str):
 
     # Write file
     output_path = root / output
-    output_path.write_text(content)
+    output_path.write_text(content, encoding="utf-8")
     console.print(f"[green]✓ Created:[/green] {output_path}")
     console.print(f"[dim]Indexed {len(indexed_dirs)} modules[/dim]")
 

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Windows Cross-Platform Compatibility** (Epic: Windows Platform Support)
+  - **UTF-8 Encoding Fix** (#7 - High Priority ⭐)
+    - Fixed garbled text when README_AI.md created on Windows is viewed on Linux/macOS
+    - Added explicit `encoding="utf-8"` to all file write operations
+    - Affected files: `writer.py`, `hierarchical.py`, `config.py`, `cli_symbols.py`
+    - Ensures cross-platform compatibility for all generated files
+    - Related: Epic #10 (Windows Platform Compatibility)
+
 ### Changed
 
 - **Parser Modularization** (Epic 13 - Major Refactoring ⭐)
