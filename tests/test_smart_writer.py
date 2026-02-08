@@ -202,7 +202,8 @@ def test_smart_writer_symbol_filtering():
             Symbol(name="User::create", kind="method", signature="public function create()"),
             Symbol(name="User::getName", kind="method", signature="public function getName()"),  # Should be excluded
             Symbol(name="User::setName", kind="method", signature="public function setName()"),  # Should be excluded
-            Symbol(name="User::delete", kind="method", signature="private function delete()"),   # Should be excluded (private)
+            # Should be excluded (private)
+            Symbol(name="User::delete", kind="method", signature="private function delete()"),
             Symbol(name="User::update", kind="method", signature="public function update()"),
         ]
 
@@ -241,7 +242,8 @@ def test_smart_writer_size_limit():
                 name=f"Function{i}",
                 kind="function",
                 signature=f"function function{i}(string $arg1, string $arg2, string $arg3): array",
-                docstring=f"This is a long docstring for function {i} that contains a lot of text to increase the size.",
+                docstring=f"This is a long docstring for function {i} "
+                f"that contains a lot of text to increase the size.",
             )
             for i in range(100)
         ]

@@ -373,7 +373,50 @@
 
 ---
 
-### v0.13.0 - TypeScript Language Support (Target: 2026-03-31)
+### v0.13.0 - Single File Parse Command ✅ (Target: 2026-02-10)
+
+**Theme**: Tool integration and architectural completeness
+
+**Epic**: Epic 12 - Single File Parse Command
+
+**Foundation**: Builds on Epic 11 Call Relationships (v0.12.0)
+
+**What Will Be Delivered**:
+- ✅ `codeindex parse <file>` CLI command for single file parsing
+- ✅ JSON output format (consistent with scan --output json)
+- ✅ Console output format (simplified, human-readable)
+- ✅ Multi-language support (Python, PHP, Java)
+- ✅ Framework route extraction (ThinkPHP, Spring)
+- ✅ Complete documentation and integration examples
+
+**Success Criteria**:
+- [ ] Support Python, PHP, Java single file parsing
+- [ ] JSON output includes all ParseResult fields (symbols, imports, namespace, inheritance, calls)
+- [ ] Error handling (file not found, unsupported language, parse failure)
+- [ ] Performance: <0.1s for small files (<1000 lines), <1s for large files (5000+ lines)
+- [ ] 20+ tests passing (90%+ coverage)
+- [ ] Documentation complete (README + CLAUDE.md + examples)
+
+**Technical Approach**:
+- Reuse existing `parser.py` logic (no new parsers)
+- CLI module: `src/codeindex/cli_parse.py` (~150 lines)
+- Output formats: JSON (default) via `to_dict()`, Console (new function)
+- Error codes: 0=success, 1=file not found, 2=unsupported, 3=parse failure
+
+**Tests**: Target 20+ new tests in `tests/test_cli_parse.py`
+
+**Documentation**:
+- Epic plan: `docs/planning/active/epic12-single-file-parse.md`
+- Development checklist: `docs/planning/active/epic12-development-checklist.md`
+- README.md: Parse command usage
+- CLAUDE.md: Integration guide for tool developers
+- Example: `examples/loomgraph-integration.sh`
+
+**See**: `docs/planning/active/epic12-single-file-parse.md`
+
+---
+
+### v0.14.0 - TypeScript Language Support (Target: 2026-03-31)
 
 **Theme**: Web development ecosystem foundation
 
@@ -540,16 +583,16 @@
 
 | Epic | Version | Priority | Status |
 |------|---------|----------|--------|
-| **Epic 8** | v0.13.0 | P0 | 📋 Planned (TypeScript Language Support) |
+| **Epic 12** | v0.13.0 | P0 | 🔄 In Progress (Single File Parse Command) |
 
 ### Future Epics
 
 | Epic | Version | Priority | Status |
 |------|---------|----------|--------|
-| **Epic 8** | v0.13.0 | P0 | 📋 Planned (TypeScript Support) |
-| **Epic 6 (P3.2-P3.3)** | v0.14.0 | P1 | 📋 Planned (Laravel, FastAPI Routes) |
-| **Epic 5** | v0.15.0+ | P2 | 📋 Deferred (Intelligent Branch Management) |
-| **Epic 12** | v0.15.0+ | P1 | 📋 Planned (Real-time Indexing) |
+| **Epic 8** | v0.14.0 | P0 | 📋 Planned (TypeScript Support) |
+| **Epic 6 (P3.2-P3.3)** | v0.15.0 | P1 | 📋 Planned (Laravel, FastAPI Routes) |
+| **Epic 5** | v0.16.0+ | P2 | 📋 Deferred (Intelligent Branch Management) |
+| **Epic 13** | v0.16.0+ | P1 | 📋 Planned (Real-time Indexing) |
 
 **See**: Individual epic planning docs in `docs/planning/epicN-*.md`
 

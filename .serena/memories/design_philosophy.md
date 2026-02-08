@@ -1,5 +1,20 @@
 # codeindex 设计哲学与架构原则
 
+**⚠️ 重要更新**: 完整的设计哲学文档已迁移到专门文件
+
+**新位置**: `docs/architecture/design-philosophy.md`
+
+**何时阅读完整文档**:
+- 添加新语言支持 (Java, Go, TypeScript)
+- 实现涉及 ParseResult 的新功能
+- 性能调优或优化讨论
+- 架构决策 (AI vs 程序化方法)
+- 质疑现有设计选择
+
+---
+
+# 快速参考 (核心原则)
+
 ## 核心设计理念
 
 ### "ParseResult是可编程的数据结构，不仅仅是给AI看的文本"
