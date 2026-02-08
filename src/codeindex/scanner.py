@@ -52,20 +52,69 @@ def get_language_extensions(languages: list[str]) -> set[str]:
 
 
 def should_exclude(path: Path, exclude_patterns: list[str], base_path: Path) -> bool:
-    """Check if path matches any exclude pattern."""
-    # Resolve both paths to handle symlinks (e.g., /var -> /private/var on macOS)
-    rel_path = str(path.resolve().relative_to(base_path.resolve()))
+    """Check if path matches any exclude pattern.
+
+    Optimized for Windows path length limitations by using relative paths
+    when possible, falling back to absolute paths only when necessary.
+
+    Args:
+        path: Path to check for exclusion
+        exclude_patterns: List of glob patterns to match against
+        base_path: Base path for relative path calculation
+
+    Returns:
+        True if path matches any exclude pattern, False otherwise
+    """
+    # Try relative path first (Windows path length optimization)
+    # This avoids unnecessary .resolve() calls that make paths much longer
+    try:
+        rel_path = str(path.relative_to(base_path))
+    except ValueError:
+        # Fall back to absolute if paths are incompatible
+        # (e.g., different drives on Windows, or one is not subpath of other)
+        try:
+            # Resolve both paths to handle symlinks (e.g., /var -> /private/var on macOS)
+            rel_path = str(path.resolve().relative_to(base_path.resolve()))
+        except ValueError:
+            # Paths are completely incompatible, use string comparison
+            rel_path = str(path)
+
+    # Normalize path separators for consistent pattern matching across platforms
+    rel_path = rel_path.replace("\\", "/")
 
     for pattern in exclude_patterns:
+        # Direct pattern match
         if fnmatch.fnmatch(rel_path, pattern):
             return True
         if fnmatch.fnmatch(str(path), pattern):
             return True
-        # Check if any parent matches
+
+        # Enhanced ** handling: ** should match 0 or more path segments
         if "**" in pattern:
+            # Try matching with ** as a wildcard for any number of segments
             simple_pattern = pattern.replace("**", "*")
             if fnmatch.fnmatch(rel_path, simple_pattern):
                 return True
+
+            # Check if path contains any component that matches the pattern
+            # e.g., **/__pycache__/** should match any path containing __pycache__
+            # Extract the core pattern (remove leading/trailing **)
+            core_pattern = pattern.strip("*/")
+            if core_pattern and core_pattern in rel_path.split("/"):
+                return True
+
+            # Also check if rel_path matches when ** is treated as zero segments
+            # e.g., **/__pycache__/** should match __pycache__/*, __pycache__, etc.
+            if pattern.startswith("**/"):
+                suffix_pattern = pattern[3:]  # Remove leading **/
+                # Check if rel_path matches the suffix pattern
+                if fnmatch.fnmatch(rel_path, suffix_pattern):
+                    return True
+                # Also match just the directory name without trailing /**
+                if suffix_pattern.endswith("/**"):
+                    dir_pattern = suffix_pattern[:-3]  # Remove trailing /**
+                    if fnmatch.fnmatch(rel_path, dir_pattern):
+                        return True
 
     return False
 
