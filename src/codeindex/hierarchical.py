@@ -412,7 +412,7 @@ def generate_enhanced_fallback_readme(
 
     # Write file
     try:
-        with open(output_path, "w") as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
 
         return type('WriteResult', (), {
