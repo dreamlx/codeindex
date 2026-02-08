@@ -1,5 +1,12 @@
-# codeindex configuration example
+# codeindex configuration example - Complete reference
+# This is the COMPLETE configuration with all available options.
+# Copy this file to your project root as `.codeindex.yaml` and customize as needed.
+
 version: 1
+
+# ══════════════════════════════════════════════════════════════
+# Core Settings
+# ══════════════════════════════════════════════════════════════
 
 # AI CLI command template
 # {prompt} will be replaced with the actual prompt
@@ -9,7 +16,6 @@ version: 1
 #   opencode run "{prompt}"
 #   gemini "{prompt}"
 #   ollama run llama3 "{prompt}"
-
 ai_command: 'claude -p "{prompt}" --allowedTools "Read"'
 
 # Directories to scan (relative to project root)
@@ -32,12 +38,74 @@ exclude:
 # Supported languages
 languages:
   - python
-  - php     # PHP support added in v0.3+
+  - php     # PHP support (v0.3+)
+  - java    # Java support (v0.7+, Epic 7)
 
 # Output file name
 output_file: README_AI.md
 
-# Docstring extraction (Epic 9, v0.4+)
+# Parallel processing settings
+parallel_workers: 8    # Number of concurrent workers
+batch_size: 50         # Files per batch
+
+# ══════════════════════════════════════════════════════════════
+# SmartWriter - Tiered Documentation (v0.1.0+)
+# ══════════════════════════════════════════════════════════════
+
+# Smart indexing generates tiered documentation optimized for AI agents
+indexing:
+  max_readme_size: 51200      # 50KB limit per README_AI.md
+  root_level: "overview"       # Root directory: overview level
+  module_level: "navigation"   # Module directories: navigation level
+  leaf_level: "detailed"       # Leaf directories: detailed level
+
+# ══════════════════════════════════════════════════════════════
+# Symbol Extraction (v0.2.0+)
+# ══════════════════════════════════════════════════════════════
+
+symbols:
+  # Adaptive symbol extraction - Dynamically adjusts symbol limits based on file size
+  adaptive_symbols:
+    enabled: true           # Enable dynamic symbol limits
+    min_symbols: 5          # Minimum for tiny files (<100 lines)
+    max_symbols: 150        # Maximum for huge files (>8000 lines)
+
+    # File size thresholds (lines)
+    thresholds:
+      tiny: 100             # <100 lines → 5 symbols
+      small: 500            # 100-500 lines → 15 symbols
+      medium: 1500          # 500-1500 lines → 30 symbols
+      large: 3000           # 1500-3000 lines → 50 symbols
+      xlarge: 5000          # 3000-5000 lines → 80 symbols
+      huge: 8000            # 5000-8000 lines → 120 symbols
+      mega: null            # >8000 lines → 150 symbols
+
+    # Symbol limits per category
+    limits:
+      tiny: 5
+      small: 15
+      medium: 30
+      large: 50
+      xlarge: 80
+      huge: 120
+      mega: 150
+
+  # Global symbol index (PROJECT_SYMBOLS.md)
+  # RECOMMENDATION: Disable for large projects (>100 files)
+  # Reasons:
+  #   - Can become very large (>400KB for 250+ directories)
+  #   - Limited value for AI-assisted development
+  #   - Better alternatives:
+  #     * PROJECT_INDEX.md provides module navigation (26KB typical)
+  #     * Each README_AI.md contains directory-specific symbols
+  #     * Serena MCP's find_symbol() for precise symbol lookup
+  project_symbols:
+    enabled: false          # Disable PROJECT_SYMBOLS.md generation
+
+# ══════════════════════════════════════════════════════════════
+# AI Docstring Extraction (Epic 9, v0.4+)
+# ══════════════════════════════════════════════════════════════
+
 # AI-powered docstring extraction and normalization for multi-language support
 docstrings:
   # Mode: off | hybrid | all-ai
@@ -53,39 +121,86 @@ docstrings:
   # Prevents runaway costs during large scans
   cost_limit: 1.0
 
-# Symbol extraction settings
-symbols:
-  # Adaptive symbol extraction (v0.2.0+)
-  # Dynamically adjusts symbol limits based on file size
-  adaptive_symbols:
-    enabled: true           # Enable dynamic symbol limits
-    min_symbols: 5          # Minimum for tiny files (<100 lines)
-    max_symbols: 150        # Maximum for huge files (>8000 lines)
-    thresholds:             # File size thresholds (lines)
-      tiny: 100             # <100 lines → 5 symbols
-      small: 500            # 100-500 lines → 15 symbols
-      medium: 1500          # 500-1500 lines → 30 symbols
-      large: 3000           # 1500-3000 lines → 50 symbols
-      xlarge: 5000          # 3000-5000 lines → 80 symbols
-      huge: 8000            # 5000-8000 lines → 120 symbols
-      mega: null            # >8000 lines → 150 symbols
-    limits:                 # Symbol limits per category
-      tiny: 5
-      small: 15
-      medium: 30
-      large: 50
-      xlarge: 80
-      huge: 120
-      mega: 150
+# ══════════════════════════════════════════════════════════════
+# Incremental Updates (v0.1.0+)
+# ══════════════════════════════════════════════════════════════
 
-  # Global symbol index (PROJECT_SYMBOLS.md)
-  # RECOMMENDATION: Disable for large projects (>100 files)
-  # Reasons:
-  #   - Can become very large (>400KB for 250+ directories)
-  #   - Limited value for AI-assisted development
-  #   - Better alternatives exist:
-  #     * PROJECT_INDEX.md provides module navigation (26KB typical)
-  #     * Each README_AI.md contains directory-specific symbols
-  #     * Serena MCP's find_symbol() for precise symbol lookup
-  project_symbols:
-    enabled: false          # Disable PROJECT_SYMBOLS.md generation
+# Incremental indexing - Only update changed directories
+incremental:
+  enabled: true              # Enable incremental mode
+
+  # Thresholds for incremental behavior
+  thresholds:
+    skip_lines: 5            # Skip if <5 lines changed
+    current_only: 50         # Only update current dir if <50 lines
+    suggest_full: 200        # Suggest full scan if >200 lines
+
+# ══════════════════════════════════════════════════════════════
+# Git Hooks Integration (v0.7.0+, Story 6)
+# ══════════════════════════════════════════════════════════════
+
+# Automated code quality and documentation updates via Git Hooks
+hooks:
+  # Pre-commit hook - Code quality checks
+  pre_commit:
+    enabled: true            # Enable pre-commit checks
+    checks:
+      - lint                 # Run ruff lint
+      - debug               # Check for debug statements
+
+  # Post-commit hook - Auto-update README_AI.md
+  post_commit:
+    # Mode: auto | disabled | async | sync | prompt
+    #   auto:     Smart detection (≤2 dirs = sync, >2 = async)
+    #   disabled: Completely disabled
+    #   async:    Always non-blocking (background updates)
+    #   sync:     Always blocking (immediate updates)
+    #   prompt:   Reminder only, no auto-execution
+    mode: auto
+
+    # Auto mode threshold: ≤N directories = sync, >N = async
+    max_dirs_sync: 2
+
+    enabled: true            # Master switch
+
+    # Log file location
+    log_file: ~/.codeindex/hooks/post-commit.log
+
+  # Pre-push hook - Final quality gate
+  pre_push:
+    enabled: false           # Disabled by default (placeholder for future)
+
+# ══════════════════════════════════════════════════════════════
+# Advanced Settings (Optional)
+# ══════════════════════════════════════════════════════════════
+
+# AI CLI timeout (seconds)
+# ai_timeout: 120
+
+# Custom prompt template (advanced users only)
+# prompt_template: |
+#   You are analyzing a code directory. Generate comprehensive documentation.
+#
+#   Directory: {directory}
+#   Files and symbols: {content}
+#
+#   Generate a README_AI.md with:
+#   1. Overview of the directory's purpose
+#   2. Key components and their relationships
+#   3. Important functions/classes with brief descriptions
+
+# ══════════════════════════════════════════════════════════════
+# Configuration Version History
+# ══════════════════════════════════════════════════════════════
+
+# v0.1.0: Initial release (ai_command, include, exclude, languages)
+# v0.2.0: Added symbols.adaptive_symbols (Epic 2)
+# v0.3.0: Added PHP support, SmartWriter indexing
+# v0.4.0: Added docstrings (Epic 9)
+# v0.5.0: Added PROJECT_SYMBOLS control
+# v0.7.0: Added hooks (Git Hooks integration, Story 6)
+# v0.12.0: Added java support (Epic 7)
+# v0.13.0: Parser modularization (Epic 13)
+
+# For configuration upgrade guide, see:
+# docs/guides/configuration-changelog.md
