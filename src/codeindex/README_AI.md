@@ -54,3 +54,12 @@
 - **tech_debt.py** - DebtSeverity, DebtIssue, DebtAnalysisResult
 - **tech_debt_formatters.py** - ReportFormatter, ConsoleFormatter, MarkdownFormatter
 - **writer.py** - WriteResult, format_symbols_for_prompt, format_imports_for_prompt
+
+---
+
+## Recent Changes
+
+**Commit ``**: 
+
+Changed files:
+- `parser.py`
