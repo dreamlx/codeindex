@@ -1,12 +1,13 @@
 # codeindex Strategic Roadmap
 
-**Last Updated**: 2026-02-07
-**Current Version**: v0.12.0
-**Vision**: Universal code indexing platform for AI-assisted development
+**Last Updated**: 2026-02-08
+**Current Version**: v0.13.0
+**Vision**: Universal Code Parser - Best-in-class multi-language AST parser for AI-assisted development
+**Positioning**: Focused on code parsing and structured data extraction, not AI analysis
 
 ---
 
-## 📍 Current Status (v0.12.0)
+## 📍 Current Status (v0.13.0)
 
 ### ✅ Completed Capabilities
 
@@ -26,11 +27,15 @@
 | **LoomGraph Integration (PHP)** | v0.10.0 | ✅ Inheritance + Import Alias |
 | **Lazy Loading Architecture** | v0.11.0 | ✅ Optional language parsers |
 | **Call Relationships Extraction** | v0.12.0 | ✅ Python/Java/PHP calls |
+| **Single File Parse Command** | v0.13.0 | ✅ CLI parse tool integration |
+| **Parser Modularization** | v0.13.0 | ✅ 3622→374 lines refactoring |
+| **Windows Platform Compatibility** | v0.13.0 | ✅ UTF-8 + Path optimization |
 
 ### 📚 Version History
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| **v0.13.0** | 2026-02-08 | 🚀 Single File Parse + Parser Refactoring + Windows Support |
 | **v0.12.0** | 2026-02-07 | 🔗 Call Relationships Extraction (Python/Java/PHP + LoomGraph) |
 | **v0.11.0** | 2026-02-06 | 🏗️ Lazy Loading Architecture (Optional Language Parsers) |
 | **v0.10.0** | 2026-02-06 | 🎯 PHP LoomGraph Integration (Inheritance + Import Alias) |
@@ -53,24 +58,27 @@
 
 **2026 Priorities** (Ranked by Impact):
 
-1. 🔥 **Multi-Language Support** (v0.7.0 - v0.8.0)
-   - Java, TypeScript, Go, Rust
+1. 🔥 **Multi-Language Support** (v0.14.0 - v0.18.0)
+   - TypeScript/JavaScript, Go, Rust, C#
    - Enterprise adoption enabler
-   - Foundation: AI docstring processor (v0.6.0 ✅)
+   - Foundation: Parser modularization (Epic 13 ✅)
+   - Completed: Python (v0.1.0 ✅), PHP (v0.5.0 ✅), Java (v0.7.0-v0.8.0 ✅)
 
-2. 🚀 **Framework Intelligence** (v0.5.0 - v0.9.0)
-   - Spring, Laravel, FastAPI, Django
+2. 🚀 **Framework Intelligence** (v0.16.0)
+   - Express, Laravel, FastAPI, Django
    - Route extraction + business logic mapping
-   - Started: ThinkPHP routes (v0.5.0 ✅)
+   - Completed: ThinkPHP (v0.5.0 ✅), Spring (v0.8.0 ✅)
 
-3. 📊 **Real-time Indexing** (v0.7.0+)
-   - Watch mode, incremental updates
-   - IDE integration (LSP)
+3. 📊 **Cross-Platform Support** (v0.13.1+)
+   - Windows, macOS, Linux compatibility
+   - CI/CD automation across platforms
+   - Foundation: Windows compatibility (Epic 14 ✅)
 
-4. 🤖 **Advanced AI Features** (v0.8.0+)
-   - Code similarity search
-   - Dependency impact analysis
-   - Automated refactoring suggestions
+4. 🔗 **Tool Integration** (v0.13.0+)
+   - Single file parsing for tool chains
+   - JSON output for downstream tools
+   - LoomGraph integration (knowledge graph)
+   - Completed: parse command (Epic 12 ✅)
 
 ---
 
@@ -373,123 +381,246 @@
 
 ---
 
-### v0.13.0 - Single File Parse Command ✅ (Target: 2026-02-10)
+### v0.13.0 - Tool Integration & Platform Support ✅ (Released: 2026-02-08)
 
-**Theme**: Tool integration and architectural completeness
+**Theme**: Architectural completeness and cross-platform compatibility
 
-**Epic**: Epic 12 - Single File Parse Command
+**Epics**: Epic 12, 13, 14
 
-**Foundation**: Builds on Epic 11 Call Relationships (v0.12.0)
+**What Was Delivered**:
 
-**What Will Be Delivered**:
+#### Epic 12: Single File Parse Command ✅
 - ✅ `codeindex parse <file>` CLI command for single file parsing
 - ✅ JSON output format (consistent with scan --output json)
-- ✅ Console output format (simplified, human-readable)
 - ✅ Multi-language support (Python, PHP, Java)
 - ✅ Framework route extraction (ThinkPHP, Spring)
 - ✅ Complete documentation and integration examples
+- ✅ 20+ tests passing (100% success rate)
 
-**Success Criteria**:
-- [ ] Support Python, PHP, Java single file parsing
-- [ ] JSON output includes all ParseResult fields (symbols, imports, namespace, inheritance, calls)
-- [ ] Error handling (file not found, unsupported language, parse failure)
-- [ ] Performance: <0.1s for small files (<1000 lines), <1s for large files (5000+ lines)
-- [ ] 20+ tests passing (90%+ coverage)
-- [ ] Documentation complete (README + CLAUDE.md + examples)
+#### Epic 13: Parser Modularization ✅
+- ✅ Refactored monolithic `parser.py` (3622 lines → 374 lines, -89.7%)
+- ✅ Created modular `parsers/` package:
+  - `BaseLanguageParser` abstract base class (138 lines)
+  - `PythonParser` for Python parsing (1020 lines)
+  - `PhpParser` for PHP parsing (1094 lines)
+  - `JavaParser` for Java parsing (1265 lines)
+  - Shared utilities in `utils.py` (53 lines)
+- ✅ Benefits: Improved maintainability, enhanced extensibility, reduced technical debt
+- ✅ 100% backward compatible, all 931 tests passing
 
-**Technical Approach**:
-- Reuse existing `parser.py` logic (no new parsers)
-- CLI module: `src/codeindex/cli_parse.py` (~150 lines)
-- Output formats: JSON (default) via `to_dict()`, Console (new function)
-- Error codes: 0=success, 1=file not found, 2=unsupported, 3=parse failure
+#### Epic 14: Windows Platform Compatibility ✅
+- ✅ UTF-8 encoding fix for cross-platform files
+  - Fixed 5 files: `writer.py`, `hierarchical.py`, `config.py`, `cli_symbols.py`
+  - Ensures README_AI.md files work across Windows/Linux/macOS
+- ✅ Windows path length optimization (Issue #8)
+  - 40-60% path length reduction using relative paths
+  - Fixed `should_exclude()` function
+  - Enhanced `**` glob pattern matching
+  - 13 new tests added, all 944 tests passing
+- ✅ Fixed existing bug: `**/__pycache__/**` pattern now works correctly
 
-**Tests**: Target 20+ new tests in `tests/test_cli_parse.py`
+**Success Criteria** (All Achieved):
+- [x] Single file parsing for Python/PHP/Java ✅
+- [x] Parser modularization (resolve large file technical debt) ✅
+- [x] Windows UTF-8 encoding compatibility ✅
+- [x] Windows path length issue resolved ✅
+- [x] No regressions (944/944 tests passing) ✅
+
+**Tests**: 944 passing (+27 new tests), 11 skipped
 
 **Documentation**:
-- Epic plan: `docs/planning/active/epic12-single-file-parse.md`
-- Development checklist: `docs/planning/active/epic12-development-checklist.md`
-- README.md: Parse command usage
-- CLAUDE.md: Integration guide for tool developers
-- Example: `examples/loomgraph-integration.sh`
+- Release notes: `CHANGELOG.md` v0.13.0 entry
+- Epic plans: `docs/planning/active/epic12-*.md`, `epic13-*.md`
+- Analysis: `docs/development/windows-*-analysis-*.md`
 
-**See**: `docs/planning/active/epic12-single-file-parse.md`
+**See**: CHANGELOG.md v0.13.0 entry
 
 ---
 
-### v0.14.0 - TypeScript Language Support (Target: 2026-03-31)
+### v0.13.1 - Windows CI Testing (Target: 2026-02-10)
+
+**Theme**: Complete Windows platform support
+
+**Epic**: Epic 10 (完成) - Windows Platform Compatibility
+
+**What Will Be Delivered**:
+- [ ] Add GitHub Actions Windows CI workflow
+- [ ] Test on actual Windows environment (Windows 10, Windows 11)
+- [ ] Verify UTF-8 encoding fix on Windows
+- [ ] Verify path length optimization on Windows
+- [ ] Cross-platform test suite (Windows, macOS, Linux)
+
+**Success Criteria**:
+- [ ] CI runs on Windows, macOS, Linux
+- [ ] All 944 tests pass on all platforms
+- [ ] UTF-8 files work correctly across platforms
+- [ ] Deep directory structures work on Windows
+
+**Tests**: Existing 944 tests, verify cross-platform
+
+**Documentation**:
+- Update README with Windows CI badge
+- Issue #9: Windows testing and CI
+
+**See**: `docs/planning/active/` (TBD)
+
+---
+
+### v0.14.0 - TypeScript/JavaScript Language Support (Target: 2026-03-31)
 
 **Theme**: Web development ecosystem foundation
 
-**Epic**: Epic 8 - TypeScript Support
+**Epic**: Epic 15 - TypeScript/JavaScript Support
 
 **Key Features**:
 - TypeScript/JavaScript parser (tree-sitter-typescript)
-- JSDoc extraction (AI-powered)
+- JSDoc extraction (AI-powered docstring processor)
 - React component detection
 - TypeScript type annotations parsing
-- LoomGraph Integration (inheritance + import alias)
+- LoomGraph Integration (inheritance + import alias + calls)
 
 **Success Criteria**:
-- [ ] Parse 95%+ valid TypeScript code
+- [ ] Parse 95%+ valid TypeScript/JavaScript code
 - [ ] Extract JSDoc comments with AI processor
 - [ ] Detect React components (@Component, hooks)
 - [ ] Generate useful README_AI.md for TS modules
+- [ ] 50+ tests passing (90%+ coverage)
+
+**Estimated Duration**: 3-4 weeks
+
+**See**: Planning TBD (`docs/planning/active/epic15-typescript-support.md`)
+
+---
+
+### v0.15.0 - Go Language Support (Target: 2026-05-31)
+
+**Theme**: Cloud-native ecosystem
+
+**Epic**: Epic 16 - Go Support
+
+**Key Features**:
+- Go parser (tree-sitter-go)
+- Package/Module analysis
+- Interface implementation relationships
+- GoDoc extraction
+- LoomGraph Integration (inheritance + import alias + calls)
+
+**Success Criteria**:
+- [ ] Parse 95%+ valid Go code
+- [ ] Extract GoDoc comments
+- [ ] Detect interface implementations
+- [ ] Generate useful README_AI.md for Go packages
+- [ ] 40+ tests passing (90%+ coverage)
+
+**Estimated Duration**: 2-3 weeks
 
 **See**: Planning TBD
 
 ---
 
-### v0.14.0 - Framework Intelligence Expansion (Target: 2026-04-30)
+### v0.16.0 - Framework Intelligence Expansion (Target: 2026-07-31)
 
 **Theme**: Framework-aware code understanding
 
+**Epic**: Epic 17 - Framework Routes Expansion
+
 **Key Features**:
-- Express.js route extraction (TypeScript)
-- Spring Boot @Service, @Repository mapping
-- Business logic pattern recognition
-- API endpoint dependency graph
-- Cross-framework API comparison
+- Express.js route extraction (TypeScript/JavaScript)
+- Laravel route extraction (PHP)
+- FastAPI route extraction (Python)
+- Django route extraction (Python)
 
 **Success Criteria**:
-- [ ] 8+ frameworks supported
-- [ ] Business context extraction (auth, payment, orders)
-- [ ] API documentation auto-generation
+- [ ] 8+ frameworks supported (ThinkPHP, Spring, Express, Laravel, FastAPI, Django, Gin, ASP.NET)
+- [ ] Consistent route extraction API
+- [ ] Framework-specific documentation
+
+**Estimated Duration**: 1-2 weeks per framework
+
+**See**: Planning TBD
 
 ---
 
-### v0.12.0 - Real-time & IDE Integration (Target: 2026-09-01)
+### v0.17.0 - Rust Language Support (Target: 2026-09-30)
 
-**Theme**: Developer productivity
+**Theme**: Systems programming
+
+**Epic**: Epic 19 - Rust Support
 
 **Key Features**:
-- Watch mode (--watch)
-- Incremental indexing (git diff based)
-- LSP server implementation
-- VS Code extension
-- JetBrains plugin
+- Rust parser (tree-sitter-rust)
+- Cargo project analysis
+- Trait implementation relationships
+- RustDoc extraction
+- LoomGraph Integration
 
 **Success Criteria**:
-- [ ] <100ms incremental update on file change
-- [ ] IDE integration with 10k+ installs
-- [ ] Real-time symbol search
+- [ ] Parse 95%+ valid Rust code
+- [ ] Extract RustDoc comments
+- [ ] Detect trait implementations
+- [ ] 40+ tests passing
+
+**Estimated Duration**: 2-3 weeks
 
 ---
 
-### v1.0.0 - Production Ready (Target: 2026-12-01)
+### v0.18.0 - C# Language Support (Target: 2026-11-30)
 
-**Theme**: Stability, performance, ecosystem
+**Theme**: .NET ecosystem
 
 **Key Features**:
-- Performance optimization (10x faster)
-- Distributed indexing (multi-core, multi-machine)
-- Plugin ecosystem (community extensions)
-- Enterprise features (team collaboration, analytics)
-- Comprehensive documentation
+- C# parser (tree-sitter-c-sharp)
+- .NET project analysis
+- Interface implementation relationships
+- XML documentation extraction
+
+**Estimated Duration**: 2-3 weeks
+
+---
+
+### v1.0.0 - Production Ready (Target: 2026-12-31)
+
+**Theme**: Universal Code Parser - Stability, performance, completeness
+
+**Positioning**: Best-in-class multi-language AST parser and structured data extractor
+
+**What v1.0.0 Means**:
+
+**Must Have** (Core Features):
+- ✅ **8+ Languages Supported** (Python, PHP, Java, TypeScript, JavaScript, Go, Rust, C#)
+- ✅ **10+ Framework Routes** (ThinkPHP, Spring, Express, Laravel, FastAPI, Django, Gin, ASP.NET, etc.)
+- ✅ **Complete Parse Capabilities**:
+  - Symbol extraction (classes, functions, methods)
+  - Call relationships extraction
+  - Inheritance relationships extraction
+  - Import/alias extraction
+  - Docstring/comments extraction (AI-powered)
+- ✅ **Performance**: 1M+ LOC projects parsed in <5min
+- ✅ **Stability**: 95%+ parse success rate across all languages
+- ✅ **Cross-Platform**: Windows, macOS, Linux fully supported
+- ✅ **Test Coverage**: 95%+ code coverage, 2000+ tests passing
+- ✅ **Documentation**: Complete API docs, integration guides, examples
+
+**Should Have** (Quality & Integration):
+- [ ] Plugin ecosystem (community language/framework parsers)
+- [ ] LoomGraph integration for all languages
+- [ ] Performance optimization (10x faster than v0.1.0)
+- [ ] Comprehensive error handling and recovery
+- [ ] Multi-core parallel parsing
+
+**NOT Included in v1.0.0** (Moved to LoomGraph):
+- ❌ AI-driven code similarity search → LoomGraph v0.3.0
+- ❌ Automated refactoring suggestions → LoomGraph v0.4.0
+- ❌ Team collaboration features → LoomGraph v0.5.0
+- ❌ IDE deep integration (LSP server) → LoomGraph v0.6.0
 
 **Success Criteria**:
-- [ ] 1M+ LOC projects indexed in <5min
-- [ ] 100+ community plugins
-- [ ] Enterprise customers
+- [ ] 8+ languages with 95%+ parse accuracy
+- [ ] 1M+ LOC in <5min
+- [ ] 2000+ tests passing
+- [ ] Production deployments at 10+ companies
+- [ ] 1000+ GitHub stars
+- [ ] Active community (50+ contributors)
 
 ---
 
@@ -520,13 +651,21 @@
 | Rust Parser | v0.7.0 | Systems programming community |
 | Laravel Routes | v0.8.0 | PHP framework leader |
 
-### P3 (Future - Research)
+### ⚠️ Features Moved to LoomGraph
 
-| Feature | Version | Rationale |
-|---------|---------|-----------|
-| Code Similarity Search | v0.9.0+ | AI-powered feature |
-| Automated Refactoring | v0.9.0+ | Advanced AI use case |
-| Team Collaboration | v1.0.0 | Enterprise feature |
+The following features have been **migrated to LoomGraph** for better architectural separation:
+
+| Feature | Moved To | Rationale |
+|---------|----------|-----------|
+| **Code Similarity Search** | LoomGraph v0.3.0 | Requires vector embeddings + semantic search (Jina + PGVector) |
+| **Automated Refactoring Suggestions** | LoomGraph v0.4.0 | Requires knowledge graph + AI analysis (Apache AGE + LLM) |
+| **Team Collaboration** | LoomGraph v0.5.0 | Enterprise feature, requires graph storage + user management |
+| **IDE Integration (LSP)** | LoomGraph v0.6.0 | Real-time features better suited for graph-based system |
+
+**Reason for Migration**:
+- codeindex focuses on **code parsing** (AST → structured data)
+- LoomGraph focuses on **AI analysis** (structured data → knowledge graph → insights)
+- Clean separation of concerns, better performance, independent evolution
 
 ---
 
@@ -536,14 +675,14 @@
 
 | Rank | Language | Target Version | Status |
 |------|----------|----------------|--------|
-| 1 | **Python** | v0.1.0 | ✅ Complete (LoomGraph: v0.9.0) |
-| 2 | **PHP** | v0.5.0 | ✅ Complete (LoomGraph: v0.10.0) |
-| 3 | **Java** | v0.7.0 | ✅ Complete (LoomGraph: Planned) |
-| 4 | **TypeScript/JavaScript** | v0.11.0 | 📋 Planned |
-| 5 | **Go** | v0.11.0 | 📋 Planned |
-| 6 | **Rust** | v0.11.0 | 📋 Planned |
-| 7 | **C#** | v0.12.0 | 📋 Planned |
-| 8 | **C++** | v0.12.0 | 📋 Planned |
+| 1 | **Python** | v0.1.0 | ✅ Complete (Parsing + LoomGraph: v0.9.0) |
+| 2 | **PHP** | v0.5.0 | ✅ Complete (Parsing + LoomGraph: v0.10.0) |
+| 3 | **Java** | v0.7.0-v0.8.0 | ✅ Complete (Parsing + Spring Routes) |
+| 4 | **TypeScript/JavaScript** | v0.14.0 | 📋 Planned (Epic 15) |
+| 5 | **Go** | v0.15.0 | 📋 Planned (Epic 16) |
+| 6 | **Rust** | v0.17.0 | 📋 Planned (Epic 19) |
+| 7 | **C#** | v0.18.0 | 📋 Planned |
+| 8 | **C++** | v1.0.0 | 📋 Planned |
 
 ---
 
@@ -553,14 +692,14 @@
 
 | Rank | Framework | Language | Target Version | Status |
 |------|-----------|----------|----------------|--------|
-| 1 | **ThinkPHP** | PHP | v0.5.0 | ✅ Complete |
-| 2 | **Spring Boot** | Java | v0.6.0 | 🔄 In Progress |
-| 3 | **FastAPI** | Python | v0.7.0 | 📋 Planned |
-| 4 | **Django** | Python | v0.7.0 | 📋 Planned |
-| 5 | **Express.js** | TypeScript | v0.7.0 | 📋 Planned |
-| 6 | **Laravel** | PHP | v0.8.0 | 📋 Planned |
-| 7 | **ASP.NET Core** | C# | v0.8.0 | 📋 Planned |
-| 8 | **Gin** | Go | v0.8.0 | 📋 Planned |
+| 1 | **ThinkPHP** | PHP | v0.5.0 | ✅ Complete (Route extraction) |
+| 2 | **Spring Boot** | Java | v0.8.0 | ✅ Complete (Route extraction) |
+| 3 | **FastAPI** | Python | v0.16.0 | 📋 Planned (Epic 17) |
+| 4 | **Django** | Python | v0.16.0 | 📋 Planned (Epic 17) |
+| 5 | **Express.js** | TypeScript | v0.16.0 | 📋 Planned (Epic 17) |
+| 6 | **Laravel** | PHP | v0.16.0 | 📋 Planned (Epic 17) |
+| 7 | **ASP.NET Core** | C# | v1.0.0 | 📋 Planned |
+| 8 | **Gin** | Go | v1.0.0 | 📋 Planned |
 
 ---
 
@@ -578,21 +717,32 @@
 | **Epic 7** | v0.7.0-v0.8.0 | Java Language Support (Complete) |
 | **Epic 10 (Part 1-2)** | v0.9.0-v0.10.0 | LoomGraph Integration (Python + PHP) |
 | **Epic 11** | v0.12.0 | Call Relationships Extraction (Python/Java/PHP) |
+| **Epic 12** | v0.13.0 | Single File Parse Command |
+| **Epic 13** | v0.13.0 | Parser Modularization (3622→374 lines) |
+| **Epic 14** | v0.13.0 | Windows Platform Compatibility (UTF-8 + Path) |
 
-### Active Epics (v0.13.0+ Development)
+### Active Epics (v0.13.1+ Development)
 
 | Epic | Version | Priority | Status |
 |------|---------|----------|--------|
-| **Epic 12** | v0.13.0 | P0 | 🔄 In Progress (Single File Parse Command) |
+| **Epic 10 (Part 3)** | v0.13.1 | P0 | 🔄 In Progress (Windows CI Testing) |
 
 ### Future Epics
 
 | Epic | Version | Priority | Status |
 |------|---------|----------|--------|
-| **Epic 8** | v0.14.0 | P0 | 📋 Planned (TypeScript Support) |
-| **Epic 6 (P3.2-P3.3)** | v0.15.0 | P1 | 📋 Planned (Laravel, FastAPI Routes) |
-| **Epic 5** | v0.16.0+ | P2 | 📋 Deferred (Intelligent Branch Management) |
-| **Epic 13** | v0.16.0+ | P1 | 📋 Planned (Real-time Indexing) |
+| **Epic 15** | v0.14.0 | P0 | 📋 Planned (TypeScript/JavaScript Support) |
+| **Epic 16** | v0.15.0 | P0 | 📋 Planned (Go Language Support) |
+| **Epic 17** | v0.16.0 | P1 | 📋 Planned (Framework Routes Expansion) |
+| **Epic 19** | v0.17.0 | P1 | 📋 Planned (Rust Language Support) |
+
+### Epics Moved to LoomGraph
+
+| Epic | LoomGraph Version | Reason |
+|------|-------------------|--------|
+| **Epic 20** | v0.3.0 | Code Similarity Search (requires vector embeddings) |
+| **Epic 21** | v0.4.0 | Refactoring Suggestions (requires graph + AI) |
+| **Epic 22** | v0.5.0 | Team Collaboration (enterprise features) |
 
 **See**: Individual epic planning docs in `docs/planning/epicN-*.md`
 
@@ -602,22 +752,26 @@
 
 ### Technical Metrics
 
-| Metric | Current (v0.5.0) | v0.6.0 Target | v1.0.0 Target |
-|--------|------------------|---------------|---------------|
-| **Languages Supported** | 1 (Python) | 2 (Python, Java) | 8+ |
-| **Frameworks Supported** | 1 (ThinkPHP) | 2 (ThinkPHP, Spring) | 10+ |
+| Metric | Current (v0.13.0) | v0.14.0 Target | v1.0.0 Target |
+|--------|-------------------|----------------|---------------|
+| **Languages Supported** | 3 (Python, PHP, Java) | 4 (+ TypeScript/JS) | 8+ |
+| **Frameworks Supported** | 2 (ThinkPHP, Spring) | 4 (+ Express, FastAPI) | 10+ |
 | **Test Coverage** | 90%+ | 90%+ | 95%+ |
-| **Max Project Size** | 100k LOC | 500k LOC | 5M LOC |
-| **Indexing Speed** | ~1k LOC/s | ~2k LOC/s | ~10k LOC/s |
+| **Max Project Size** | 500k LOC | 1M LOC | 5M LOC |
+| **Indexing Speed** | ~2k LOC/s | ~5k LOC/s | ~10k LOC/s |
+| **Tests Passing** | 944 | 1000+ | 2000+ |
+| **Platforms Supported** | 3 (macOS, Linux, Windows) | 3 (CI validated) | 3 (Production-ready) |
 
 ### Adoption Metrics
 
-| Metric | Current | v0.6.0 Target | v1.0.0 Target |
-|--------|---------|---------------|---------------|
-| **GitHub Stars** | <100 | 500+ | 2000+ |
-| **Active Users** | <10 | 100+ | 1000+ |
-| **Enterprise Users** | 0 | 5+ | 50+ |
+| Metric | Current (v0.13.0) | v0.14.0 Target | v1.0.0 Target |
+|--------|-------------------|----------------|---------------|
+| **GitHub Stars** | <100 | 300+ | 2000+ |
+| **Active Users** | <20 | 100+ | 1000+ |
+| **Enterprise Users** | 1+ | 10+ | 50+ |
 | **Contributors** | 1 | 5+ | 20+ |
+| **Language Parsers** | 3 | 4 | 8+ |
+| **Framework Extractors** | 2 | 4 | 10+ |
 
 ---
 
@@ -759,7 +913,7 @@ A: Core features remain open-source. Enterprise features (team collaboration, an
 ---
 
 **Roadmap Status**: 🎯 Active
-**Next Review**: 2026-03-01 (after v0.7.0 release)
+**Next Review**: 2026-03-31 (after v0.14.0 release)
 **Maintained By**: @dreamlx + community
-**Last Updated**: 2026-02-04
-**Current Version**: v0.6.0 (Released 2026-02-04)
+**Last Updated**: 2026-02-08
+**Current Version**: v0.13.0 (Released 2026-02-08)
