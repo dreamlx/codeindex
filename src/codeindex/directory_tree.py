@@ -63,6 +63,10 @@ class DirectoryTree:
 
         def walk_directory(current: Path, depth: int = 0):
             """Recursively walk directory tree."""
+            # Resolve path early for consistent handling throughout function
+            # This ensures include path checks and exclusion checks work correctly
+            current = current.resolve()
+
             # Check exclusions
             if should_exclude(current, self.config.exclude, self.root):
                 return
@@ -88,7 +92,6 @@ class DirectoryTree:
                     return
 
             # Create node for this directory
-            current = current.resolve()
             has_files = has_indexable_files(current)
 
             # Only add if has files or is root

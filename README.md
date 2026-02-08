@@ -5,9 +5,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://github.com/dreamlx/codeindex/workflows/Tests/badge.svg)](https://github.com/dreamlx/codeindex/actions)
 
-**AI-native code indexing tool for large codebases.**
+**Universal Code Parser - Best-in-class multi-language AST parser for AI-assisted development.**
 
-codeindex automatically generates intelligent documentation (`README_AI.md`) for your directories using tree-sitter parsing and external AI CLIs. Perfect for understanding large codebases, onboarding new developers, and maintaining living documentation.
+codeindex focuses on **code parsing and structured data extraction** using tree-sitter. It extracts symbols, inheritance relationships, call relationships, and imports from Python, PHP, Java (and more languages coming). Perfect for feeding structured code data to AI tools, knowledge graphs, and code intelligence platforms.
 
 ---
 
@@ -33,10 +33,12 @@ codeindex automatically generates intelligent documentation (`README_AI.md`) for
 - 📈 **Technical Debt Analysis** (v0.3.0+): Detect code quality issues and complexity metrics
 - 🔍 **Symbol Indexing** (v0.1.2+): Global symbol search and project-wide navigation
 - 🛣️ **Framework Route Extraction** (v0.5.0+): Auto-detect and extract routes from web frameworks
-  - **ThinkPHP**: Convention-based routing with line numbers and PHPDoc descriptions
-  - **Laravel**: (Coming soon) Explicit route definitions
-  - **FastAPI**: (Coming soon) Decorator-based routes
-  - **Django**: (Coming soon) URL patterns
+  - **ThinkPHP** (v0.5.0+): Convention-based routing with line numbers and PHPDoc descriptions
+  - **Spring Boot** (v0.8.0+): @GetMapping, @PostMapping, REST controllers with path variables
+  - **Laravel** (v0.16.0): Explicit route definitions (Epic 17)
+  - **FastAPI** (v0.16.0): Decorator-based routes (Epic 17)
+  - **Django** (v0.16.0): URL patterns (Epic 17)
+  - **Express.js** (v0.16.0): TypeScript/JavaScript routes (Epic 17)
 - 📝 **AI Docstring Extraction** (v0.4.0+, Epic 9): Multi-language documentation normalization
   - **Hybrid mode**: Selective AI processing (<$1 per 250 directories)
   - **All-AI mode**: Maximum quality for critical projects
@@ -903,16 +905,76 @@ Or see [examples/CLAUDE.md.template](examples/CLAUDE.md.template) for the full t
 
 ---
 
+## 🔗 Integration with LoomGraph
+
+**codeindex** and **[LoomGraph](https://github.com/dreamlx/LoomGraph)** work together as complementary tools:
+
+### Architecture
+
+```
+codeindex (AST Parser)
+    ↓ Structured Data (JSON)
+LoomGraph (Knowledge Graph + AI)
+    ↓ Insights & Analysis
+Applications (IDE, CI/CD, Team Tools)
+```
+
+### Division of Responsibilities
+
+| Tool | Focus | Key Features |
+|------|-------|--------------|
+| **codeindex** | Code Parsing | AST extraction, symbol extraction, call/inheritance relationships, multi-language support |
+| **LoomGraph** | AI Analysis | Knowledge graph, vector embeddings, semantic search, refactoring suggestions, team collaboration |
+
+### What codeindex Provides
+
+- ✅ **Structured code data** (symbols, calls, imports, inheritance)
+- ✅ **Multi-language support** (Python, PHP, Java, TypeScript, Go, Rust, C#)
+- ✅ **Framework awareness** (ThinkPHP, Spring, Laravel, FastAPI routes)
+- ✅ **JSON output** for downstream tools (`codeindex parse`, `codeindex scan --output json`)
+
+### What LoomGraph Adds
+
+- 🔍 **Code similarity search** (vector embeddings + semantic search)
+- 🤖 **Automated refactoring suggestions** (graph analysis + AI)
+- 👥 **Team collaboration** (shared knowledge graphs)
+- 🔌 **IDE integration** (LSP server for real-time features)
+
+### Integration Guide
+
+See [`docs/guides/loomgraph-integration.md`](docs/guides/loomgraph-integration.md) or [`FOR_LOOMGRAPH.md`](FOR_LOOMGRAPH.md) for complete integration examples.
+
+**Quick Example**:
+```bash
+# Parse a file and get JSON output
+codeindex parse myfile.py | jq .
+
+# Parse all files in a directory
+codeindex scan ./src --output json > parse_results.json
+
+# LoomGraph consumes this JSON to build knowledge graph
+```
+
+### Why This Separation?
+
+1. **Single Responsibility**: codeindex focuses on parsing, LoomGraph focuses on AI
+2. **Independent Evolution**: Each tool can evolve without affecting the other
+3. **Flexible Integration**: Use codeindex alone or with LoomGraph
+4. **Performance**: Lightweight parser vs. heavyweight graph+AI system
+
+---
+
 ## 🌍 Language Support
 
-| Language       | Status          | Parser      | Features |
-|----------------|-----------------|-------------|----------|
-| Python         | ✅ Supported    | tree-sitter | Classes, functions, methods, imports, docstrings |
-| PHP            | ✅ Supported    | tree-sitter | Classes (extends/implements), methods (visibility, static, return types), properties, functions |
-| TypeScript/JS  | 🚧 Coming Soon  | tree-sitter | - |
-| Java           | 🚧 Planned      | tree-sitter | - |
-| Go             | 🚧 Planned      | tree-sitter | - |
-| Rust           | 🚧 Planned      | tree-sitter | - |
+| Language       | Status          | Version | Features |
+|----------------|-----------------|---------|----------|
+| Python         | ✅ Supported    | v0.1.0+ | Classes, functions, methods, imports, docstrings, inheritance, calls |
+| PHP            | ✅ Supported    | v0.5.0+ | Classes (extends/implements), methods (visibility, static, return types), properties, functions, inheritance, calls |
+| Java           | ✅ Supported    | v0.7.0+ | Classes, interfaces, enums, records, annotations, Spring routes, Lombok, inheritance, calls |
+| TypeScript/JS  | 📋 Planned      | v0.14.0 | Classes, functions, React components, JSDoc (Epic 15) |
+| Go             | 📋 Planned      | v0.15.0 | Packages, interfaces, struct methods (Epic 16) |
+| Rust           | 📋 Planned      | v0.17.0 | Structs, traits, modules (Epic 19) |
+| C#             | 📋 Planned      | v0.18.0 | Classes, interfaces, .NET projects |
 
 ---
 
@@ -972,14 +1034,31 @@ make release VERSION=0.13.0
 
 ## 📊 Roadmap
 
-See [2025 Q1 Roadmap](docs/planning/roadmap/2025-Q1.md) for detailed plans.
+See [Strategic Roadmap](docs/planning/ROADMAP.md) for detailed plans.
 
-**Upcoming:**
-- Multi-language support (TypeScript, Java, Go)
-- MCP service integration for Claude Code
-- Incremental indexing (only scan changed files)
-- Performance optimizations
-- Plugin system for custom AI providers
+**Completed (v0.13.0)**:
+- ✅ Python, PHP, Java language support (with LoomGraph integration)
+- ✅ Single file parse command (loose coupling with downstream tools)
+- ✅ Parser modularization (3622→374 lines refactoring)
+- ✅ Windows platform compatibility (UTF-8 + path optimization)
+- ✅ Call relationships extraction (Python/Java/PHP)
+- ✅ Framework routes (ThinkPHP, Spring Boot)
+
+**Next (v0.13.1 - v0.18.0)**:
+- 🔄 Windows CI testing (v0.13.1, Epic 10 completion)
+- 📋 TypeScript/JavaScript support (v0.14.0, Epic 15)
+- 📋 Go language support (v0.15.0, Epic 16)
+- 📋 Framework routes expansion: Express, Laravel, FastAPI, Django (v0.16.0, Epic 17)
+- 📋 Rust language support (v0.17.0, Epic 19)
+- 📋 C# language support (v0.18.0)
+
+**Not Included** (Moved to LoomGraph):
+- ❌ Code similarity search → [LoomGraph v0.3.0](https://github.com/dreamlx/LoomGraph)
+- ❌ Automated refactoring suggestions → LoomGraph v0.4.0
+- ❌ Team collaboration features → LoomGraph v0.5.0
+- ❌ IDE deep integration (LSP server) → LoomGraph v0.6.0
+
+**Reason**: codeindex focuses on **code parsing** (AST → structured data), while LoomGraph focuses on **AI analysis** (structured data → knowledge graph → insights).
 
 ---
 
