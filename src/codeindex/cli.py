@@ -9,6 +9,7 @@ import click
 
 from . import __version__
 from .cli_config import init, list_dirs, status
+from .cli_config_commands import config
 from .cli_docs import docs
 from .cli_hooks import hooks
 from .cli_parse import parse
@@ -29,6 +30,7 @@ main.add_command(scan)
 main.add_command(scan_all)
 main.add_command(parse)
 main.add_command(init)
+main.add_command(config)
 main.add_command(status)
 main.add_command(list_dirs)
 main.add_command(index)
