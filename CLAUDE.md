@@ -670,3 +670,48 @@ All versions 100% backward compatible (v0.1.0 → v0.5.0)
 **Last Updated**: 2026-02-04
 **codeindex Version**: v0.6.0
 **For**: Claude Code and contributors
+
+---
+
+## 🔍 代码搜索 (LoomGraph)
+
+本项目已用 LoomGraph 索引，可使用以下命令：
+
+### 基本命令
+
+- `loomgraph search "<查询>"` - 语义搜索代码
+- `loomgraph graph "<类名.方法名>"` - 查询调用关系
+- `loomgraph status` - 检查服务状态
+- `loomgraph index .` - 重新索引代码库
+
+### 使用示例
+
+**语义搜索**：
+```bash
+# 搜索符号评分相关代码
+loomgraph search "symbol scoring logic"
+
+# 搜索配置管理
+loomgraph search "adaptive configuration"
+```
+
+**调用关系查询**：
+```bash
+# 查询某个函数的调用者
+loomgraph graph "Parser.parse" --direction callers
+
+# 查询某个函数调用了什么
+loomgraph graph "Parser.parse" --direction callees
+```
+
+### 注意事项
+
+- ⚠️ 代码变更后需要重新索引
+- ⚠️ 首次索引可能需要几分钟
+- ⚠️ 跨文件依赖警告（如标准库）是正常现象
+
+**服务信息**:
+- LightRAG API: http://117.131.45.179:3020
+- Embedding: http://117.131.45.179:3002
+- Model: jinaai/jina-embeddings-v2-base-code
+

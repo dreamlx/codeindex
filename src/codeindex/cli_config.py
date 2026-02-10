@@ -11,25 +11,118 @@ from rich.table import Table
 
 from .cli_common import console
 from .config import DEFAULT_CONFIG_NAME, Config
+from .init_wizard import (
+    create_codeindex_md,
+    generate_config_yaml,
+    run_interactive_wizard,
+)
 from .scanner import find_all_directories
 
 
 @click.command()
 @click.option("--force", "-f", is_flag=True, help="Overwrite existing config")
-def init(force: bool):
-    """Initialize .codeindex.yaml configuration file."""
+@click.option("--yes", "-y", is_flag=True, help="Non-interactive mode with defaults")
+@click.option("--quiet", "-q", is_flag=True, help="Minimal output (for CI/CD)")
+def init(force: bool, yes: bool, quiet: bool):
+    """Initialize .codeindex.yaml configuration file.
+
+    Interactive wizard guides you through setup with smart defaults.
+    Use --yes for non-interactive mode (suitable for automation).
+    """
     config_path = Path.cwd() / DEFAULT_CONFIG_NAME
 
     if config_path.exists() and not force:
-        console.print(f"[yellow]Config already exists:[/yellow] {config_path}")
-        console.print("Use --force to overwrite")
+        if not quiet:
+            console.print(f"[yellow]Config already exists:[/yellow] {config_path}")
+            console.print("Use --force to overwrite")
         return
 
-    created_path = Config.create_default()
-    console.print(f"[green]Created:[/green] {created_path}")
-    console.print("\nEdit this file to configure:")
-    console.print("  - ai_command: Your AI CLI command")
-    console.print("  - include/exclude: Directories to scan")
+    project_dir = Path.cwd()
+
+    # Non-interactive mode
+    if yes:
+        from .init_wizard import (
+            calculate_batch_size,
+            calculate_parallel_workers,
+            count_files,
+            detect_frameworks,
+            detect_languages,
+            infer_exclude_patterns,
+            infer_include_patterns,
+        )
+
+        # Auto-detect everything
+        detected_languages = detect_languages(project_dir)
+        detected_frameworks = detect_frameworks(project_dir, detected_languages)
+        include_patterns = infer_include_patterns(project_dir)
+        exclude_patterns = infer_exclude_patterns(project_dir)
+
+        file_count = count_files(project_dir, include_patterns)
+        parallel_workers = calculate_parallel_workers(file_count)
+        batch_size = calculate_batch_size(file_count)
+
+        # Create minimal result
+        from .init_wizard import WizardResult
+
+        result = WizardResult(
+            detected_languages=detected_languages,
+            suggested_patterns={"include": include_patterns, "exclude": exclude_patterns},
+            detected_frameworks=detected_frameworks,
+            parallel_workers=parallel_workers,
+            batch_size=batch_size,
+            enable_hooks=False,  # Conservative default for non-interactive
+            create_codeindex_md=True,  # Helpful for AI agents
+            configure_ai=False,  # Skip in non-interactive
+        )
+
+        # Generate config
+        yaml_content = generate_config_yaml(result, project_dir)
+        config_path.write_text(yaml_content)
+
+        # Create CODEINDEX.md
+        if result.create_codeindex_md:
+            create_codeindex_md(project_dir)
+
+        if not quiet:
+            console.print(f"[green]✓ Created:[/green] {config_path}")
+            if result.create_codeindex_md:
+                console.print("[green]✓ Created:[/green] CODEINDEX.md")
+
+        return
+
+    # Interactive mode (original behavior enhanced with wizard)
+    result = run_interactive_wizard(project_dir)
+
+    # Generate and write configuration
+    yaml_content = generate_config_yaml(result, project_dir)
+    config_path.write_text(yaml_content)
+    result.config_created = True
+
+    # Create CODEINDEX.md if requested
+    if result.create_codeindex_md:
+        codeindex_path = create_codeindex_md(project_dir)
+        result.codeindex_md_created = True
+        console.print(f"\n[green]✓ Created:[/green] {codeindex_path}")
+
+    # Install Git Hooks if requested
+    if result.enable_hooks:
+        try:
+            from .hooks import install_hooks
+
+            install_hooks()
+            result.hooks_installed = True
+            console.print("[green]✓ Git Hooks installed[/green]")
+        except Exception as e:
+            console.print(f"[yellow]Warning:[/yellow] Could not install hooks: {e}")
+
+    # Success summary
+    console.print("\n[green]✓ Setup complete![/green]")
+    console.print(f"\n[bold]Created:[/bold] {config_path}")
+    console.print("\n[bold]Next steps:[/bold]")
+    console.print("  1. Run [cyan]codeindex scan-all[/cyan] to generate documentation")
+    console.print("  2. Check [cyan]codeindex status[/cyan] to see coverage")
+
+    return result
 
 
 @click.command()
