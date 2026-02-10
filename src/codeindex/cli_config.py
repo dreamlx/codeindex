@@ -23,12 +23,19 @@ from .scanner import find_all_directories
 @click.option("--force", "-f", is_flag=True, help="Overwrite existing config")
 @click.option("--yes", "-y", is_flag=True, help="Non-interactive mode with defaults")
 @click.option("--quiet", "-q", is_flag=True, help="Minimal output (for CI/CD)")
-def init(force: bool, yes: bool, quiet: bool):
+@click.option("--help-config", is_flag=True, help="Show complete configuration reference")
+def init(force: bool, yes: bool, quiet: bool, help_config: bool):
     """Initialize .codeindex.yaml configuration file.
 
     Interactive wizard guides you through setup with smart defaults.
     Use --yes for non-interactive mode (suitable for automation).
     """
+    # Show configuration help if requested
+    if help_config:
+        from .config_help import show_full_config_help
+
+        show_full_config_help()
+        return
     config_path = Path.cwd() / DEFAULT_CONFIG_NAME
 
     if config_path.exists() and not force:
