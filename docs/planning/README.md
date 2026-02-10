@@ -1,7 +1,7 @@
 # Planning Index
 
-**Last Updated**: 2026-02-06
-**Current Version**: v0.11.0
+**Last Updated**: 2026-02-10
+**Current Version**: v0.14.0
 
 ---
 
@@ -17,6 +17,11 @@
 
 | Epic | Version | Completion Date | Summary |
 |------|---------|-----------------|---------|
+| [Epic 15: User Onboarding Enhancement](completed/epic15-user-onboarding/plan.md) | v0.14.0 | 2026-02-10 | Interactive wizard + Help system |
+| [Epic 14: Windows Platform Compatibility](active/epic14-windows-compatibility.md) | v0.13.0 | 2026-02-08 | UTF-8 + Path optimization |
+| [Epic 13: Parser Modularization](completed/epic13-parser-refactoring/plan.md) | v0.13.0 | 2026-02-08 | Parser refactoring (3622→374 lines) |
+| [Epic 12: Single File Parse](completed/epic12-single-file-parse/plan.md) | v0.13.0 | 2026-02-08 | CLI parse command + JSON output |
+| [Epic 11: Call Relationships](completed/epic11-call-relationships/) | v0.12.0 | 2026-02-07 | Python/Java/PHP call extraction |
 | [Epic 10: LoomGraph Integration](completed/epic10-loomgraph-integration/) | v0.9.0-v0.10.0 | 2026-02-06 | Python + PHP inheritance + import alias |
 | [Epic: JSON Output](completed/epic-json-output/plan.md) | v0.9.0-v0.10.0 | 2026-02-06 | JSON output (part of Epic 10) |
 | [Epic 7: Java Support](completed/epic7-java-support/plan.md) | v0.7.0-v0.8.0 | 2026-02-06 | Java language + Spring routes + Lombok |
