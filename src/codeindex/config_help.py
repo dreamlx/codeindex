@@ -65,10 +65,11 @@ CONFIG_PARAMS: Dict[str, Dict[str, str]] = {
         "type": "list[string]",
         "default": "(auto-detected)",
         "description": "Programming languages to index",
-        "supported": "python, php, java, javascript, typescript, go, rust, ruby",
+        "supported": "python, php, java (fully supported with parsers)",
         "example": """languages:
   - python
-  - php""",
+  - php
+  - java""",
     },
     "include": {
         "name": "include",

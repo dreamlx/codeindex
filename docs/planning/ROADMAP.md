@@ -1,13 +1,13 @@
 # codeindex Strategic Roadmap
 
-**Last Updated**: 2026-02-08
-**Current Version**: v0.13.0
+**Last Updated**: 2026-02-10
+**Current Version**: v0.14.0
 **Vision**: Universal Code Parser - Best-in-class multi-language AST parser for AI-assisted development
 **Positioning**: Focused on code parsing and structured data extraction, not AI analysis
 
 ---
 
-## 📍 Current Status (v0.13.0)
+## 📍 Current Status (v0.14.0)
 
 ### ✅ Completed Capabilities
 
@@ -30,11 +30,14 @@
 | **Single File Parse Command** | v0.13.0 | ✅ CLI parse tool integration |
 | **Parser Modularization** | v0.13.0 | ✅ 3622→374 lines refactoring |
 | **Windows Platform Compatibility** | v0.13.0 | ✅ UTF-8 + Path optimization |
+| **Interactive Setup Wizard** | v0.14.0 | ✅ Smart defaults + Auto-detection |
+| **Enhanced Help System** | v0.14.0 | ✅ Configuration documentation |
 
 ### 📚 Version History
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| **v0.14.0** | 2026-02-10 | 🎯 User Onboarding Enhancement (Interactive Wizard + Help System) |
 | **v0.13.0** | 2026-02-08 | 🚀 Single File Parse + Parser Refactoring + Windows Support |
 | **v0.12.0** | 2026-02-07 | 🔗 Call Relationships Extraction (Python/Java/PHP + LoomGraph) |
 | **v0.11.0** | 2026-02-06 | 🏗️ Lazy Loading Architecture (Optional Language Parsers) |
@@ -58,13 +61,13 @@
 
 **2026 Priorities** (Ranked by Impact):
 
-1. 🔥 **Multi-Language Support** (v0.14.0 - v0.18.0)
+1. 🔥 **Multi-Language Support** (v0.15.0 - v0.19.0)
    - TypeScript/JavaScript, Go, Rust, C#
    - Enterprise adoption enabler
    - Foundation: Parser modularization (Epic 13 ✅)
    - Completed: Python (v0.1.0 ✅), PHP (v0.5.0 ✅), Java (v0.7.0-v0.8.0 ✅)
 
-2. 🚀 **Framework Intelligence** (v0.16.0)
+2. 🚀 **Framework Intelligence** (v0.17.0)
    - Express, Laravel, FastAPI, Django
    - Route extraction + business logic mapping
    - Completed: ThinkPHP (v0.5.0 ✅), Spring (v0.8.0 ✅)
@@ -466,11 +469,62 @@
 
 ---
 
-### v0.14.0 - TypeScript/JavaScript Language Support (Target: 2026-03-31)
+### v0.14.0 - User Onboarding Enhancement ✅ (Released: 2026-02-10)
+
+**Theme**: First-time user experience and intelligent setup automation
+
+**Epic**: Epic 15 - User Onboarding Enhancement (用户引导体验增强)
+
+**What Was Delivered**:
+
+#### Story 15.1: Interactive Setup Wizard ✅
+- ✅ Enhanced `codeindex init` with step-by-step wizard
+- ✅ Auto-detection of project languages (Python, PHP, Java only - parser-supported)
+- ✅ Smart defaults for include/exclude patterns
+- ✅ Auto-tuning of performance settings (parallel_workers, batch_size)
+- ✅ Framework detection (Spring, ThinkPHP, Laravel)
+- ✅ Optional Git Hooks installation with mode selection
+- ✅ CODEINDEX.md AI integration guide generation
+- ✅ Optional AI CLI configuration (Claude, ChatGPT, custom)
+- ✅ Non-interactive mode with `--yes` and `--quiet` flags (CI/CD support)
+- ✅ 18 BDD test scenarios, all passing
+
+#### Story 15.3: Enhanced Help System ✅
+- ✅ Comprehensive configuration parameter documentation
+- ✅ Context-aware help (shows current values, validates against system resources)
+- ✅ `codeindex config explain <parameter>` command
+- ✅ `codeindex init --help-config` for full reference
+- ✅ Rich terminal formatting with recommendations and trade-offs
+- ✅ 15 BDD test scenarios, all passing
+
+**Success Criteria** (All Achieved):
+- [x] New users complete setup in <1 minute ✅
+- [x] Non-interactive mode for CI/CD ✅ (`--yes --quiet` flags)
+- [x] Smart defaults require zero manual configuration ✅
+- [x] Help system provides comprehensive reference ✅
+- [x] 33 BDD tests passing (100% success rate) ✅
+
+**Tests**: 977 passing (33 new BDD tests), 0 failures
+
+**Documentation**:
+- Epic plan: `docs/planning/active/epic15-user-onboarding.md`
+- Feature file: `tests/features/init_wizard.feature` (18 scenarios)
+- Feature file: `tests/features/help_system.feature` (15 scenarios)
+
+**Language Support Note**:
+- Language detection supports Python, PHP, Java (parser-supported)
+- JavaScript, TypeScript, Go, Rust, Ruby are NOT yet supported (no parsers)
+- Future language support planned for v0.15.0+
+
+**See**: CHANGELOG.md v0.14.0 entry
+
+---
+
+### v0.15.0 - TypeScript/JavaScript Language Support (Target: 2026-03-31)
 
 **Theme**: Web development ecosystem foundation
 
-**Epic**: Epic 15 - TypeScript/JavaScript Support
+**Epic**: Epic 16 - TypeScript/JavaScript Support
 
 **Key Features**:
 - TypeScript/JavaScript parser (tree-sitter-typescript)
@@ -488,15 +542,15 @@
 
 **Estimated Duration**: 3-4 weeks
 
-**See**: Planning TBD (`docs/planning/active/epic15-typescript-support.md`)
+**See**: Planning TBD
 
 ---
 
-### v0.15.0 - Go Language Support (Target: 2026-05-31)
+### v0.16.0 - Go Language Support (Target: 2026-05-31)
 
 **Theme**: Cloud-native ecosystem
 
-**Epic**: Epic 16 - Go Support
+**Epic**: Epic 17 - Go Support
 
 **Key Features**:
 - Go parser (tree-sitter-go)
@@ -518,11 +572,11 @@
 
 ---
 
-### v0.16.0 - Framework Intelligence Expansion (Target: 2026-07-31)
+### v0.17.0 - Framework Intelligence Expansion (Target: 2026-07-31)
 
 **Theme**: Framework-aware code understanding
 
-**Epic**: Epic 17 - Framework Routes Expansion
+**Epic**: Epic 18 - Framework Routes Expansion
 
 **Key Features**:
 - Express.js route extraction (TypeScript/JavaScript)
@@ -541,7 +595,7 @@
 
 ---
 
-### v0.17.0 - Rust Language Support (Target: 2026-09-30)
+### v0.18.0 - Rust Language Support (Target: 2026-09-30)
 
 **Theme**: Systems programming
 
@@ -564,7 +618,7 @@
 
 ---
 
-### v0.18.0 - C# Language Support (Target: 2026-11-30)
+### v0.19.0 - C# Language Support (Target: 2026-11-30)
 
 **Theme**: .NET ecosystem
 
@@ -631,25 +685,25 @@
 | Feature | Version | Rationale |
 |---------|---------|-----------|
 | ~~Docstring AI Processor~~ | v0.6.0 ✅ | Foundation for multi-language docs |
-| Java Parser | v0.7.0 | Enterprise adoption blocker |
-| Spring Routes | v0.7.0 | Most popular Java framework |
-| TypeScript Parser | v0.8.0 | Web development essential |
+| ~~Java Parser~~ | v0.7.0-v0.8.0 ✅ | Enterprise adoption blocker |
+| ~~Spring Routes~~ | v0.8.0 ✅ | Most popular Java framework |
+| TypeScript Parser | v0.15.0 | Web development essential |
 
 ### P1 (Should Have - High Impact)
 
 | Feature | Version | Rationale |
 |---------|---------|-----------|
-| Maven/Gradle Detection | v0.7.0 | Java build system integration |
-| Go Parser | v0.8.0 | Cloud-native ecosystem |
-| FastAPI Routes | v0.8.0 | Modern Python API framework |
+| ~~Maven/Gradle Detection~~ | v0.7.0 ✅ | Java build system integration |
+| Go Parser | v0.16.0 | Cloud-native ecosystem |
+| FastAPI Routes | v0.17.0 | Modern Python API framework |
 
 ### P2 (Nice to Have - Enhancement)
 
 | Feature | Version | Rationale |
 |---------|---------|-----------|
-| JavaDoc Extraction | v0.6.0 | Better documentation quality |
-| Rust Parser | v0.7.0 | Systems programming community |
-| Laravel Routes | v0.8.0 | PHP framework leader |
+| ~~JavaDoc Extraction~~ | v0.6.0 ✅ | Better documentation quality |
+| Rust Parser | v0.18.0 | Systems programming community |
+| Laravel Routes | v0.17.0 | PHP framework leader |
 
 ### ⚠️ Features Moved to LoomGraph
 
@@ -678,10 +732,10 @@ The following features have been **migrated to LoomGraph** for better architectu
 | 1 | **Python** | v0.1.0 | ✅ Complete (Parsing + LoomGraph: v0.9.0) |
 | 2 | **PHP** | v0.5.0 | ✅ Complete (Parsing + LoomGraph: v0.10.0) |
 | 3 | **Java** | v0.7.0-v0.8.0 | ✅ Complete (Parsing + Spring Routes) |
-| 4 | **TypeScript/JavaScript** | v0.14.0 | 📋 Planned (Epic 15) |
-| 5 | **Go** | v0.15.0 | 📋 Planned (Epic 16) |
-| 6 | **Rust** | v0.17.0 | 📋 Planned (Epic 19) |
-| 7 | **C#** | v0.18.0 | 📋 Planned |
+| 4 | **TypeScript/JavaScript** | v0.15.0 | 📋 Planned (Epic 16) |
+| 5 | **Go** | v0.16.0 | 📋 Planned (Epic 17) |
+| 6 | **Rust** | v0.18.0 | 📋 Planned (Epic 19) |
+| 7 | **C#** | v0.19.0 | 📋 Planned |
 | 8 | **C++** | v1.0.0 | 📋 Planned |
 
 ---
@@ -694,10 +748,10 @@ The following features have been **migrated to LoomGraph** for better architectu
 |------|-----------|----------|----------------|--------|
 | 1 | **ThinkPHP** | PHP | v0.5.0 | ✅ Complete (Route extraction) |
 | 2 | **Spring Boot** | Java | v0.8.0 | ✅ Complete (Route extraction) |
-| 3 | **FastAPI** | Python | v0.16.0 | 📋 Planned (Epic 17) |
-| 4 | **Django** | Python | v0.16.0 | 📋 Planned (Epic 17) |
-| 5 | **Express.js** | TypeScript | v0.16.0 | 📋 Planned (Epic 17) |
-| 6 | **Laravel** | PHP | v0.16.0 | 📋 Planned (Epic 17) |
+| 3 | **FastAPI** | Python | v0.17.0 | 📋 Planned (Epic 18) |
+| 4 | **Django** | Python | v0.17.0 | 📋 Planned (Epic 18) |
+| 5 | **Express.js** | TypeScript | v0.17.0 | 📋 Planned (Epic 18) |
+| 6 | **Laravel** | PHP | v0.17.0 | 📋 Planned (Epic 18) |
 | 7 | **ASP.NET Core** | C# | v1.0.0 | 📋 Planned |
 | 8 | **Gin** | Go | v1.0.0 | 📋 Planned |
 

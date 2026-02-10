@@ -47,15 +47,19 @@ class WizardResult:
 # ============================================================================
 
 # Language detection patterns
+# Note: Only Python, PHP, and Java have full parser support
+# Other languages are detected but will need parser implementation
 LANGUAGE_EXTENSIONS: Dict[str, Set[str]] = {
+    # Fully supported (with parser)
     "python": {".py", ".pyw", ".pyx"},
     "php": {".php"},
     "java": {".java"},
-    "javascript": {".js", ".jsx"},
-    "typescript": {".ts", ".tsx"},
-    "go": {".go"},
-    "rust": {".rs"},
-    "ruby": {".rb"},
+    # Planned support (detection only, no parser yet)
+    # "javascript": {".js", ".jsx"},
+    # "typescript": {".ts", ".tsx"},
+    # "go": {".go"},
+    # "rust": {".rs"},
+    # "ruby": {".rb"},
 }
 
 # Framework detection patterns
