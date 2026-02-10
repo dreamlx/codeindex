@@ -1,4 +1,4 @@
-# Epic 15: User Onboarding Enhancement
+# Epic 15: User Onboarding Enhancement（用户引导体验增强）
 
 **Version**: v0.14.0
 **Priority**: P0 (Must Have - User Experience)
