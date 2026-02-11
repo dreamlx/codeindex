@@ -181,7 +181,7 @@ languages: [python, php, java]     # Supported languages
 output_file: README_AI.md
 ```
 
-**Upgrade guide**: `docs/guides/configuration-changelog.md`
+When modifying config: See `docs/guides/configuration.md` | Upgrade history: `docs/guides/configuration-changelog.md`
 
 ---
 
@@ -229,15 +229,16 @@ Feature:      feature branch → TDD → Tests pass → ruff check → Update CH
 Release:      CHANGELOG [Unreleased]→[X.X.X] → merge to master → make release VERSION=X.X.X
 ```
 
-### Detailed Guides
+### When to Read Detailed Docs
 
-| Topic | Document |
-|-------|----------|
-| Release Workflow | `docs/development/release-workflow.md` |
-| Requirements Management | `docs/development/requirements-workflow.md` |
-| Configuration | `docs/guides/configuration.md` |
-| Git Hooks | `docs/guides/git-hooks-integration.md` |
-| Claude Code Setup | `docs/guides/claude-code-integration.md` |
+| When you need to... | Read |
+|---------------------|------|
+| Release a new version | `docs/development/release-workflow.md` |
+| Create a new Epic or Feature | `docs/development/requirements-workflow.md` |
+| Modify `.codeindex.yaml` config | `docs/guides/configuration.md` |
+| Fix or customize Git hooks | `docs/guides/git-hooks-integration.md` |
+| Add a new language parser | `docs/architecture/design-philosophy.md` |
+| Set up codeindex in another project | `docs/guides/claude-code-integration.md` |
 
 ---
 
