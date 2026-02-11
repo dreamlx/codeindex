@@ -1,0 +1,79 @@
+"""Tests for {{ language.name }} inheritance extraction.
+
+Auto-generated from: test_generator/specs/{{ language.name | lower }}.yaml
+Generator: test_generator/generator.py
+Template: test_generator/templates/inheritance_test.py.j2
+
+DO NOT EDIT MANUALLY - changes will be overwritten.
+To modify tests, edit the YAML spec and regenerate.
+"""
+
+
+from {{ language.parser_module }} import {{ language.parser_function }}
+
+{% for scenario in test_scenarios %}
+
+class {{ scenario.class_name }}:
+    """{{ scenario.description }}"""
+{% for test in scenario.tests %}
+{% set tmpl = code_templates[test.template] %}
+{% set expected = tmpl.expected %}
+
+    def {{ test.method }}(self, tmp_path):
+        """{{ tmpl.description }}."""
+{% if tmpl.code is not none and tmpl.code | trim | length > 0 %}
+        code = {{ tmpl.code | to_code_string }}
+{% else %}
+        code = ""
+{% endif %}
+        py_file = tmp_path / "{{ tmpl.get('filename', 'test.' + language.extension) }}"
+        py_file.write_text(code)
+
+        result = {{ language.parser_function }}(py_file)
+
+{% if expected.inheritance_count is defined %}
+        assert len(result.inheritances) == {{ expected.inheritance_count }}
+{% endif %}
+{% if expected.inheritances is defined %}
+{% for inh in expected.inheritances %}
+{% if inh.parent_contains is defined %}
+        assert result.inheritances[{{ loop.index0 }}].child == "{{ inh.child }}"
+        assert "{{ inh.parent_contains }}" in result.inheritances[{{ loop.index0 }}].parent
+{% else %}
+        assert result.inheritances[{{ loop.index0 }}].child == "{{ inh.child }}"
+        assert result.inheritances[{{ loop.index0 }}].parent == "{{ inh.parent }}"
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if expected.child_parents is defined %}
+{% for child, info in expected.child_parents.items() %}
+        {{ child | lower }}_inh = [
+            inh for inh in result.inheritances if inh.child == "{{ child }}"
+        ]
+        assert len({{ child | lower }}_inh) == {{ info.count }}
+{% if info.parents is defined %}
+        {{ child | lower }}_parents = {inh.parent for inh in {{ child | lower }}_inh}
+{% for parent in info.parents %}
+        assert "{{ parent }}" in {{ child | lower }}_parents
+{% endfor %}
+{% endif %}
+{% if info.parent_contains is defined %}
+        assert "{{ info.parent_contains }}" in {{ child | lower }}_inh[0].parent
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if expected.filter_child_contains is defined %}
+        filtered_inh = [
+            inh for inh in result.inheritances
+            if "{{ expected.filter_child_contains }}" in inh.child
+        ]
+        assert len(filtered_inh) == {{ expected.filtered_count }}
+{% if expected.filtered_inheritances is defined %}
+{% for inh in expected.filtered_inheritances %}
+        assert filtered_inh[{{ loop.index0 }}].child == "{{ inh.child }}"
+        assert filtered_inh[{{ loop.index0 }}].parent == "{{ inh.parent }}"
+{% endfor %}
+{% endif %}
+{% endif %}
+{% endfor %}
+{% endfor %}

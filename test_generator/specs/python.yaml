@@ -1,0 +1,634 @@
+# Python Inheritance Test Specification
+#
+# This YAML file is the single source of truth for Python inheritance tests.
+# A generator reads this spec + a Jinja2 template to produce the test file.
+#
+# Schema:
+#   language: metadata about the target language
+#   code_templates: named code snippets with expected parse results
+#   test_scenarios: test classes/methods referencing code_templates
+
+language:
+  name: Python
+  extension: py
+  parser_module: codeindex.parser
+  parser_function: parse_file
+
+# =============================================================================
+# Code Templates
+# =============================================================================
+# Each template has:
+#   - code: the Python source code to parse
+#   - expected: what parse_file() should return for inheritances
+#   - filename: optional filename (default: test.py)
+#
+# Expected assertion types:
+#   - inheritance_count: exact count of result.inheritances
+#   - inheritances: list of {child, parent} for exact match
+#   - child_parents: {child: [parents]} for filtered assertions
+#   - parent_contains: use 'in' operator instead of '==' for parent name
+
+code_templates:
+
+  # ---------------------------------------------------------------------------
+  # Single Inheritance (3 templates)
+  # ---------------------------------------------------------------------------
+
+  single_inheritance_basic:
+    description: "Basic single inheritance"
+    code: |
+      class BaseUser:
+          pass
+
+      class AdminUser(BaseUser):
+          pass
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "AdminUser"
+          parent: "BaseUser"
+
+  single_inheritance_with_module:
+    description: "Inheritance from external module"
+    code: |
+      from models import BaseModel
+
+      class User(BaseModel):
+          pass
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "User"
+          parent: "BaseModel"
+
+  single_inheritance_qualified:
+    description: "Inheritance with qualified name (models.BaseModel)"
+    code: |
+      import models
+
+      class User(models.BaseModel):
+          pass
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "User"
+          parent_contains: "BaseModel"
+
+  # ---------------------------------------------------------------------------
+  # Multiple Inheritance (3 templates)
+  # ---------------------------------------------------------------------------
+
+  multiple_inheritance_two_parents:
+    description: "Class with two parent classes"
+    code: |
+      class Loggable:
+          pass
+
+      class Serializable:
+          pass
+
+      class User(Loggable, Serializable):
+          pass
+    expected:
+      child_parents:
+        User:
+          count: 2
+          parents: ["Loggable", "Serializable"]
+
+  multiple_inheritance_three_parents:
+    description: "Class with three parent classes"
+    code: |
+      class AdminUser(BaseUser, PermissionMixin, Loggable):
+          pass
+    expected:
+      child_parents:
+        AdminUser:
+          count: 3
+          parents: ["BaseUser", "PermissionMixin", "Loggable"]
+
+  multiple_inheritance_mixed_sources:
+    description: "Multiple inheritance from different sources"
+    code: |
+      from models import BaseModel
+      import utils
+
+      class User(BaseModel, utils.Loggable):
+          pass
+    expected:
+      child_parents:
+        User:
+          count: 2
+
+  # ---------------------------------------------------------------------------
+  # No Inheritance (2 templates)
+  # ---------------------------------------------------------------------------
+
+  no_inheritance:
+    description: "Class without parent"
+    code: |
+      class User:
+          pass
+    expected:
+      inheritance_count: 0
+
+  multiple_classes_no_inheritance:
+    description: "Multiple classes without inheritance"
+    code: |
+      class User:
+          pass
+
+      class Post:
+          pass
+    expected:
+      inheritance_count: 0
+
+  # ---------------------------------------------------------------------------
+  # Nested Class Inheritance (3 templates)
+  # ---------------------------------------------------------------------------
+
+  nested_class_inherits_external:
+    description: "Nested class inheriting from external class"
+    code: |
+      class BaseInner:
+          pass
+
+      class Outer:
+          class Inner(BaseInner):
+              pass
+    expected:
+      filter_child_contains: "Inner"
+      filtered_count: 1
+      filtered_inheritances:
+        - child: "Outer.Inner"
+          parent: "BaseInner"
+
+  nested_class_no_inheritance:
+    description: "Nested class without inheritance"
+    code: |
+      class Outer:
+          class Inner:
+              pass
+    expected:
+      filter_child_contains: "Inner"
+      filtered_count: 0
+
+  deeply_nested_inheritance:
+    description: "Deeply nested class inheritance (3 levels)"
+    code: |
+      class Base:
+          pass
+
+      class Outer:
+          class Middle:
+              class Inner(Base):
+                  pass
+    expected:
+      filter_child_contains: "Inner"
+      filtered_count: 1
+      filtered_inheritances:
+        - child: "Outer.Middle.Inner"
+          parent: "Base"
+
+  # ---------------------------------------------------------------------------
+  # Generic Inheritance (3 templates)
+  # ---------------------------------------------------------------------------
+
+  generic_inheritance_basic:
+    description: "Generic class inheritance (typing.Generic)"
+    code: |
+      from typing import Generic, TypeVar
+
+      T = TypeVar('T')
+
+      class Container(Generic[T]):
+          pass
+    expected:
+      child_parents:
+        Container:
+          count: 1
+          parent_contains: "Generic"
+
+  generic_list_inheritance:
+    description: "Inheritance from generic List"
+    code: |
+      from typing import List
+
+      class UserList(List[str]):
+          pass
+    expected:
+      child_parents:
+        UserList:
+          count: 1
+          parent_contains: "List"
+
+  generic_multiple_type_params:
+    description: "Generic with multiple type parameters"
+    code: |
+      from typing import Generic, TypeVar
+
+      K = TypeVar('K')
+      V = TypeVar('V')
+
+      class Cache(Generic[K, V]):
+          pass
+    expected:
+      child_parents:
+        Cache:
+          count: 1
+          parent_contains: "Generic"
+
+  # ---------------------------------------------------------------------------
+  # Complex Scenarios (3 templates)
+  # ---------------------------------------------------------------------------
+
+  multiple_classes_mixed_inheritance:
+    description: "File with multiple classes, some with inheritance"
+    code: |
+      class Base:
+          pass
+
+      class User(Base):
+          pass
+
+      class Post:
+          pass
+
+      class Comment(Post):
+          pass
+    expected:
+      inheritance_count: 2
+      child_parents:
+        User:
+          count: 1
+          parents: ["Base"]
+        Comment:
+          count: 1
+          parents: ["Post"]
+
+  inheritance_chain:
+    description: "Inheritance chain (A -> B -> C)"
+    code: |
+      class A:
+          pass
+
+      class B(A):
+          pass
+
+      class C(B):
+          pass
+    expected:
+      inheritance_count: 2
+      child_parents:
+        B:
+          count: 1
+          parents: ["A"]
+        C:
+          count: 1
+          parents: ["B"]
+
+  inheritance_with_methods:
+    description: "Inheritance extracted even with methods"
+    code: |
+      class Base:
+          def base_method(self):
+              pass
+
+      class Derived(Base):
+          def derived_method(self):
+              pass
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "Derived"
+          parent: "Base"
+
+  # ---------------------------------------------------------------------------
+  # Edge Cases (4 templates)
+  # ---------------------------------------------------------------------------
+
+  empty_file:
+    description: "Empty file"
+    code: ""
+    expected:
+      inheritance_count: 0
+
+  no_classes:
+    description: "File with functions only, no classes"
+    code: |
+      def function():
+          pass
+
+      variable = 42
+    expected:
+      inheritance_count: 0
+
+  inheritance_with_comments:
+    description: "Inheritance extraction with comments"
+    code: |
+      # Base class
+      class Base:
+          pass
+
+      # Derived class with inheritance
+      class Derived(Base):  # Inherits from Base
+          pass
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "Derived"
+          parent: "Base"
+
+  inheritance_from_object:
+    description: "Explicit inheritance from object (Python 2 style)"
+    code: |
+      class User(object):
+          pass
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "User"
+          parent: "object"
+
+  # ---------------------------------------------------------------------------
+  # Advanced Templates (additional coverage beyond legacy tests)
+  # ---------------------------------------------------------------------------
+
+  abstract_base_class:
+    description: "Abstract base class with ABC"
+    code: |
+      from abc import ABC, abstractmethod
+
+      class Shape(ABC):
+          @abstractmethod
+          def area(self):
+              pass
+
+      class Circle(Shape):
+          def area(self):
+              return 3.14
+    expected:
+      inheritance_count: 2
+      child_parents:
+        Shape:
+          count: 1
+          parent_contains: "ABC"
+        Circle:
+          count: 1
+          parents: ["Shape"]
+
+  dataclass_inheritance:
+    description: "Dataclass inheritance"
+    code: |
+      from dataclasses import dataclass
+
+      @dataclass
+      class Base:
+          name: str
+
+      @dataclass
+      class Child(Base):
+          age: int
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "Child"
+          parent: "Base"
+
+  enum_inheritance:
+    description: "Enum class inheritance"
+    code: |
+      from enum import Enum
+
+      class Color(Enum):
+          RED = 1
+          GREEN = 2
+          BLUE = 3
+    expected:
+      inheritance_count: 1
+      child_parents:
+        Color:
+          count: 1
+          parent_contains: "Enum"
+
+  exception_inheritance:
+    description: "Custom exception hierarchy"
+    code: |
+      class AppError(Exception):
+          pass
+
+      class ValidationError(AppError):
+          pass
+
+      class NotFoundError(AppError):
+          pass
+    expected:
+      inheritance_count: 3
+      child_parents:
+        AppError:
+          count: 1
+          parents: ["Exception"]
+        ValidationError:
+          count: 1
+          parents: ["AppError"]
+        NotFoundError:
+          count: 1
+          parents: ["AppError"]
+
+  mixin_pattern:
+    description: "Mixin pattern with multiple inheritance"
+    code: |
+      class TimestampMixin:
+          created_at = None
+
+      class SoftDeleteMixin:
+          deleted = False
+
+      class Model(TimestampMixin, SoftDeleteMixin):
+          pass
+    expected:
+      child_parents:
+        Model:
+          count: 2
+          parents: ["TimestampMixin", "SoftDeleteMixin"]
+
+  diamond_inheritance:
+    description: "Diamond inheritance pattern"
+    code: |
+      class A:
+          pass
+
+      class B(A):
+          pass
+
+      class C(A):
+          pass
+
+      class D(B, C):
+          pass
+    expected:
+      inheritance_count: 4
+      child_parents:
+        B:
+          count: 1
+          parents: ["A"]
+        C:
+          count: 1
+          parents: ["A"]
+        D:
+          count: 2
+          parents: ["B", "C"]
+
+  protocol_inheritance:
+    description: "Protocol class (Python 3.8+)"
+    code: |
+      from typing import Protocol
+
+      class Drawable(Protocol):
+          def draw(self) -> None:
+              ...
+
+      class Widget(Drawable):
+          def draw(self) -> None:
+              pass
+    expected:
+      inheritance_count: 2
+      child_parents:
+        Drawable:
+          count: 1
+          parent_contains: "Protocol"
+        Widget:
+          count: 1
+          parents: ["Drawable"]
+
+  metaclass_usage:
+    description: "Class with metaclass"
+    code: |
+      class Singleton(type):
+          pass
+
+      class MyClass(metaclass=Singleton):
+          pass
+    expected:
+      # metaclass is not inheritance, only Singleton(type) counts
+      child_parents:
+        Singleton:
+          count: 1
+          parents: ["type"]
+
+  class_with_decorators:
+    description: "Decorated class with inheritance"
+    code: |
+      def my_decorator(cls):
+          return cls
+
+      class Base:
+          pass
+
+      @my_decorator
+      class Child(Base):
+          pass
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "Child"
+          parent: "Base"
+
+# =============================================================================
+# Test Scenarios
+# =============================================================================
+# Maps code_templates to pytest test classes and methods.
+# The generator creates one test method per entry.
+# Each method: write code to tmp_path, call parse_file, assert expected values.
+
+test_scenarios:
+  - class_name: TestSingleInheritance
+    description: "Test single inheritance extraction."
+    tests:
+      - method: test_single_inheritance_basic
+        template: single_inheritance_basic
+      - method: test_single_inheritance_with_module
+        template: single_inheritance_with_module
+      - method: test_single_inheritance_qualified
+        template: single_inheritance_qualified
+
+  - class_name: TestMultipleInheritance
+    description: "Test multiple inheritance extraction."
+    tests:
+      - method: test_multiple_inheritance_two_parents
+        template: multiple_inheritance_two_parents
+      - method: test_multiple_inheritance_three_parents
+        template: multiple_inheritance_three_parents
+      - method: test_multiple_inheritance_mixed_sources
+        template: multiple_inheritance_mixed_sources
+
+  - class_name: TestNoInheritance
+    description: "Test classes without inheritance."
+    tests:
+      - method: test_no_inheritance
+        template: no_inheritance
+      - method: test_multiple_classes_no_inheritance
+        template: multiple_classes_no_inheritance
+
+  - class_name: TestNestedClassInheritance
+    description: "Test nested class inheritance."
+    tests:
+      - method: test_nested_class_inherits_external
+        template: nested_class_inherits_external
+      - method: test_nested_class_no_inheritance
+        template: nested_class_no_inheritance
+      - method: test_deeply_nested_inheritance
+        template: deeply_nested_inheritance
+
+  - class_name: TestGenericInheritance
+    description: "Test generic class inheritance (Python 3.12+)."
+    tests:
+      - method: test_generic_inheritance_basic
+        template: generic_inheritance_basic
+      - method: test_generic_list_inheritance
+        template: generic_list_inheritance
+      - method: test_generic_multiple_type_params
+        template: generic_multiple_type_params
+
+  - class_name: TestComplexScenarios
+    description: "Test complex inheritance scenarios."
+    tests:
+      - method: test_multiple_classes_mixed_inheritance
+        template: multiple_classes_mixed_inheritance
+      - method: test_inheritance_chain
+        template: inheritance_chain
+      - method: test_inheritance_with_methods
+        template: inheritance_with_methods
+
+  - class_name: TestEdgeCases
+    description: "Test edge cases."
+    tests:
+      - method: test_empty_file
+        template: empty_file
+      - method: test_no_classes
+        template: no_classes
+      - method: test_inheritance_with_comments
+        template: inheritance_with_comments
+      - method: test_inheritance_from_object
+        template: inheritance_from_object
+
+  - class_name: TestAdvancedInheritance
+    description: "Test advanced inheritance patterns."
+    tests:
+      - method: test_abstract_base_class
+        template: abstract_base_class
+      - method: test_dataclass_inheritance
+        template: dataclass_inheritance
+      - method: test_enum_inheritance
+        template: enum_inheritance
+      - method: test_exception_hierarchy
+        template: exception_inheritance
+      - method: test_mixin_pattern
+        template: mixin_pattern
+      - method: test_diamond_inheritance
+        template: diamond_inheritance
+      - method: test_protocol_inheritance
+        template: protocol_inheritance
+      - method: test_metaclass_usage
+        template: metaclass_usage
+      - method: test_class_with_decorators
+        template: class_with_decorators
