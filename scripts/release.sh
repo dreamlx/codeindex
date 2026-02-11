@@ -81,22 +81,30 @@ echo -e "${YELLOW}3️⃣  Bumping version...${NC}"
 ./scripts/bump_version.sh $VERSION
 echo -e "${GREEN}✓ Version bumped${NC}"
 
-# 4. Manual CHANGELOG edit
+# 4. Verify CHANGELOG has version entry
 echo ""
-echo -e "${YELLOW}4️⃣  Update CHANGELOG.md${NC}"
-echo "   Please move features from [Unreleased] to [$VERSION] section"
-echo "   Editor will open in 3 seconds..."
-sleep 3
-
-# Open CHANGELOG in editor
-if command -v vim >/dev/null 2>&1; then
-    vim CHANGELOG.md
-elif command -v nano >/dev/null 2>&1; then
-    nano CHANGELOG.md
-else
-    echo "   Please edit CHANGELOG.md manually"
-    read -p "   Press Enter when done..."
+echo -e "${YELLOW}4️⃣  Verifying CHANGELOG.md...${NC}"
+if ! grep -q "## \[$VERSION\]" CHANGELOG.md; then
+    echo -e "${RED}❌ Version [$VERSION] not found in CHANGELOG.md${NC}"
+    echo ""
+    echo -e "${YELLOW}   CHANGELOG.md should already have a [$VERSION] section.${NC}"
+    echo -e "${YELLOW}   Best practice: update [Unreleased] section during development,${NC}"
+    echo -e "${YELLOW}   then rename it to [$VERSION] before releasing.${NC}"
+    echo ""
+    read -p "   Open CHANGELOG.md to fix? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        ${EDITOR:-vim} CHANGELOG.md
+        # Re-check after edit
+        if ! grep -q "## \[$VERSION\]" CHANGELOG.md; then
+            echo -e "${RED}❌ Still no [$VERSION] section. Aborting.${NC}"
+            exit 1
+        fi
+    else
+        exit 1
+    fi
 fi
+echo -e "${GREEN}✓ CHANGELOG.md has [$VERSION] entry${NC}"
 
 # 5. Review changes
 echo ""

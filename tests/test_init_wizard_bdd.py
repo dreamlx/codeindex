@@ -121,7 +121,7 @@ def create_node_git_dirs(project_dir, wizard_context):
 
 
 @given(parsers.parse("a project with {file_count:d} files"))
-def create_project_with_files(project_dir, wizard_context, file_count):
+def create_project_with_files(project_dir, wizard_context, file_count, monkeypatch):
     """Create a project with specified number of files."""
     src_dir = project_dir / "src"
     src_dir.mkdir()
@@ -131,6 +131,12 @@ def create_project_with_files(project_dir, wizard_context, file_count):
 
     wizard_context["project_dir"] = project_dir
     wizard_context["file_count"] = file_count
+
+    # Mock os.cpu_count() for consistent test results across environments
+    # For large projects (>=1000 files), ensure enough CPUs to return 16 workers
+    import os
+    if file_count >= 1000:
+        monkeypatch.setattr(os, "cpu_count", lambda: 16)
 
 
 # ============================================================================

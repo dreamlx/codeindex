@@ -1,7 +1,7 @@
 # codeindex Strategic Roadmap
 
-**Last Updated**: 2026-02-10
-**Current Version**: v0.14.0
+**Last Updated**: 2026-02-11
+**Current Version**: v0.14.0 (+ Epic 16 test cleanup)
 **Vision**: Universal Code Parser - Best-in-class multi-language AST parser for AI-assisted development
 **Positioning**: Focused on code parsing and structured data extraction, not AI analysis
 
@@ -32,6 +32,7 @@
 | **Windows Platform Compatibility** | v0.13.0 | ✅ UTF-8 + Path optimization |
 | **Interactive Setup Wizard** | v0.14.0 | ✅ Smart defaults + Auto-detection |
 | **Enhanced Help System** | v0.14.0 | ✅ Configuration documentation |
+| **Test Suite Refactoring** | v0.14.0+ | ✅ Legacy cleanup + 100% BDD coverage |
 
 ### 📚 Version History
 

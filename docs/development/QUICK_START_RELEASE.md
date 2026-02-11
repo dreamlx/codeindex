@@ -11,11 +11,10 @@
 ```bash
 # 更新版本相关文档
 vim docs/planning/ROADMAP.md        # 更新版本号和 Epic 状态
-vim CHANGELOG.md                    # 添加 v0.13.0 变更日志
-vim RELEASE_NOTES_v0.13.0.md        # 创建发布说明
+vim CHANGELOG.md                    # 将 [Unreleased] 改为 [0.13.0] - 日期
 
 # 提交文档
-git add docs/ CHANGELOG.md RELEASE_NOTES_v0.13.0.md
+git add docs/ CHANGELOG.md
 git commit -m "docs: prepare v0.13.0 release documentation"
 ```
 
@@ -109,7 +108,7 @@ make release VERSION=0.13.0
    ├─ 检查在 master 分支
    ├─ 运行所有测试
    ├─ 运行 linter
-   └─ 检查 RELEASE_NOTES_v0.13.0.md 存在
+   └─ 检查 CHANGELOG.md 有 [0.13.0] 条目
 
 2. Version bump
    ├─ 更新 pyproject.toml version = "0.13.0"
