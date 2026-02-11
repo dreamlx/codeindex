@@ -30,16 +30,12 @@ That's it! The rest is automated via GitHub Actions.
     - Update current version
     - Add version history entry
   - Update `CHANGELOG.md`
-    - Add new version section
-    - Document all changes
-  - Create `RELEASE_NOTES_vX.X.X.md`
-    - Feature highlights
-    - Technical details
-    - Migration guide (if needed)
+    - Move items from `[Unreleased]` to `[X.X.X] - YYYY-MM-DD`
+    - Ensure all changes are documented
 
 - [ ] 3. **Commit Documentation**
   ```bash
-  git add docs/planning/ROADMAP.md CHANGELOG.md RELEASE_NOTES_v0.13.0.md
+  git add docs/planning/ROADMAP.md CHANGELOG.md
   git commit -m "docs: prepare v0.13.0 release documentation"
   ```
 
@@ -72,9 +68,8 @@ That's it! The rest is automated via GitHub Actions.
   - ✅ Check distribution with twine
   - ✅ Publish to PyPI (via Trusted Publisher)
   - ✅ Create GitHub Release with:
-    - Release notes from `RELEASE_NOTES_vX.X.X.md`
+    - Release notes extracted from `CHANGELOG.md`
     - Distribution files attached
-    - Automatic changelog extraction
 
 - [ ] 7. **Verify Release**
   - Check PyPI: https://pypi.org/project/ai-codeindex/
@@ -138,7 +133,7 @@ make release VERSION=0.13.0
    - On master branch
    - All tests pass
    - No lint errors
-   - `RELEASE_NOTES_v0.13.0.md` exists
+   - `CHANGELOG.md` has `[0.13.0]` section
 
 2. Version bump:
    - Updates `pyproject.toml`
@@ -244,9 +239,9 @@ Follow **Semantic Versioning** (https://semver.org):
 |--------|---------|
 | `pyproject.toml` | Package metadata (pip install) |
 | Git tags (`v*.*.*`) | Release tracking, CI/CD trigger |
-| `RELEASE_NOTES_vX.X.X.md` | Human-readable changelog |
+| `CHANGELOG.md` | Human-readable changelog (single source of truth) |
 
-**Single Source of Truth**: Git tags drive automation, `pyproject.toml` is updated automatically.
+**Single Source of Truth**: `CHANGELOG.md` is the only place for release notes. Git tags drive CI automation, `pyproject.toml` is updated automatically.
 
 ---
 
@@ -304,11 +299,10 @@ git status  # Should be clean
 
 # 2. Prepare documentation
 vim docs/planning/ROADMAP.md        # Update to v0.13.0
-vim CHANGELOG.md                    # Add v0.13.0 section
-vim RELEASE_NOTES_v0.13.0.md        # Create release notes
+vim CHANGELOG.md                    # Move [Unreleased] to [0.13.0]
 
 # 3. Commit documentation
-git add docs/ CHANGELOG.md RELEASE_NOTES_v0.13.0.md
+git add docs/ CHANGELOG.md
 git commit -m "docs: prepare v0.13.0 release documentation"
 git push origin develop
 

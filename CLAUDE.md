@@ -20,8 +20,7 @@
 
 **Secondary resources**:
 - `PROJECT_SYMBOLS.md` - Global symbol index
-- `CHANGELOG.md` - Version history and breaking changes
-- `RELEASE_NOTES_*.md` - Major release details
+- `CHANGELOG.md` - Version history and breaking changes (single source of truth for releases)
 - `docs/planning/*.md` - Epic/Story design decisions
 
 **❌ Avoid**:
@@ -64,7 +63,7 @@ search_for_pattern(
 | `README_AI.md` | AI-generated directory docs | Understanding any directory |
 | `PROJECT_SYMBOLS.md` | Global symbol index | Finding symbol locations |
 | `CHANGELOG.md` | Version history | Understanding evolution and breaking changes |
-| `RELEASE_NOTES_*.md` | Release details | Detailed version information |
+| `docs/releases/RELEASE_NOTES_*.md` | Historical release details (archived, no longer created for new releases) |
 | `.codeindex.yaml` | Configuration | Understanding scan rules and AI integration |
 | `docs/planning/*.md` | Epic/Story plans | Design decisions and rationale |
 | `docs/evaluation/*.md` | Validation reports | Feature verification results |
@@ -231,7 +230,7 @@ pytest --cov=src/codeindex --cov-report=term-missing
 | Bug fix | CHANGELOG.md |
 | Config change | .codeindex.yaml example, docs/guides/configuration.md, docs/guides/configuration-changelog.md |
 | API change | README.md, docstrings |
-| Major release | CHANGELOG.md, RELEASE_NOTES_vX.X.X.md |
+| Major release | CHANGELOG.md (GitHub Release auto-extracted from CHANGELOG) |
 | Architecture decision | docs/architecture/adr-xxx.md |
 
 **After code changes, regenerate indexes**:
@@ -521,8 +520,7 @@ codeindex status
 **Current version**: v0.12.1
 
 For complete version history, see:
-- **[CHANGELOG.md](CHANGELOG.md)** - Detailed changes for each version
-- **[RELEASE_NOTES_v*.md](.)** - Major release highlights
+- **[CHANGELOG.md](CHANGELOG.md)** - Detailed changes for each version (single source of truth)
 
 ---
 
@@ -577,8 +575,8 @@ ruff check → Update CHANGELOG → Commit → Merge to develop
 
 **Release flow**:
 ```
-Merge develop to master → Run all tests → Create tag →
-Generate RELEASE_NOTES → Push to GitHub
+Update CHANGELOG [Unreleased] → [X.X.X] → Merge develop to master →
+make release VERSION=X.X.X → CI auto-creates GitHub Release from CHANGELOG
 ```
 
 ---
@@ -589,8 +587,7 @@ Generate RELEASE_NOTES → Push to GitHub
 codeindex/
 ├── README.md                       # User overview
 ├── CLAUDE.md                       # This file (developer guide)
-├── CHANGELOG.md                    # Version history
-├── RELEASE_NOTES_*.md              # Major releases
+├── CHANGELOG.md                    # Version history (single source of truth)
 ├── PROJECT_SYMBOLS.md              # Global symbol index
 ├── examples/
 │   ├── .codeindex.yaml            # Config example

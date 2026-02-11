@@ -419,10 +419,9 @@ We use an **automated release system** that handles version management, testing,
 ```bash
 # 1. Prepare release documentation
 vim docs/planning/ROADMAP.md        # Update version and Epic status
-vim CHANGELOG.md                    # Add changelog for new version
-vim RELEASE_NOTES_vX.X.X.md        # Create release notes
+vim CHANGELOG.md                    # Move [Unreleased] to [X.X.X] - date
 
-git add docs/ CHANGELOG.md RELEASE_NOTES_vX.X.X.md
+git add docs/ CHANGELOG.md
 git commit -m "docs: prepare vX.X.X release documentation"
 
 # 2. Merge to master
@@ -455,7 +454,7 @@ make release VERSION=X.X.X
 - Clean working directory (no uncommitted changes)
 - On master branch
 - All tests passing
-- `RELEASE_NOTES_vX.X.X.md` exists
+- `CHANGELOG.md` has `[X.X.X]` version section
 
 ---
 

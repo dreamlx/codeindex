@@ -136,12 +136,13 @@ endif
 	@ruff check src/ tests/ || (echo "$(RED)✗ Lint errors found$(RESET)"; exit 1)
 	@echo "$(GREEN)✓ No lint errors$(RESET)"
 	@echo ""
-	@echo "$(CYAN)[5/5] Checking version files exist...$(RESET)"
-	@if [ ! -f "RELEASE_NOTES_v$(VERSION).md" ]; then \
-		echo "$(RED)Error: RELEASE_NOTES_v$(VERSION).md not found$(RESET)"; \
+	@echo "$(CYAN)[5/5] Checking CHANGELOG has version entry...$(RESET)"
+	@if ! grep -q "## \[$(VERSION)\]" CHANGELOG.md; then \
+		echo "$(RED)Error: Version [$(VERSION)] not found in CHANGELOG.md$(RESET)"; \
+		echo "$(YELLOW)  Please add a '## [$(VERSION)] - YYYY-MM-DD' section to CHANGELOG.md$(RESET)"; \
 		exit 1; \
 	fi
-	@echo "$(GREEN)✓ Release notes found$(RESET)"
+	@echo "$(GREEN)✓ CHANGELOG.md has version [$(VERSION)]$(RESET)"
 	@echo ""
 	@echo "$(GREEN)=== All pre-release checks passed ===$(RESET)"
 
