@@ -1,5 +1,36 @@
 #!/usr/bin/env python3
-"""Simple test for hierarchical processing."""
+"""Test fixture generator for hierarchical processing.
+
+This script creates a simple directory hierarchy with Python files for testing
+the hierarchical scanning and batching functionality.
+
+Purpose:
+--------
+- Generates test fixtures in tests/legacy/test_hierarchical_test/
+- Creates a multi-level directory structure (level1/level2a/level3)
+- Each directory contains simple Python files for testing
+
+Generated Structure:
+--------------------
+test_hierarchical_test/
+├── .codeindex.yaml
+└── level1/
+    ├── file1.py
+    ├── level2a/
+    │   ├── file2.py
+    │   └── level3/
+    │       └── file4.py
+    └── level2b/
+        └── file3.py
+
+Usage:
+------
+Run this script to regenerate test fixtures:
+    python3 tests/legacy/test_hierarchy_simple.py
+
+Note: This is a legacy test script. Future work should create proper pytest
+tests for hierarchical functionality (see Epic 16 Story 16.2).
+"""
 
 import sys
 from pathlib import Path
