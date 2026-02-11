@@ -30,19 +30,16 @@ class TestAnalyzer(ast.NodeVisitor):
 
     def visit_ClassDef(self, node):
         """Visit class definitions (test classes)."""
-        if node.name.startswith('Test'):
+        if node.name.startswith("Test"):
             self.current_class = node.name
-            self.test_classes[node.name] = {
-                'docstring': ast.get_docstring(node) or '',
-                'methods': []
-            }
+            self.test_classes[node.name] = {"docstring": ast.get_docstring(node) or "", "methods": []}
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
         """Visit function definitions (test methods)."""
-        if self.current_class and node.name.startswith('test_'):
+        if self.current_class and node.name.startswith("test_"):
             method_info = self._analyze_method(node)
-            self.test_classes[self.current_class]['methods'].append(method_info)
+            self.test_classes[self.current_class]["methods"].append(method_info)
         self.generic_visit(node)
 
     def _analyze_method(self, node: ast.FunctionDef) -> Dict[str, Any]:
@@ -56,12 +53,12 @@ class TestAnalyzer(ast.NodeVisitor):
         assertions = self._extract_assertions(node)
 
         return {
-            'name': node.name,
-            'docstring': ast.get_docstring(node) or '',
-            'code_template': code_template,
-            'assertions': assertions,
-            'line_start': node.lineno,
-            'line_end': node.end_lineno
+            "name": node.name,
+            "docstring": ast.get_docstring(node) or "",
+            "code_template": code_template,
+            "assertions": assertions,
+            "line_start": node.lineno,
+            "line_end": node.end_lineno,
         }
 
     def _extract_code_template(self, source: str) -> str:
@@ -84,7 +81,7 @@ class TestAnalyzer(ast.NodeVisitor):
 
 def analyze_test_file(filepath: Path) -> Dict[str, Any]:
     """Analyze a test file and return structured data."""
-    with open(filepath, 'r', encoding='utf-8') as f:
+    with open(filepath, "r", encoding="utf-8") as f:
         content = f.read()
 
     # Parse AST
@@ -95,22 +92,20 @@ def analyze_test_file(filepath: Path) -> Dict[str, Any]:
     analyzer.visit(tree)
 
     # Count statistics
-    total_methods = sum(len(cls['methods']) for cls in analyzer.test_classes.values())
+    total_methods = sum(len(cls["methods"]) for cls in analyzer.test_classes.values())
     total_assertions = sum(
-        len(method['assertions'])
-        for cls in analyzer.test_classes.values()
-        for method in cls['methods']
+        len(method["assertions"]) for cls in analyzer.test_classes.values() for method in cls["methods"]
     )
 
     return {
-        'file': str(filepath),
-        'test_classes': analyzer.test_classes,
-        'statistics': {
-            'total_classes': len(analyzer.test_classes),
-            'total_methods': total_methods,
-            'total_assertions': total_assertions,
-            'avg_assertions_per_method': total_assertions / total_methods if total_methods > 0 else 0
-        }
+        "file": str(filepath),
+        "test_classes": analyzer.test_classes,
+        "statistics": {
+            "total_classes": len(analyzer.test_classes),
+            "total_methods": total_methods,
+            "total_assertions": total_assertions,
+            "avg_assertions_per_method": total_assertions / total_methods if total_methods > 0 else 0,
+        },
     }
 
 
@@ -134,38 +129,38 @@ def generate_markdown_report(analysis: Dict[str, Any], output_path: Path):
         "---",
         "",
         "## 📋 Test Classes and Methods",
-        ""
+        "",
     ]
 
-    for class_name, class_data in analysis['test_classes'].items():
+    for class_name, class_data in analysis["test_classes"].items():
         lines.append(f"### {class_name}")
         lines.append("")
-        if class_data['docstring']:
+        if class_data["docstring"]:
             lines.append(f"**Description**: {class_data['docstring']}")
             lines.append("")
 
         lines.append(f"**Methods**: {len(class_data['methods'])}")
         lines.append("")
 
-        for method in class_data['methods']:
+        for method in class_data["methods"]:
             lines.append(f"#### `{method['name']}`")
             lines.append("")
-            if method['docstring']:
+            if method["docstring"]:
                 lines.append(f"- **Description**: {method['docstring']}")
             lines.append(f"- **Lines**: {method['line_start']}-{method['line_end']}")
             lines.append(f"- **Assertions**: {len(method['assertions'])}")
 
-            if method['code_template']:
+            if method["code_template"]:
                 lines.append("")
                 lines.append("**Code Template**:")
                 lines.append("```python")
-                lines.append(method['code_template'])
+                lines.append(method["code_template"])
                 lines.append("```")
 
-            if method['assertions']:
+            if method["assertions"]:
                 lines.append("")
                 lines.append("**Assertions**:")
-                for assertion in method['assertions']:
+                for assertion in method["assertions"]:
                     lines.append(f"- `{assertion}`")
 
             lines.append("")
@@ -174,7 +169,7 @@ def generate_markdown_report(analysis: Dict[str, Any], output_path: Path):
         lines.append("")
 
     # Write report
-    output_path.write_text('\n'.join(lines), encoding='utf-8')
+    output_path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def main():
@@ -196,10 +191,10 @@ def main():
     analysis = analyze_test_file(filepath)
 
     # Output format
-    if '--output-json' in sys.argv:
+    if "--output-json" in sys.argv:
         print(json.dumps(analysis, indent=2))
-    elif '--output-md' in sys.argv:
-        md_index = sys.argv.index('--output-md')
+    elif "--output-md" in sys.argv:
+        md_index = sys.argv.index("--output-md")
         if md_index + 1 < len(sys.argv):
             output_path = Path(sys.argv[md_index + 1])
             generate_markdown_report(analysis, output_path)
@@ -209,7 +204,7 @@ def main():
             sys.exit(1)
     else:
         # Default: print summary
-        stats = analysis['statistics']
+        stats = analysis["statistics"]
         print(f"📊 Analysis Summary: {filepath.name}")
         print("")
         print(f"  Test Classes: {stats['total_classes']}")
@@ -218,9 +213,9 @@ def main():
         print(f"  Avg Assertions/Method: {stats['avg_assertions_per_method']:.1f}")
         print("")
         print("Class Breakdown:")
-        for class_name, class_data in analysis['test_classes'].items():
+        for class_name, class_data in analysis["test_classes"].items():
             print(f"  - {class_name}: {len(class_data['methods'])} methods")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

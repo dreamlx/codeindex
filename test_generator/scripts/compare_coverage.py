@@ -71,21 +71,25 @@ def compare(old_data: dict, new_data: dict, threshold: float) -> dict:
         new_pct = new_modules.get(module, 0.0)
         diff = round(new_pct - old_pct, 2)
 
-        status = "NEW" if module not in old_modules else (
-            "REMOVED" if module not in new_modules else (
-                "REGRESSION" if diff < -threshold else (
-                    "IMPROVED" if diff > 0.5 else "OK"
-                )
+        status = (
+            "NEW"
+            if module not in old_modules
+            else (
+                "REMOVED"
+                if module not in new_modules
+                else ("REGRESSION" if diff < -threshold else ("IMPROVED" if diff > 0.5 else "OK"))
             )
         )
 
-        rows.append({
-            "module": module,
-            "old": old_pct,
-            "new": new_pct,
-            "diff": diff,
-            "status": status,
-        })
+        rows.append(
+            {
+                "module": module,
+                "old": old_pct,
+                "new": new_pct,
+                "diff": diff,
+                "status": status,
+            }
+        )
 
         if status == "REGRESSION":
             regressions.append(module)
@@ -142,10 +146,7 @@ def format_markdown(result: dict) -> str:
             "NEW": "NEW",
             "REMOVED": "REMOVED",
         }.get(row["status"], row["status"])
-        lines.append(
-            f"| `{mod}` | {row['old']:.1f}% | {row['new']:.1f}% "
-            f"| {sign}{row['diff']:.1f}% | {status_icon} |"
-        )
+        lines.append(f"| `{mod}` | {row['old']:.1f}% | {row['new']:.1f}% | {sign}{row['diff']:.1f}% | {status_icon} |")
 
     lines.append("")
 
@@ -155,9 +156,7 @@ def format_markdown(result: dict) -> str:
         lines.append("")
         for mod in result["regressions"]:
             row = next(r for r in result["rows"] if r["module"] == mod)
-            lines.append(
-                f"- `{mod}`: {row['old']:.1f}% -> {row['new']:.1f}% ({row['diff']:.1f}%)"
-            )
+            lines.append(f"- `{mod}`: {row['old']:.1f}% -> {row['new']:.1f}% ({row['diff']:.1f}%)")
         lines.append("")
 
     return "\n".join(lines)

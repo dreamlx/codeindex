@@ -58,14 +58,16 @@ def load_junit_xml(filepath: str) -> dict:
             status = "skipped"
             message = tc.find("skipped").get("message", "")
 
-        tests.append({
-            "name": name,
-            "classname": classname,
-            "fullname": f"{classname}::{name}" if classname else name,
-            "time": time_val,
-            "status": status,
-            "message": message,
-        })
+        tests.append(
+            {
+                "name": name,
+                "classname": classname,
+                "fullname": f"{classname}::{name}" if classname else name,
+                "time": time_val,
+                "status": status,
+                "message": message,
+            }
+        )
 
     # Parse totals from testsuite attributes
     testsuite = root if root.tag == "testsuite" else root.find("testsuite")
@@ -78,9 +80,7 @@ def load_junit_xml(filepath: str) -> dict:
             "skipped": int(testsuite.get("skipped", 0)),
             "time": float(testsuite.get("time", 0)),
         }
-        totals["passed"] = (
-            totals["tests"] - totals["errors"] - totals["failures"] - totals["skipped"]
-        )
+        totals["passed"] = totals["tests"] - totals["errors"] - totals["failures"] - totals["skipped"]
     else:
         # Compute from individual tests
         totals = {
@@ -116,18 +116,17 @@ def compare(old_data: dict, new_data: dict, max_time_ratio: float) -> dict:
         old_status = old_tests[name]["status"]
         new_status = new_tests[name]["status"]
         if old_status == "passed" and new_status in ("failed", "error"):
-            regressions.append({
-                "name": name,
-                "old_status": old_status,
-                "new_status": new_status,
-                "message": new_tests[name].get("message", ""),
-            })
+            regressions.append(
+                {
+                    "name": name,
+                    "old_status": old_status,
+                    "new_status": new_status,
+                    "message": new_tests[name].get("message", ""),
+                }
+            )
 
     # New failures (tests that are new AND failing)
-    new_failures = [
-        name for name in added
-        if new_tests[name]["status"] in ("failed", "error")
-    ]
+    new_failures = [name for name in added if new_tests[name]["status"] in ("failed", "error")]
 
     # Time comparison
     old_time = old_totals["time"]
