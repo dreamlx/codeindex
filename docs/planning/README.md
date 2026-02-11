@@ -1,7 +1,7 @@
 # Planning Index
 
-**Last Updated**: 2026-02-10
-**Current Version**: v0.14.0
+**Last Updated**: 2026-02-11
+**Current Version**: v0.14.0 (+ Epic 16 test cleanup)
 
 ---
 
@@ -17,6 +17,7 @@
 
 | Epic | Version | Completion Date | Summary |
 |------|---------|-----------------|---------|
+| [Epic 16: Test Suite Refactoring](completed/epic16-test-suite-refactoring/plan.md) | v0.14.0+ | 2026-02-11 | Test cleanup (~701 lines removed, 100% BDD coverage) |
 | [Epic 15: User Onboarding Enhancement](completed/epic15-user-onboarding/plan.md) | v0.14.0 | 2026-02-10 | Interactive wizard + Help system |
 | [Epic 14: Windows Platform Compatibility](active/epic14-windows-compatibility.md) | v0.13.0 | 2026-02-08 | UTF-8 + Path optimization |
 | [Epic 13: Parser Modularization](completed/epic13-parser-refactoring/plan.md) | v0.13.0 | 2026-02-08 | Parser refactoring (3622→374 lines) |
