@@ -971,4 +971,4 @@ A: Core features remain open-source. Enterprise features (team collaboration, an
 **Next Review**: 2026-03-31 (after v0.14.0 release)
 **Maintained By**: @dreamlx + community
 **Last Updated**: 2026-02-08
-**Current Version**: v0.13.0 (Released 2026-02-08)
+**Current Version**: v0.14.0 (Released 2026-02-08)

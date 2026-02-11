@@ -11,56 +11,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Interactive Setup Wizard** (Epic 15 - Story 15.1 ⭐)
+- **Interactive Setup Wizard** (Epic 15 - Story 15.1)
   - Enhanced `codeindex init` with intelligent, step-by-step wizard
-  - **Smart Auto-Detection**:
-    - Programming languages (Python, PHP, Java - parser-supported only)
-    - Web frameworks (Spring, ThinkPHP, Laravel)
-    - Project structure for include/exclude patterns
-  - **Auto-Tuning Performance Settings**:
-    - `parallel_workers`: Optimized based on file count and CPU cores
-    - `batch_size`: Adjusted for project size (20-100)
-    - File count estimation for accurate tuning
-  - **Optional Features**:
-    - Git Hooks installation with mode selection (auto/async/sync/disabled)
-    - CODEINDEX.md AI integration guide generation
-    - AI CLI configuration (Claude, ChatGPT, custom)
-  - **Non-Interactive Mode** for CI/CD:
-    - `--yes` flag: Accept all smart defaults
-    - `--quiet` flag: Minimal output
-    - Deterministic setup for automation
+  - Smart Auto-Detection (languages, frameworks, project structure)
+  - Auto-Tuning Performance Settings (parallel_workers, batch_size)
+  - Non-Interactive Mode for CI/CD (`--yes`, `--quiet` flags)
   - 18 BDD test scenarios (100% passing)
 
-- **Enhanced Help System** (Epic 15 - Story 15.3 ⭐)
-  - Comprehensive configuration parameter documentation
-  - **Context-Aware Help**:
-    - Shows current values from `.codeindex.yaml`
-    - Validates settings against system resources (CPU count)
-    - Warns about potential issues (e.g., parallel_workers > CPU count)
-  - **New CLI Commands**:
-    - `codeindex config explain <parameter>`: Detailed parameter help
-    - `codeindex init --help-config`: Full configuration reference
-  - **Rich Documentation** for each parameter:
-    - Type, default value, valid range
-    - Usage recommendations (small/medium/large projects)
-    - Performance trade-offs
-    - YAML syntax examples
-  - **Terminal-Friendly Formatting**:
-    - Rich console output with colors and structure
-    - Readable tables and sections
-    - Code block examples
+- **Enhanced Help System** (Epic 15 - Story 15.3)
+  - `codeindex config explain <parameter>`: Detailed parameter help
+  - `codeindex init --help-config`: Full configuration reference
+  - Context-Aware Help with current values and validation
   - 15 BDD test scenarios (100% passing)
+
+- **Single File Parse Command** (Epic 12 - Story 12.1)
+  - New `codeindex parse <file>` command for parsing individual source files
+  - JSON output with structured data (symbols, imports, namespace)
+  - Support for Python, PHP, and Java files
+  - Exit codes: 0 (success), 1 (file error), 2 (unsupported language), 3 (parse error)
+
+### Changed
+
+- **Parser Modularization** (Epic 13)
+  - Refactored monolithic `parser.py` (3622 lines) into modular architecture
+  - Created `parsers/` package: BaseLanguageParser, PythonParser, PhpParser, JavaParser
+  - Simplified `parser.py` to 374 lines (-89.7%)
 
 ### Fixed
 
-- **Language Support Documentation** (Critical Correction)
-  - **Clarified supported languages**: Only Python, PHP, Java have full parser support
-  - **Corrected wizard detection**: Commented out JavaScript, TypeScript, Go, Rust, Ruby (no parsers yet)
-  - **Updated help documentation**: `config_help.py` now shows accurate language list
-  - **Updated ROADMAP.md**: Shifted TypeScript/JavaScript to v0.15.0, Go to v0.16.0, etc.
-  - User feedback: "JS, TS, Go, Rust, Ruby 我们好像还没有支持吧？" - Confirmed and corrected
-
-- **Windows Cross-Platform Compatibility** (Epic 14: Windows Platform Support)
+- **Windows Cross-Platform Compatibility** (Epic: Windows Platform Support)
   - **UTF-8 Encoding Fix** (#7 - High Priority ⭐)
     - Fixed garbled text when README_AI.md created on Windows is viewed on Linux/macOS
     - Added explicit `encoding="utf-8"` to all file write operations
@@ -1010,14 +989,7 @@ See: `docs/guides/configuration-changelog.md#v030-2026-01-27`
 - Timeout and error handling
 - Development mode installation
 
-[Unreleased]: https://github.com/yourusername/codeindex/compare/v0.14.0...HEAD
-[0.14.0]: https://github.com/yourusername/codeindex/compare/v0.12.0...v0.14.0
-[0.12.0]: https://github.com/yourusername/codeindex/compare/v0.11.0...v0.12.0
-[0.11.0]: https://github.com/yourusername/codeindex/compare/v0.10.0...v0.11.0
-[0.10.0]: https://github.com/yourusername/codeindex/compare/v0.9.0...v0.10.0
-[0.9.0]: https://github.com/yourusername/codeindex/compare/v0.8.0...v0.9.0
-[0.8.0]: https://github.com/yourusername/codeindex/compare/v0.7.0...v0.8.0
-[0.7.0]: https://github.com/yourusername/codeindex/compare/v0.6.0...v0.7.0
+[Unreleased]: https://github.com/yourusername/codeindex/compare/v0.6.0...HEAD
 [0.6.0]: https://github.com/yourusername/codeindex/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/yourusername/codeindex/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/yourusername/codeindex/compare/v0.3.1...v0.4.0

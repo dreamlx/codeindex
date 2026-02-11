@@ -593,10 +593,7 @@ Want to add support for your favorite framework? See [CLAUDE.md](CLAUDE.md#frame
 
 ### Latest Improvements (v0.14.0)
 
-- ✅ **Test generation system**: YAML specs + Jinja2 templates for automated test creation
-- ✅ **TypeScript test suite**: 616 lines, 8 test classes, 25 test methods (100% quality)
-- ✅ **Community contribution framework**: Language support without Python knowledge
-- ✅ **Comprehensive documentation**: CONTRIBUTING_LANGUAGE_SUPPORT.md, templates, PR guides
+- ✅ Interactive Setup Wizard with smart auto-detection
 - ✅ Makefile automation for development and releases
 - ✅ Git hooks for code quality (pre-commit, post-commit, pre-push)
 - ✅ Modular CLI architecture (6 focused modules)
@@ -1200,14 +1197,11 @@ See [Strategic Roadmap](docs/planning/ROADMAP.md) for detailed plans.
 - ✅ Windows platform compatibility (UTF-8 + path optimization)
 - ✅ Call relationships extraction (Python/Java/PHP)
 - ✅ Framework routes (ThinkPHP, Spring Boot)
-- ✅ **Template-based test generation system** (88-91% time savings)
-  - YAML language specifications
-  - Jinja2 automated code generation
-  - TypeScript tests ready (25 methods, 100% quality)
+- ✅ Interactive Setup Wizard (`codeindex init`)
 
-**In Progress (v0.14.0 - v0.15.0)**:
-- 🔄 TypeScript/JavaScript parser implementation (Epic 15)
-- 🔄 Go language support (tests + parser, Epic 16)
+**In Progress (v0.15.0)**:
+- 🔄 Template-based test generation system (Epic 18)
+- 🔄 Test architecture migration (Python/PHP/Java → YAML specs)
 
 **Next (v0.16.0 - v0.18.0)**:
 - 📋 Framework routes expansion: Express, Laravel, FastAPI, Django (v0.16.0, Epic 17)
