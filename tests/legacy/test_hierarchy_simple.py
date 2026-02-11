@@ -26,11 +26,11 @@ if test_dir.exists():
 (test_dir / "level1" / "level2b").mkdir()
 (test_dir / "level1" / "level2a" / "level3").mkdir()
 
-# Create test files
-(test_dir / "level1" / "file1.py").write_text("def func1(): pass")
-(test_dir / "level1" / "level2a" / "file2.py").write_text("def func2(): pass")
-(test_dir / "level1" / "level2b" / "file3.py").write_text("def func3(): pass")
-(test_dir / "level1" / "level2a" / "level3" / "file4.py").write_text("def func4(): pass")
+# Create test files (with trailing newlines for ruff compliance)
+(test_dir / "level1" / "file1.py").write_text("def func1(): pass\n")
+(test_dir / "level1" / "level2a" / "file2.py").write_text("def func2(): pass\n")
+(test_dir / "level1" / "level2b" / "file3.py").write_text("def func3(): pass\n")
+(test_dir / "level1" / "level2a" / "level3" / "file4.py").write_text("def func4(): pass\n")
 
 # Create config
 (test_dir / ".codeindex.yaml").write_text("""
