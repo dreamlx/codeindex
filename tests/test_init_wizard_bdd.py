@@ -138,11 +138,10 @@ def create_project_with_files(project_dir, wizard_context, file_count, monkeypat
     wizard_context["project_dir"] = project_dir
     wizard_context["file_count"] = file_count
 
-    # Mock os.cpu_count() for consistent test results across environments
-    # For large projects (>=1000 files), ensure enough CPUs to return 16 workers
+    # Mock os.cpu_count() for consistent test results across all CI environments
+    # GitHub macOS runners may have fewer cores (e.g., 3) than expected
     import os
-    if file_count >= 1000:
-        monkeypatch.setattr(os, "cpu_count", lambda: 16)
+    monkeypatch.setattr(os, "cpu_count", lambda: 16)
 
 
 # ============================================================================
