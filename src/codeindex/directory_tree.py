@@ -1,10 +1,13 @@
 """Directory tree structure for hierarchical indexing."""
 
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
 from .config import Config
+
+logger = logging.getLogger(__name__)
 
 LevelType = Literal["overview", "navigation", "detailed"]
 
@@ -191,9 +194,18 @@ class DirectoryTree:
 
         Returns directories sorted by depth (deepest first),
         so children are processed before parents.
+
+        Pass-through directories (no code files, single subdirectory)
+        are excluded to avoid redundant README_AI.md generation
+        in deep structures like Java Maven paths.
         """
+        from .scanner import is_pass_through
+
         return sorted(
-            self.nodes.keys(),
+            (
+                p for p, node in self.nodes.items()
+                if not is_pass_through(p, self.config)
+            ),
             key=lambda p: (self.nodes[p].depth, str(p)),
             reverse=True
         )
@@ -224,7 +236,7 @@ class DirectoryTree:
             prefix = "  " * indent
             marker = "📁" if node.has_children else "📄"
             files_marker = f" ({node.has_files})" if node.has_files else ""
-            print(f"{prefix}{marker} {path.name} [{level}]{files_marker}")
+            logger.debug(f"{prefix}{marker} {path.name} [{level}]{files_marker}")
 
             for child in sorted(node.children):
                 _print_node(child, indent + 1)

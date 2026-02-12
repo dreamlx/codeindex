@@ -51,6 +51,47 @@ def get_language_extensions(languages: list[str]) -> set[str]:
     return extensions
 
 
+def is_pass_through(dir_path: Path, config: Config) -> bool:
+    """Check if directory is a pass-through (no code files, single subdirectory).
+
+    A pass-through directory has:
+    1. No code files of its own (only subdirectories/non-code files)
+    2. Exactly one non-excluded subdirectory
+
+    This avoids redundant README_AI.md generation in deep directory structures
+    like Java Maven: src/main/java/com/zcyl/module/
+
+    Args:
+        dir_path: Directory path to check
+        config: Configuration with language and exclude settings
+
+    Returns:
+        True if directory is a pass-through, False otherwise
+    """
+    supported_exts = get_language_extensions(config.languages)
+
+    try:
+        items = list(dir_path.iterdir())
+    except (PermissionError, OSError):
+        return False
+
+    # Check for code files
+    code_files = [
+        item for item in items
+        if item.is_file() and item.suffix in supported_exts
+    ]
+    if code_files:
+        return False
+
+    # Count non-excluded subdirectories
+    subdirs = [
+        item for item in items
+        if item.is_dir() and not should_exclude(item, config.exclude, dir_path)
+    ]
+
+    return len(subdirs) == 1
+
+
 def should_exclude(path: Path, exclude_patterns: list[str], base_path: Path) -> bool:
     """Check if path matches any exclude pattern.
 
