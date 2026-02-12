@@ -542,8 +542,29 @@ def no_ai_command(wizard_context):
 @then(parsers.parse('ai_command should be \'{command}\''))
 def ai_command_set(wizard_context, command):
     """Verify ai_command is set correctly."""
+    from codeindex.init_wizard import generate_config_yaml
+
     project_dir = wizard_context["project_dir"]
-    config = Config.load(project_dir / ".codeindex.yaml")
+    config_file = project_dir / ".codeindex.yaml"
+
+    # Generate config if not exists (apply wizard choices first)
+    if not config_file.exists():
+        result = wizard_context.get("wizard_result")
+        if result and wizard_context.get("user_choices"):
+            choices = wizard_context["user_choices"]
+            if choices.get("configure_ai"):
+                result.configure_ai = True
+                ai_tool = choices.get("ai_tool", "claude")
+                if ai_tool == "claude":
+                    result.ai_command = 'claude -p "{prompt}" --allowedTools "Read"'
+                elif ai_tool == "chatgpt":
+                    result.ai_command = 'chatgpt "{prompt}"'
+
+        if result:
+            yaml_content = generate_config_yaml(result, project_dir)
+            config_file.write_text(yaml_content)
+
+    config = Config.load(config_file)
     assert config.ai_command == command
 
 

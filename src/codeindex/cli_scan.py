@@ -90,8 +90,9 @@ def _process_directory_with_smartwriter(
 
 @click.command()
 @click.argument("path", type=click.Path(exists=False, file_okay=False, path_type=Path))
-@click.option("--dry-run", is_flag=True, help="Show what would be done without executing")
-@click.option("--fallback", is_flag=True, help="Generate basic README without AI")
+@click.option("--ai", is_flag=True, help="Enable AI-enhanced documentation (requires ai_command in config)")
+@click.option("--dry-run", is_flag=True, help="Preview AI prompt without executing (requires --ai)")
+@click.option("--fallback", is_flag=True, hidden=True, help="[Deprecated] Structural mode is now the default")
 @click.option("--quiet", "-q", is_flag=True, help="Minimal output")
 @click.option("--timeout", default=120, help="AI CLI timeout in seconds")
 @click.option("--parallel", "-p", type=int, help="Override parallel workers (from config)")
@@ -115,6 +116,7 @@ def _process_directory_with_smartwriter(
 )
 def scan(
     path: Path,
+    ai: bool,
     dry_run: bool,
     fallback: bool,
     quiet: bool,
@@ -127,9 +129,28 @@ def scan(
     """
     Scan a directory and generate README_AI.md.
 
+    By default, generates structural documentation without AI.
+    Use --ai to enable AI-enhanced documentation.
+
     PATH is the directory to scan.
     """
     path = path.resolve()
+
+    # Handle deprecated --fallback flag
+    if fallback:
+        if not quiet:
+            console.print(
+                "[yellow]Warning: --fallback is deprecated. "
+                "Structural mode is now the default. "
+                "This flag will be removed in a future version.[/yellow]"
+            )
+
+    # --dry-run requires --ai (only meaningful for AI mode)
+    if dry_run and not ai:
+        console.print("[red]Error: --dry-run requires --ai flag.[/red]")
+        console.print("  --dry-run previews the AI prompt, which requires AI mode.")
+        console.print("  Usage: codeindex scan path/ --ai --dry-run")
+        raise SystemExit(1)
 
     # Force quiet mode when outputting JSON (stdout must be clean)
     if output == "json":
@@ -172,6 +193,13 @@ def scan(
 
     # Load config
     config = Config.load()
+
+    # --ai requires ai_command in config
+    if ai and not config.ai_command:
+        console.print("[red]Error: --ai requires ai_command in .codeindex.yaml[/red]")
+        console.print("  Add ai_command to your config, for example:")
+        console.print('  ai_command: \'claude -p "{prompt}" --allowedTools "Read"\'')
+        raise SystemExit(1)
 
     # Override parallel workers if specified
     if parallel is not None:
@@ -257,8 +285,8 @@ def scan(
     symbols_info = format_symbols_for_prompt(parse_results)
     imports_info = format_imports_for_prompt(parse_results)
 
-    if fallback:
-        # Generate smart README without AI
+    if not ai:
+        # DEFAULT: Generate smart README without AI (structural mode)
         if not quiet:
             console.print("  [dim]→ Writing smart README...[/dim]")
 
@@ -293,6 +321,7 @@ def scan(
             console.print(f"[red]✗ Error:[/red] {write_result.error}")
         return
 
+    # AI MODE: --ai flag was specified
     # Format prompt
     prompt = format_prompt(path, files_info, symbols_info, imports_info)
 
@@ -311,7 +340,7 @@ def scan(
 
     if not invoke_result.success:
         console.print(f"[red]✗ AI CLI error:[/red] {invoke_result.error}")
-        console.print("[yellow]Tip: Use --fallback to generate basic README without AI[/yellow]")
+        console.print("[yellow]Tip: Remove --ai to generate structural README without AI[/yellow]")
         return
 
     if not quiet:
@@ -321,10 +350,10 @@ def scan(
     cleaned_output = clean_ai_output(invoke_result.output)
 
     if not validate_markdown_output(cleaned_output):
-        console.print("[yellow]⚠ AI output validation failed, using fallback[/yellow]")
+        console.print("[yellow]⚠ AI output validation failed, using structural fallback[/yellow]")
         write_result = generate_fallback_readme(path, parse_results, config.output_file)
         if write_result.success:
-            console.print(f"[green]✓ Created (fallback):[/green] {write_result.path}")
+            console.print(f"[green]✓ Created (structural fallback):[/green] {write_result.path}")
         else:
             console.print(f"[red]✗ Error:[/red] {write_result.error}")
         return
@@ -347,8 +376,9 @@ def scan(
 @click.option("--root", type=click.Path(exists=True, file_okay=False, path_type=Path), default=".")
 @click.option("--parallel", "-p", type=int, help="Override parallel workers")
 @click.option("--timeout", default=120, help="Timeout per directory in seconds")
-@click.option("--no-ai", is_flag=True, help="Disable AI enhancement, use SmartWriter only")
-@click.option("--fallback", is_flag=True, help="Alias for --no-ai (deprecated)")
+@click.option("--ai", is_flag=True, help="Enable AI-enhanced documentation (requires ai_command in config)")
+@click.option("--no-ai", is_flag=True, hidden=True, help="[Deprecated] Structural mode is now the default")
+@click.option("--fallback", is_flag=True, hidden=True, help="[Deprecated] Structural mode is now the default")
 @click.option("--quiet", "-q", is_flag=True, help="Minimal output")
 @click.option("--hierarchical", "-h", is_flag=True, help="Use hierarchical processing (bottom-up)")
 @click.option(
@@ -373,6 +403,7 @@ def scan_all(
     root: Path | None,
     parallel: int | None,
     timeout: int,
+    ai: bool,
     no_ai: bool,
     fallback: bool,
     quiet: bool,
@@ -383,10 +414,21 @@ def scan_all(
 ):
     """Scan all project directories for README_AI.md generation.
 
-    Generates SmartWriter READMEs for all directories in parallel.
+    By default, generates structural documentation without AI.
+    Use --ai to enable AI-enhanced documentation.
     """
     # Determine root path first (needed for config loading)
     root = Path.cwd() if root is None else root
+
+    # Handle deprecated flags
+    if fallback or no_ai:
+        if not quiet:
+            flag_name = "--fallback" if fallback else "--no-ai"
+            console.print(
+                f"[yellow]Warning: {flag_name} is deprecated. "
+                "Structural mode is now the default. "
+                "This flag will be removed in a future version.[/yellow]"
+            )
 
     # Check if config file exists (for JSON mode)
     config_path = root / ".codeindex.yaml"
@@ -407,8 +449,8 @@ def scan_all(
     # Load config from root directory
     config = Config.load(config_path if config_path.exists() else None)
 
-    # --fallback is alias for --no-ai
-    use_ai = not (no_ai or fallback)
+    # AI mode: opt-in via --ai flag
+    use_ai = ai
 
     # Override parallel workers if specified
     if parallel is not None:

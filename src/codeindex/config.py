@@ -10,7 +10,7 @@ from codeindex.adaptive_config import DEFAULT_ADAPTIVE_CONFIG, AdaptiveSymbolsCo
 
 DEFAULT_CONFIG_NAME = ".codeindex.yaml"
 DEFAULT_OUTPUT_FILE = "README_AI.md"
-DEFAULT_AI_COMMAND = 'claude -p "{prompt}" --allowedTools "Read"'
+DEFAULT_AI_COMMAND = ""  # Empty by default; AI is opt-in (v0.16.0+)
 DEFAULT_INCLUDE = ["src/", "lib/", "tests/", "examples/"]
 DEFAULT_EXCLUDE = [
     "**/__pycache__/**",
