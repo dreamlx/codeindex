@@ -239,11 +239,14 @@ class SymbolImportanceScorer:
             return -15.0
 
         # Check for getter/setter/checker patterns (moderate penalty)
-        name_lower = name.lower()
-        noise_prefixes = ["get", "set", "is", "has"]
-        for prefix in noise_prefixes:
-            if name_lower.startswith(prefix):
-                return -10.0
+        # Java: getters/setters are standard JavaBeans convention, not noise
+        file_type = getattr(self.context, "file_type", "unknown")
+        if file_type != "java":
+            name_lower = name.lower()
+            noise_prefixes = ["get", "set", "is", "has"]
+            for prefix in noise_prefixes:
+                if name_lower.startswith(prefix):
+                    return -10.0
 
         # Normal method name
         return 0.0
