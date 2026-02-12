@@ -123,10 +123,10 @@
 
 | Story | Tests | Implementation | Status |
 |-------|-------|---------------|--------|
-| 19.1: Reverse defaults | ⬜ | ⬜ | Not started |
-| 19.5: Skip pass-through | ⬜ | ⬜ | Not started |
-| 19.6a: Java auto-recursive | ⬜ | ⬜ | Not started |
-| 19.6b: Noise analysis | ⬜ | ⬜ | Not started |
-| 19.4: Parser detection | ⬜ | ⬜ | Not started |
-| 19.2: Init wizard | ⬜ | ⬜ | Not started |
-| 19.3: Help/docs | N/A | ⬜ | Not started |
+| 19.1: Reverse defaults | ✅ | ✅ | Complete (9 BDD tests) |
+| 19.5: Skip pass-through | ✅ | ✅ | Complete (11 tests) |
+| 19.6a: Java auto-recursive | ✅ | ✅ | Complete (4 tests) |
+| 19.6b: Noise analysis | ✅ | ✅ | Complete (7 tests) |
+| 19.4: Parser detection | ✅ | ✅ | Complete (8 tests) |
+| 19.2: Init wizard | ✅ | ✅ | Complete (3 tests) |
+| 19.3: Help/docs | N/A | ✅ | Complete (CHANGELOG updated) |
