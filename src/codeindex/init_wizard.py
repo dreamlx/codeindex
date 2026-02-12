@@ -83,6 +83,64 @@ FRAMEWORK_PATTERNS: Dict[str, Dict[str, str]] = {
 }
 
 
+
+# Parser package mapping: language -> tree-sitter package name
+PARSER_PACKAGES = {
+    "python": "tree_sitter_python",
+    "php": "tree_sitter_php",
+    "java": "tree_sitter_java",
+}
+
+
+def check_parser_installed(language: str) -> bool:
+    """Check if the tree-sitter parser for a language is installed.
+
+    Args:
+        language: Language name (e.g., "python", "java", "php")
+
+    Returns:
+        True if the parser package is installed, False otherwise
+    """
+    package_name = PARSER_PACKAGES.get(language)
+    if not package_name:
+        return False
+
+    try:
+        __import__(package_name)
+        return True
+    except ImportError:
+        return False
+
+
+def get_parser_install_guidance(languages: list[str]) -> dict:
+    """Get parser installation guidance for given languages.
+
+    Args:
+        languages: List of language names to check
+
+    Returns:
+        Dict with 'installed', 'missing' lists and optional 'install_command'
+    """
+    installed = []
+    missing = []
+
+    for lang in languages:
+        if check_parser_installed(lang):
+            installed.append(lang)
+        else:
+            missing.append(lang)
+
+    result = {
+        "installed": installed,
+        "missing": missing,
+    }
+
+    if missing:
+        extras = ",".join(missing)
+        result["install_command"] = f"pip install ai-codeindex[{extras}]"
+
+    return result
+
 def detect_languages(project_dir: Path, max_scan_files: int = 1000) -> List[str]:
     """Auto-detect programming languages in the project.
 
