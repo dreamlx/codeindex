@@ -455,9 +455,10 @@ class TechDebtDetector:
         filtered_count = len(filtered_symbols)
         filter_ratio = 1.0 - (filtered_count / total_symbols) if total_symbols > 0 else 0.0
 
-        # Analyze noise breakdown
+        # Analyze noise breakdown (language-aware)
+        file_type = getattr(scorer.context, "file_type", "unknown")
         noise_breakdown = self._analyze_noise_breakdown(
-            parse_result.symbols, filtered_symbols
+            parse_result.symbols, filtered_symbols, file_type=file_type
         )
 
         # Detect high noise ratio
@@ -493,13 +494,14 @@ class TechDebtDetector:
         return issues, analysis
 
     def _analyze_noise_breakdown(
-        self, all_symbols: list, filtered_symbols: list
+        self, all_symbols: list, filtered_symbols: list, file_type: str = "unknown"
     ) -> dict[str, int]:
         """Analyze and categorize noise sources.
 
         Args:
             all_symbols: All symbols in the file
             filtered_symbols: High-quality symbols after filtering
+            file_type: Language/file type (e.g., "java", "python", "php")
 
         Returns:
             Dictionary with noise categories and counts
@@ -521,7 +523,9 @@ class TechDebtDetector:
 
             # Categorize this noise symbol
             if symbol.name.startswith(("get", "set")) and len(symbol.name) > 3:
-                # Simple getter/setter pattern
+                # Java getter/setter is standard JavaBeans convention, not noise
+                if file_type == "java":
+                    continue
                 breakdown["getters_setters"] += 1
             elif symbol.name.startswith("_") and not symbol.name.startswith("__"):
                 # Private method (single underscore)

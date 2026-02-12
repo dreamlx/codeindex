@@ -19,6 +19,16 @@ from .init_wizard import (
 from .scanner import find_all_directories
 
 
+def _print_post_init_message():
+    """Print post-init next steps message."""
+    console.print("\n[bold]Next steps:[/bold]")
+    console.print("  1. [cyan]codeindex scan-all[/cyan]          → Generate structural documentation")
+    console.print("  2. [cyan]codeindex status[/cyan]            → Check coverage")
+    console.print("")
+    console.print("[dim]Optional: AI-enhanced documentation[/dim]")
+    console.print("  Edit .codeindex.yaml to set ai_command, then:")
+    console.print("  [cyan]codeindex scan-all --ai[/cyan]        → AI-enhanced documentation")
+
 @click.command()
 @click.option("--force", "-f", is_flag=True, help="Overwrite existing config")
 @click.option("--yes", "-y", is_flag=True, help="Non-interactive mode with defaults")
@@ -54,6 +64,7 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
             count_files,
             detect_frameworks,
             detect_languages,
+            get_parser_install_guidance,
             infer_exclude_patterns,
             infer_include_patterns,
         )
@@ -68,6 +79,18 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
         parallel_workers = calculate_parallel_workers(file_count)
         batch_size = calculate_batch_size(file_count)
 
+        # Check parser installation
+        if not quiet and detected_languages:
+            guidance = get_parser_install_guidance(detected_languages)
+            if guidance["missing"]:
+                console.print(
+                    f"[yellow]Warning: Missing parsers for: "
+                    f"{', '.join(guidance['missing'])}[/yellow]"
+                )
+                console.print(
+                    f"  Install with: {guidance['install_command']}"
+                )
+
         # Create minimal result
         from .init_wizard import WizardResult
 
@@ -79,7 +102,7 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
             batch_size=batch_size,
             enable_hooks=False,  # Conservative default for non-interactive
             create_codeindex_md=True,  # Helpful for AI agents
-            configure_ai=False,  # Skip in non-interactive
+            configure_ai=False,  # Skip in non-interactive (AI is opt-in)
         )
 
         # Generate config
@@ -94,6 +117,7 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
             console.print(f"[green]✓ Created:[/green] {config_path}")
             if result.create_codeindex_md:
                 console.print("[green]✓ Created:[/green] CODEINDEX.md")
+            _print_post_init_message()
 
         return
 
@@ -125,9 +149,7 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
     # Success summary
     console.print("\n[green]✓ Setup complete![/green]")
     console.print(f"\n[bold]Created:[/bold] {config_path}")
-    console.print("\n[bold]Next steps:[/bold]")
-    console.print("  1. Run [cyan]codeindex scan-all[/cyan] to generate documentation")
-    console.print("  2. Check [cyan]codeindex status[/cyan] to see coverage")
+    _print_post_init_message()
 
     return result
 

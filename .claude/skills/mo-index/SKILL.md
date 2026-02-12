@@ -12,7 +12,7 @@ Generate AI-friendly index files (README_AI.md) for codebases using codeindex.
 First, verify codeindex is available:
 
 ```bash
-which codeindex || echo "Not installed. Run: pip install codeindex"
+which codeindex || echo "Not installed. Run: pip install ai-codeindex"
 ```
 
 ## Workflow
@@ -31,7 +31,7 @@ cat .codeindex.yaml
 ```
 
 Key settings to verify:
-- `ai_command` - Your AI CLI command (claude, openai, etc.)
+- `languages` - Detected programming languages (python, java, php)
 - `include` - Directories to scan
 - `exclude` - Patterns to skip
 
@@ -43,20 +43,20 @@ codeindex list-dirs
 
 ### Step 4: Index Directories
 
-**Single directory (test first):**
+**All directories (recommended - structural documentation, works immediately):**
 ```bash
-codeindex scan ./src/module --dry-run  # Preview
-codeindex scan ./src/module            # Execute
+codeindex scan-all
 ```
 
-**All directories (parallel):**
+**Single directory:**
 ```bash
-codeindex list-dirs | xargs -P 4 -I {} codeindex scan {}
+codeindex scan ./src/module
 ```
 
-**Fallback mode (no AI):**
+**AI-enhanced mode (requires ai_command in config):**
 ```bash
-codeindex scan ./src/module --fallback
+codeindex scan-all --ai
+codeindex scan ./src/module --ai --dry-run  # Preview AI prompt
 ```
 
 ### Step 5: Generate Project Index
@@ -73,6 +73,14 @@ Creates `PROJECT_INDEX.md` with module overview.
 codeindex status
 ```
 
+### Step 7 (Optional): Set Up Auto-Updates
+
+```bash
+codeindex hooks install post-commit
+```
+
+This installs a post-commit hook that auto-updates README_AI.md when code changes.
+
 ## Example Session
 
 ```
@@ -84,7 +92,7 @@ Claude: I'll help you index this project. Let me check the setup first.
 Indexed: 0/3 (0%)
 Not indexed: src/, tests/, examples/
 
-> codeindex list-dirs | xargs -P 4 -I {} codeindex scan {}
+> codeindex scan-all
 ✓ Created: src/codeindex/README_AI.md
 ✓ Created: tests/README_AI.md
 ✓ Created: examples/README_AI.md
@@ -98,36 +106,54 @@ Done! Your project is now indexed:
 - Coverage: 100%
 ```
 
+## Scan Modes
+
+| Mode | Command | Description |
+|------|---------|-------------|
+| Structural (default) | `codeindex scan-all` | Fast, no AI needed, works immediately |
+| AI-enhanced | `codeindex scan-all --ai` | Richer docs, requires ai_command config |
+
 ## Configuration Reference
 
 `.codeindex.yaml` example:
 
 ```yaml
-ai_command: 'claude -p "{prompt}" --allowedTools "Read"'
+version: 1
+
+# Optional: AI CLI command (only needed for --ai mode)
+# ai_command: 'claude -p "{prompt}" --allowedTools "Read"'
+
+languages:
+  - python
 
 include:
   - src/
   - lib/
-  - tests/
-  - examples/
 
 exclude:
   - "**/__pycache__/**"
   - "**/node_modules/**"
 
 output_file: README_AI.md
+
+# Optional: Auto-update hooks
+hooks:
+  post_commit:
+    enabled: true
+    mode: auto  # auto | sync | async | prompt | disabled
 ```
 
 ## Troubleshooting
 
 | Problem | Solution |
 |---------|----------|
-| AI CLI timeout | `codeindex scan ./dir --timeout 180` |
-| Skip AI entirely | `codeindex scan ./dir --fallback` |
-| Debug prompt | `codeindex scan ./dir --dry-run` |
+| AI CLI timeout | `codeindex scan ./dir --ai --timeout 180` |
+| AI not configured | Use `codeindex scan-all` (structural mode, no AI needed) |
+| Debug AI prompt | `codeindex scan ./dir --ai --dry-run` |
+| Missing parser | `pip install ai-codeindex[java]` (or python, php) |
 
 ## Post-Indexing Recommendations
 
 1. Commit README_AI.md files to git for team sharing
-2. Set up git hooks for auto-updates
+2. Set up git hooks for auto-updates: `codeindex hooks install post-commit`
 3. Add to CLAUDE.md: "Read README_AI.md before modifying code"
