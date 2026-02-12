@@ -144,6 +144,8 @@ endif
 	@echo "$(GREEN)✓ Version consistency OK$(RESET)"
 	@echo ""
 	@echo "$(GREEN)=== All pre-release checks passed ===$(RESET)"
+	@echo ""
+	@echo "$(YELLOW)📋 Reminder: Review docs/guides/ for stale content (8 files)$(RESET)"
 
 release: pre-release-check bump-version  ## Full release workflow (usage: make release VERSION=0.13.0)
 	@echo ""

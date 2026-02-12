@@ -14,16 +14,13 @@ Thank you for your interest in contributing! This guide will help you get starte
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/codeindex.git
+git clone https://github.com/dreamlx/codeindex.git
 cd codeindex
 
 # Install in development mode with dev dependencies
-pip install -e ".[dev]"
-
-# Or create a virtual environment
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
+pip install -e ".[dev,all]"
 ```
 
 ### Verify Installation
@@ -38,9 +35,8 @@ pytest
 We follow **Agile Development** with **TDD (Test-Driven Development)**:
 
 ### 1. Planning Phase
-- Review [Roadmap](../planning/roadmap/2025-Q1.md)
-- Pick an Epic/Feature/Story
-- Create a task in `docs/planning/tasks/`
+- Review [Roadmap](../planning/ROADMAP.md)
+- Pick an Epic/Feature/Story from `docs/planning/`
 
 ### 2. Design Phase
 - Write tests first (TDD Red-Green-Refactor)
@@ -226,13 +222,20 @@ def function_name(param1: str, param2: int) -> bool:
 
 ```
 tests/
-├── test_scanner.py      # Unit tests for scanner
-├── test_parser.py       # Unit tests for parser
-├── test_cli.py          # CLI integration tests
-├── test_integration.py  # End-to-end tests
-└── fixtures/            # Test data
-    └── sample_project/
+├── test_scanner.py       # Unit tests for scanner
+├── test_parser.py        # Unit tests for parser
+├── test_cli.py           # CLI integration tests
+├── test_integration.py   # End-to-end tests
+├── extractors/           # Route extractor tests
+│   └── test_thinkphp.py
+├── features/             # BDD feature tests (pytest-bdd)
+│   └── *.feature
+├── fixtures/             # Test data
+│   └── sample_project/
+└── legacy_reference/     # Archived legacy tests
 ```
+
+Tests are also generated via the `test_generator/` system (YAML specs + Jinja2 templates).
 
 ### Test Naming
 
@@ -261,32 +264,33 @@ def sample_python_file(tmp_path):
 
 ## Adding New Languages
 
+Since v0.14.0, parsers use a modular architecture based on `BaseLanguageParser`.
+
 To add support for a new language:
 
-1. **Add tree-sitter grammar**:
+1. **Add tree-sitter grammar as optional dependency**:
    ```toml
-   # pyproject.toml
-   dependencies = [
-       "tree-sitter-python",
-       "tree-sitter-typescript",  # Add this
-   ]
+   # pyproject.toml [project.optional-dependencies]
+   typescript = ["tree-sitter-typescript>=..."]
    ```
 
-2. **Create query file**:
-   ```scheme
-   ; src/codeindex/queries/typescript.scm
-   (function_declaration
-     name: (identifier) @function.name)
-   ```
-
-3. **Update parser**:
+2. **Create a parser module**:
    ```python
-   # src/codeindex/parser.py
-   LANGUAGE_QUERIES = {
-       'python': 'queries/python.scm',
-       'typescript': 'queries/typescript.scm',  # Add this
-   }
+   # src/codeindex/parsers/typescript_parser.py
+   from .base import BaseLanguageParser
+
+   class TypeScriptParser(BaseLanguageParser):
+       """TypeScript language parser."""
+
+       def get_language_name(self) -> str:
+           return "typescript"
+
+       def _extract_symbols(self, tree, source_bytes) -> list:
+           # Implement tree-sitter queries
+           ...
    ```
+
+3. **Register in parser factory** (`src/codeindex/parsers/__init__.py`)
 
 4. **Add tests**:
    ```python
@@ -296,9 +300,7 @@ To add support for a new language:
    ```
 
 5. **Update documentation**:
-   - README.md
-   - docs/guides/configuration.md
-   - CHANGELOG.md
+   - README.md, CHANGELOG.md, `docs/guides/configuration.md`
 
 ## Documentation
 
@@ -322,33 +324,21 @@ docs/
 
 ## Release Process
 
-1. **Update version**:
+Releases use the automated `make release` workflow:
+
+1. **Update version in `pyproject.toml`** (single source of truth)
+2. **Update CHANGELOG.md** with release notes
+3. **Run version consistency check**:
    ```bash
-   # pyproject.toml
-   version = "0.2.0"
+   python3 scripts/check_version_consistency.py
+   # Use --fix to auto-update markdown files
    ```
-
-2. **Update CHANGELOG.md**:
-   ```markdown
-   ## [0.2.0] - 2025-01-20
-   ### Added
-   - Feature X
-   ```
-
-3. **Create release commit**:
+4. **Run pre-release check and release**:
    ```bash
-   git commit -m "chore: bump version to 0.2.0"
+   make pre-release-check  # Validates: git status, branch, tests, lint, version consistency
+   make release             # Bumps version, tags, pushes
    ```
-
-4. **Tag and push**:
-   ```bash
-   git tag v0.2.0
-   git push origin develop --tags
-   ```
-
-5. **Merge to main** (via PR)
-
-6. **Publish to PyPI**:
+5. **Publish to PyPI** (via GitHub Actions or manually):
    ```bash
    python -m build
    twine upload dist/*
@@ -356,9 +346,8 @@ docs/
 
 ## Getting Help
 
-- **Questions**: [GitHub Discussions](https://github.com/yourusername/codeindex/discussions)
-- **Bugs**: [GitHub Issues](https://github.com/yourusername/codeindex/issues)
-- **Chat**: [Discord](https://discord.gg/...) (future)
+- **Questions**: [GitHub Discussions](https://github.com/dreamlx/codeindex/discussions)
+- **Bugs**: [GitHub Issues](https://github.com/dreamlx/codeindex/issues)
 
 ## Code of Conduct
 

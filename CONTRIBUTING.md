@@ -477,7 +477,7 @@ Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md). We are committ
 
 **For contributors new to**:
 - **TDD**: [Test-Driven Development Guide](https://docs.python-guide.org/writing/tests/)
-- **Git workflow**: [docs/guides/git-commit-guide.md](docs/guides/git-commit-guide.md)
+- **Git workflow**: [docs/internal/git-commit-guide.md](docs/internal/git-commit-guide.md)
 - **Tree-sitter**: [Tree-sitter Documentation](https://tree-sitter.github.io/tree-sitter/)
 - **Conventional Commits**: [conventionalcommits.org](https://www.conventionalcommits.org/)
 

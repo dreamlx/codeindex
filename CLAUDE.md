@@ -68,7 +68,7 @@ search_for_pattern(
 | `.codeindex.yaml` | Configuration | Understanding scan rules and AI integration |
 | `docs/planning/*.md` | Epic/Story plans | Design decisions and rationale |
 | `docs/evaluation/*.md` | Validation reports | Feature verification results |
-| `docs/guides/configuration-changelog.md` | Config version history | Configuration upgrades |
+| `CHANGELOG.md` | Version history | Understanding evolution and config changes |
 
 ### 🎯 Common Scenarios
 
@@ -229,7 +229,7 @@ pytest --cov=src/codeindex --cov-report=term-missing
 |-------------|---------------------|
 | New feature | CHANGELOG.md, README.md, relevant README_AI.md |
 | Bug fix | CHANGELOG.md |
-| Config change | .codeindex.yaml example, docs/guides/configuration.md, docs/guides/configuration-changelog.md |
+| Config change | .codeindex.yaml example, docs/guides/configuration.md, CHANGELOG.md |
 | API change | README.md, docstrings |
 | Major release | CHANGELOG.md, RELEASE_NOTES_vX.X.X.md |
 | Architecture decision | docs/architecture/adr-xxx.md |
@@ -460,7 +460,7 @@ tech_debt:
     large_threshold: 2000
 ```
 
-**Upgrade guide**: `docs/guides/configuration-changelog.md`
+**Config help**: `codeindex config explain <parameter>`
 
 ### Build & Development
 
@@ -518,7 +518,7 @@ codeindex status
 
 ## 📈 Version History
 
-**Current version**: v0.17.1
+**Current version**: v0.17.2
 
 For complete version history, see:
 - **[CHANGELOG.md](CHANGELOG.md)** - Detailed changes for each version
@@ -599,7 +599,6 @@ codeindex/
 ├── docs/
 │   ├── guides/
 │   │   ├── configuration.md       # Config reference
-│   │   ├── configuration-changelog.md  # Config version history
 │   │   ├── git-hooks-integration.md   # Git Hooks user guide
 │   │   └── claude-code-integration.md # Claude Code setup
 │   ├── planning/
@@ -643,7 +642,7 @@ codeindex scan-all --fallback
 | Topic | Document |
 |-------|----------|
 | **Requirements Management** | `docs/development/requirements-workflow.md` |
-| **Configuration Upgrades** | `docs/guides/configuration-changelog.md` |
+| **Configuration Reference** | `docs/guides/configuration.md` |
 | **Framework Route Extraction** | See CLAUDE.md Part 4 or `docs/guides/` |
 | **Git Hooks Integration** | `docs/guides/git-hooks-integration.md` |
 | **Claude Code Setup** | `docs/guides/claude-code-integration.md` |

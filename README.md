@@ -202,7 +202,6 @@ Directory → Scanner → Parser (tree-sitter) → Smart Writer → README_AI.md
 |-------|-------------|
 | [Getting Started](docs/guides/getting-started.md) | Installation and first scan |
 | [Configuration Guide](docs/guides/configuration.md) | All config options explained |
-| [Configuration Changelog](docs/guides/configuration-changelog.md) | Version-by-version config changes |
 | [Advanced Usage](docs/guides/advanced-usage.md) | Parallel scanning, custom prompts |
 | [Git Hooks Integration](docs/guides/git-hooks-integration.md) | Automated quality checks and doc updates |
 | [Claude Code Integration](docs/guides/claude-code-integration.md) | AI agent setup and MCP skills |
@@ -252,7 +251,7 @@ See [Release Automation Guide](docs/development/QUICK_START_RELEASE.md) for deta
 
 ## Roadmap
 
-**Current version**: v0.17.1
+**Current version**: v0.17.2
 
 **Recent milestones**:
 - v0.17.0 — CLAUDE.md injection via `codeindex init`

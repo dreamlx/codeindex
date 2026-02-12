@@ -1,8 +1,7 @@
 # Git Hooks Integration Guide
 
-**Version**: v0.5.0-beta1
+**Version**: v0.17.2
 **Feature**: Automated Git Hooks management
-**Epic**: 6, P3.1 - Git Hooks Integration
 
 ---
 
@@ -11,7 +10,7 @@
 codeindex now provides built-in Git Hooks management to automate:
 - **Pre-commit**: Lint checks and debug code detection
 - **Post-commit**: Automatic README_AI.md updates
-- **Pre-push**: Pre-push validation (placeholder)
+- **Pre-push**: Lint and test validation before push
 
 No manual hook creation needed - install with one command!
 
@@ -208,13 +207,14 @@ Auto-commit: "docs: auto-update README_AI.md for <hash>"
 
 ### Pre-push Hook
 
-**Purpose**: Validation before push (placeholder)
+**Purpose**: Validation before push
 
-Currently a placeholder. Can be customized for:
-- Running tests
-- Checking CI status
-- Validating commit messages
-- Running security checks
+**Checks**:
+1. **Lint check** - Runs `ruff check src/ tests/`
+2. **Test suite** - Runs `pytest` (full for develop/master, quick mode for feature/fix branches)
+3. **Version consistency** (master only) - Runs `scripts/check_version_consistency.py` to ensure version numbers match across all files
+
+**Note**: The CLI-installed pre-push hook (`codeindex hooks install pre-push`) generates a minimal placeholder. For the full-featured pre-push template with lint+tests, see `scripts/hooks/pre-push` and copy it manually to `.git/hooks/pre-push`.
 
 ---
 
@@ -362,7 +362,7 @@ When prompt mode is active, you'll see:
 ```bash
 ⚠️ README_AI.md updates available
    3 directories need updating
-   Run: codeindex affected --update
+   Run: codeindex scan <affected-dirs>
 ```
 
 ### Pre-Commit Configuration
@@ -563,10 +563,10 @@ A: codeindex hooks are independent. You can use both:
 - codeindex hooks: Runs after
 
 **Q: How do I share hooks with my team?**
-A: Each developer runs `codeindex hooks install --all` after cloning the repo.
+A: Each developer runs `codeindex hooks install --all` after cloning the repo. Alternatively, `codeindex init` offers to install hooks during interactive setup.
 
 **Q: Can I disable specific checks?**
-A: Currently requires manual hook editing. Configuration support coming in v0.6.0.
+A: Pre-commit checks require manual hook editing. Post-commit hooks are fully configurable via `.codeindex.yaml` (see Configuration section above) with 5 modes: `auto`, `disabled`, `async`, `sync`, `prompt`.
 
 **Q: What happens if I switch branches?**
 A: Hooks persist across branches (stored in `.git/hooks/`, not tracked by Git).
@@ -591,13 +591,11 @@ A: Hooks persist across branches (stored in `.git/hooks/`, not tracked by Git).
 
 ## 🔗 Related Documentation
 
-- [Epic 6 Sprint Plan](../planning/sprint1-epic6-execution.md)
-- [Git Hooks UX Design](../planning/git-hooks-ux-design.md)
 - [Configuration Guide](configuration.md)
-- [Developer Workflow](../development/developer-workflow.md)
+- [Getting Started Guide](getting-started.md)
+- [Advanced Usage](advanced-usage.md)
 
 ---
 
-**Generated**: 2026-02-02
-**Author**: Claude Sonnet 4.5
-**Status**: ✅ Production Ready (v0.5.0-beta1)
+**Last Updated**: 2026-02-13
+**Status**: Production Ready (v0.17.2)

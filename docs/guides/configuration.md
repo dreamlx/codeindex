@@ -266,7 +266,7 @@ codeindex scan-all --docstring-mode hybrid --show-cost
 ### Supported Languages
 
 - **PHP**: PHPDoc (`/** */`), inline comments (`//`)
-- **Python**: Docstrings, comments (coming soon)
+- **Python**: Docstrings (triple quotes, module-level)
 - **JavaScript/TypeScript**: JSDoc (planned)
 
 ### Example Use Cases
@@ -400,6 +400,11 @@ grep "^version:" .codeindex.yaml
 
 | codeindex Version | Config Version | Compatible | Migration Needed? |
 |-------------------|----------------|------------|-------------------|
+| v0.17.x           | 1              | ✅ Yes     | No                |
+| v0.16.x           | 1              | ✅ Yes     | No (CLI defaults changed, not config) |
+| v0.14.x           | 1              | ✅ Yes     | No (`config explain` command added) |
+| v0.11.x           | 1              | ✅ Yes     | No (install extras: `pip install ai-codeindex[all]`) |
+| v0.7.0            | 1              | ✅ Yes     | No (optional `hooks:` section added) |
 | v0.6.0            | 1              | ⚠️ Partial  | **Yes** - Remove `ai_enhancement` section |
 | v0.5.0            | 1              | ✅ Yes     | No                |
 | v0.4.0            | 1              | ✅ Yes     | No                |
@@ -407,11 +412,11 @@ grep "^version:" .codeindex.yaml
 | v0.2.0            | 1              | ✅ Yes     | No                |
 | v0.1.x            | 1              | ✅ Yes     | No                |
 
-**Breaking Change in v0.6.0**: `ai_enhancement` configuration section removed. See `docs/guides/migration-v0.6.md` for migration guide.
+**Breaking Change in v0.6.0**: `ai_enhancement` configuration section removed. Simply delete the `ai_enhancement` section from your `.codeindex.yaml`.
 
 ### Upgrade Benefits by Version
 
-#### From v0.1.x to v0.5.0-beta1
+#### From v0.1.x to v0.17.x
 
 Optional improvements available:
 
@@ -427,11 +432,15 @@ Optional improvements available:
    - AI-powered multi-language documentation normalization
    - Add `docstrings` section
 
-4. **Git Hooks** (v0.5.0-beta1)
-   - Automated code quality checks
-   - No config changes - use CLI: `codeindex hooks install --all`
+4. **Git Hooks Configuration** (v0.7.0)
+   - Configurable post-commit behavior (5 modes)
+   - Add `hooks:` section or use CLI: `codeindex hooks install --all`
 
-See: `docs/guides/configuration-changelog.md` for detailed upgrade paths
+5. **Config Explain** (v0.14.0)
+   - Interactive help for any config parameter
+   - Run: `codeindex config explain <parameter>`
+
+See `CHANGELOG.md` for detailed version history
 
 ### Quick Upgrade Workflow
 
@@ -446,7 +455,7 @@ cp examples/.codeindex.yaml .codeindex.yaml.new
 diff .codeindex.yaml .codeindex.yaml.new
 
 # 4. Test new config
-codeindex scan src/ --ai --dry-run
+codeindex scan src/ --dry-run
 
 # 5. Apply
 mv .codeindex.yaml.new .codeindex.yaml
@@ -474,15 +483,15 @@ tech_debt:
     large_threshold: 3000
 ```
 
-## Migration (Future)
-
-**Note**: Migration tools are planned for future breaking changes
-
-Upgrade old config format:
+## Config Tools
 
 ```bash
-codeindex config upgrade    # Future: auto-upgrade
-codeindex config check      # Future: validate and suggest improvements
+# Explain any config parameter (v0.14.0+)
+codeindex config explain parallel_workers
+codeindex config explain hooks.post_commit.mode
+
+# Future: auto-upgrade
+codeindex config upgrade    # Planned
 ```
 
 ## Tips
