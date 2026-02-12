@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-02-12
+
+### Changed
+
+- **Test Architecture Migration** (Epic 18)
+  - Migrated all inheritance tests to template-based generation system
+  - Python: 30 tests generated from `test_generator/specs/python.yaml`
+  - PHP: 23 tests generated from `test_generator/specs/php.yaml`
+  - Java: 29 tests generated from `test_generator/specs/java.yaml`
+  - 100% legacy test coverage preserved (63/63 scenarios)
+  - 19 additional advanced test scenarios added
+  - Single Jinja2 template shared across all languages
+
+### Added
+
+- **Test Generator Tooling** (`test_generator/`)
+  - `generator.py`: CLI for YAML + Jinja2 → pytest test generation
+  - `specs/`: YAML specifications for Python, PHP, Java inheritance tests
+  - `templates/inheritance_test.py.j2`: Shared test template
+  - `scripts/`: Analysis and comparison utilities
+  - Custom Jinja2 filters: `py_escape`, `to_var_name`, `to_code_string`
+
+### Removed
+
+- Legacy hand-written inheritance test files (preserved in `backup/legacy-tests-20260211` branch)
+- `tests/generated/` and `tests/legacy_reference/` transitional directories
+
 ## [0.14.0] - 2026-02-10
 
 ### Added

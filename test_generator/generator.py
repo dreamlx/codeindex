@@ -5,7 +5,7 @@ Usage:
     python test_generator/generator.py \
         --spec test_generator/specs/python.yaml \
         --template test_generator/templates/inheritance_test.py.j2 \
-        --output tests/generated/test_python_inheritance.py
+        --output tests/test_python_inheritance.py
 
     python test_generator/generator.py --spec specs/python.yaml --dry-run
 
