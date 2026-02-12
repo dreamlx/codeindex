@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-02-12
+
+### Changed
+
+- **README.md full restructure**: Reduced from 1255 to 295 lines (-76%). Now a concise navigation hub linking to existing `docs/guides/` content. Removed duplicate sections, updated for v0.17.0 features, fixed stale version claims.
+- **CHANGELOG.md trimmed**: Reduced from 1080 to 319 lines (-70%). Removed internal implementation details from v0.6–v0.12, fixed all comparison links (`yourusername` → `dreamlx`), added missing version links (v0.7–v0.17).
+
 ## [0.17.0] - 2026-02-12
 
 ### Added
@@ -293,7 +300,8 @@ Kept: SmartWriter (core README generation), Docstring Extraction (Epic 9), `File
 - Symbol extraction (classes, functions, methods, imports)
 - README_AI.md generation
 
-[Unreleased]: https://github.com/dreamlx/codeindex/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/dreamlx/codeindex/compare/v0.17.1...HEAD
+[0.17.1]: https://github.com/dreamlx/codeindex/compare/v0.17.0...v0.17.1
 [0.17.0]: https://github.com/dreamlx/codeindex/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/dreamlx/codeindex/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/dreamlx/codeindex/compare/v0.15.1...v0.16.0
