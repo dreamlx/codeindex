@@ -23,12 +23,9 @@ from .scanner import find_all_directories
 def _print_post_init_message():
     """Print post-init next steps message."""
     console.print("\n[bold]Next steps:[/bold]")
-    console.print("  1. [cyan]codeindex scan-all[/cyan]          → Generate structural documentation")
-    console.print("  2. [cyan]codeindex status[/cyan]            → Check coverage")
-    console.print("")
-    console.print("[dim]Optional: AI-enhanced documentation[/dim]")
-    console.print("  Edit .codeindex.yaml to set ai_command, then:")
-    console.print("  [cyan]codeindex scan-all --ai[/cyan]        → AI-enhanced documentation")
+    console.print("  1. [cyan]Review .codeindex.yaml[/cyan]    → Verify include/exclude patterns")
+    console.print("  2. [cyan]codeindex scan-all[/cyan]        → Generate documentation indexes")
+    console.print("  3. [cyan]codeindex status[/cyan]           → Check coverage")
 
 @click.command()
 @click.option("--force", "-f", is_flag=True, help="Overwrite existing config")

@@ -36,7 +36,7 @@ class TestInjectClaudeMd:
         assert CLAUDE_MD_MARKER_END in content
         assert "Always read README_AI.md" in content
         assert "codeindex status" in content
-        assert "CODEINDEX.md" in content
+        assert "codeindex scan-all" in content
 
     def test_prepends_to_existing_file(self, project_dir):
         """Should prepend section to existing CLAUDE.md."""
