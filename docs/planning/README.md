@@ -1,7 +1,7 @@
 # Planning Index
 
 **Last Updated**: 2026-02-11
-**Current Version**: v0.14.0 (+ Epic 16 test cleanup)
+**Current Version**: v0.15.0 (+ Epic 16 test cleanup)
 
 ---
 

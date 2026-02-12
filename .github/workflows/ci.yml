@@ -37,7 +37,7 @@ jobs:
         pip install -e ".[dev,all]"
 
     - name: Run linter
-      run: ruff check src/ tests/
+      run: ruff check src/ tests/ test_generator/
 
     - name: Run tests with coverage
       run: |
@@ -64,10 +64,10 @@ jobs:
       run: pip install ruff
 
     - name: Run ruff check
-      run: ruff check src/ tests/
+      run: ruff check src/ tests/ test_generator/
 
     - name: Run ruff format check
-      run: ruff format --check src/ tests/
+      run: ruff format --check src/ tests/ test_generator/
 
   build-check:
     runs-on: ubuntu-latest

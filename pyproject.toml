@@ -1,6 +1,6 @@
 [project]
 name = "ai-codeindex"
-version = "0.14.0"
+version = "0.15.0"
 description = "AI-native code indexing tool for large codebases"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -74,3 +74,4 @@ select = ["E", "F", "I", "N", "W"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+norecursedirs = ["examples"]

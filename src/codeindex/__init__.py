@@ -7,5 +7,10 @@ Usage:
     codeindex status          # Show indexing status
 """
 
-__version__ = "0.12.0"
+try:
+    from importlib.metadata import version
+
+    __version__ = version("ai-codeindex")
+except Exception:
+    __version__ = "0.0.0-dev"
 __all__ = ["__version__"]
