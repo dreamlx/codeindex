@@ -6,6 +6,12 @@ import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
 from codeindex.config import Config
+from codeindex.init_wizard import (
+    CLAUDE_MD_MARKER_END,
+    CLAUDE_MD_MARKER_START,
+    has_claude_md_injection,
+    inject_claude_md,
+)
 
 # Load all scenarios from the feature file
 scenarios("features/init_wizard.feature")
@@ -666,3 +672,97 @@ def all_patterns_inferred(wizard_context):
 def no_manual_input(wizard_context):
     """Verify no manual input was required."""
     assert wizard_context["user_choices"].get("all_defaults", False)
+
+
+# ============================================================================
+# CLAUDE.md Injection Steps
+# ============================================================================
+
+
+@given("the project has an existing CLAUDE.md")
+def existing_claude_md(project_dir, wizard_context):
+    """Create an existing CLAUDE.md in the project."""
+    claude_md = project_dir / "CLAUDE.md"
+    claude_md.write_text("# My Project\n\nExisting content here.\n")
+    wizard_context["existing_claude_md_content"] = "# My Project\n\nExisting content here.\n"
+
+
+@given("CLAUDE.md already has codeindex injection")
+def claude_md_with_injection(project_dir):
+    """Pre-inject CLAUDE.md with codeindex section."""
+    inject_claude_md(project_dir)
+
+
+@when("I request CLAUDE.md injection")
+def request_claude_md_injection(wizard_context, project_dir):
+    """Request CLAUDE.md injection."""
+    wizard_context["user_choices"]["inject_claude_md"] = True
+    wizard_context["project_dir"] = project_dir
+    inject_claude_md(project_dir)
+
+
+@when("I skip CLAUDE.md injection")
+def skip_claude_md_injection(wizard_context, project_dir):
+    """Skip CLAUDE.md injection."""
+    wizard_context["user_choices"]["inject_claude_md"] = False
+    wizard_context["project_dir"] = project_dir
+
+
+@then("CLAUDE.md should be created in project root with codeindex section")
+def claude_md_created_with_section(wizard_context):
+    """Verify CLAUDE.md was created in project root."""
+    project_dir = wizard_context["project_dir"]
+    claude_md = project_dir / "CLAUDE.md"
+    assert claude_md.exists()
+
+
+@then("it should contain the codeindex marker")
+def has_codeindex_marker(wizard_context):
+    """Verify CLAUDE.md contains codeindex markers."""
+    content = (wizard_context["project_dir"] / "CLAUDE.md").read_text()
+    assert CLAUDE_MD_MARKER_START in content
+    assert CLAUDE_MD_MARKER_END in content
+
+
+@then('it should contain "Always read README_AI.md"')
+def has_readme_instruction(wizard_context):
+    """Verify CLAUDE.md contains the README_AI.md instruction."""
+    content = (wizard_context["project_dir"] / "CLAUDE.md").read_text()
+    assert "Always read README_AI.md" in content
+
+
+@then("CLAUDE.md should contain the codeindex section")
+def claude_md_has_section(wizard_context):
+    """Verify CLAUDE.md contains the codeindex section."""
+    content = (wizard_context["project_dir"] / "CLAUDE.md").read_text()
+    assert CLAUDE_MD_MARKER_START in content
+    assert "codeindex" in content
+
+
+@then("the original content should be preserved after the injection")
+def original_content_preserved(wizard_context):
+    """Verify original CLAUDE.md content is preserved."""
+    content = (wizard_context["project_dir"] / "CLAUDE.md").read_text()
+    assert "Existing content here." in content
+
+
+@then("CLAUDE.md should contain exactly one codeindex section")
+def exactly_one_section(wizard_context):
+    """Verify CLAUDE.md has exactly one codeindex section."""
+    content = (wizard_context["project_dir"] / "CLAUDE.md").read_text()
+    assert content.count(CLAUDE_MD_MARKER_START) == 1
+    assert content.count(CLAUDE_MD_MARKER_END) == 1
+
+
+@then("the content between markers should be updated")
+def markers_content_updated(wizard_context):
+    """Verify content between markers contains expected instructions."""
+    content = (wizard_context["project_dir"] / "CLAUDE.md").read_text()
+    assert "Always read README_AI.md" in content
+    assert has_claude_md_injection(wizard_context["project_dir"])
+
+
+@then("CLAUDE.md should not exist in project root")
+def no_claude_md(wizard_context):
+    """Verify CLAUDE.md does not exist."""
+    assert not (wizard_context["project_dir"] / "CLAUDE.md").exists()

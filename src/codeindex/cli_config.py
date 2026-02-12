@@ -14,6 +14,7 @@ from .config import DEFAULT_CONFIG_NAME, Config
 from .init_wizard import (
     create_codeindex_md,
     generate_config_yaml,
+    inject_claude_md,
     run_interactive_wizard,
 )
 from .scanner import find_all_directories
@@ -113,10 +114,15 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
         if result.create_codeindex_md:
             create_codeindex_md(project_dir)
 
+        # Inject CLAUDE.md (safe default for non-interactive)
+        claude_md_path = inject_claude_md(project_dir)
+        result.claude_md_injected = True
+
         if not quiet:
             console.print(f"[green]✓ Created:[/green] {config_path}")
             if result.create_codeindex_md:
                 console.print("[green]✓ Created:[/green] CODEINDEX.md")
+            console.print(f"[green]✓ Injected:[/green] {claude_md_path.name}")
             _print_post_init_message()
 
         return
@@ -134,6 +140,12 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
         codeindex_path = create_codeindex_md(project_dir)
         result.codeindex_md_created = True
         console.print(f"\n[green]✓ Created:[/green] {codeindex_path}")
+
+    # Inject CLAUDE.md if requested
+    if result.inject_claude_md:
+        claude_md_path = inject_claude_md(project_dir)
+        result.claude_md_injected = True
+        console.print(f"[green]✓ Injected:[/green] {claude_md_path.name}")
 
     # Install Git Hooks if requested
     if result.enable_hooks:

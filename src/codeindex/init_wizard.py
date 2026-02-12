@@ -14,12 +14,31 @@ Design Philosophy:
 """
 
 import os
+import re
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
 import click
+
+# ============================================================================
+# CLAUDE.md Injection
+# ============================================================================
+
+CLAUDE_MD_MARKER_START = "<!-- codeindex:start -->"
+CLAUDE_MD_MARKER_END = "<!-- codeindex:end -->"
+
+CLAUDE_MD_SECTION = """<!-- codeindex:start -->
+## codeindex
+
+This project uses codeindex for AI-friendly code documentation.
+
+- **Always read README_AI.md** before exploring source code in any directory
+- If README_AI.md is missing or outdated, run: `codeindex scan <dir>`
+- Check documentation coverage: `codeindex status`
+- Full command reference: see CODEINDEX.md
+<!-- codeindex:end -->"""
 
 
 @dataclass
@@ -34,11 +53,13 @@ class WizardResult:
     enable_hooks: bool = False
     hooks_mode: str = "auto"
     create_codeindex_md: bool = False
+    inject_claude_md: bool = True
     configure_ai: bool = False
     ai_tool: Optional[str] = None
     ai_command: Optional[str] = None
     config_created: bool = False
     codeindex_md_created: bool = False
+    claude_md_injected: bool = False
     hooks_installed: bool = False
 
 
@@ -359,6 +380,64 @@ def count_files(project_dir: Path, patterns: List[str]) -> int:
 
 
 # ============================================================================
+# CLAUDE.md Injection Functions
+# ============================================================================
+
+
+def inject_claude_md(project_dir: Path) -> Path:
+    """Inject codeindex instructions into CLAUDE.md.
+
+    - Creates CLAUDE.md if it doesn't exist
+    - Prepends section if no existing injection found
+    - Replaces between markers if already injected (idempotent)
+
+    Args:
+        project_dir: Project root directory
+
+    Returns:
+        Path to CLAUDE.md
+    """
+    claude_md_path = project_dir / "CLAUDE.md"
+
+    if not claude_md_path.exists():
+        claude_md_path.write_text(CLAUDE_MD_SECTION + "\n")
+        return claude_md_path
+
+    content = claude_md_path.read_text()
+
+    if CLAUDE_MD_MARKER_START in content:
+        # Replace existing section between markers (idempotent update)
+        pattern = re.compile(
+            re.escape(CLAUDE_MD_MARKER_START) + r".*?" + re.escape(CLAUDE_MD_MARKER_END),
+            re.DOTALL,
+        )
+        new_content = pattern.sub(CLAUDE_MD_SECTION, content)
+        claude_md_path.write_text(new_content)
+    else:
+        # Prepend section to existing content
+        new_content = CLAUDE_MD_SECTION + "\n\n" + content
+        claude_md_path.write_text(new_content)
+
+    return claude_md_path
+
+
+def has_claude_md_injection(project_dir: Path) -> bool:
+    """Check if CLAUDE.md already has codeindex injection.
+
+    Args:
+        project_dir: Project root directory
+
+    Returns:
+        True if CLAUDE.md exists and contains the codeindex marker
+    """
+    claude_md_path = project_dir / "CLAUDE.md"
+    if not claude_md_path.exists():
+        return False
+    content = claude_md_path.read_text()
+    return CLAUDE_MD_MARKER_START in content
+
+
+# ============================================================================
 # Interactive Wizard
 # ============================================================================
 
@@ -377,7 +456,7 @@ def run_interactive_wizard(project_dir: Path) -> WizardResult:
     click.secho("\n🚀 codeindex Interactive Setup Wizard\n", fg="cyan", bold=True)
 
     # Step 1: Detect languages
-    click.echo("📝 Step 1/5: Detecting languages...")
+    click.echo("📝 Step 1/6: Detecting languages...")
     result.detected_languages = detect_languages(project_dir)
 
     if result.detected_languages:
@@ -388,7 +467,7 @@ def run_interactive_wizard(project_dir: Path) -> WizardResult:
 
     # Step 2: Detect frameworks
     if result.detected_languages:
-        click.echo("\n📦 Step 2/5: Detecting frameworks...")
+        click.echo("\n📦 Step 2/6: Detecting frameworks...")
         result.detected_frameworks = detect_frameworks(project_dir, result.detected_languages)
 
         if result.detected_frameworks:
@@ -398,7 +477,7 @@ def run_interactive_wizard(project_dir: Path) -> WizardResult:
             click.echo("   No frameworks detected.")
 
     # Step 3: Infer patterns
-    click.echo("\n📂 Step 3/5: Analyzing project structure...")
+    click.echo("\n📂 Step 3/6: Analyzing project structure...")
     result.suggested_patterns["include"] = infer_include_patterns(project_dir)
     result.suggested_patterns["exclude"] = infer_exclude_patterns(project_dir)
 
@@ -406,7 +485,7 @@ def run_interactive_wizard(project_dir: Path) -> WizardResult:
     click.echo(f"   Exclude: {len(result.suggested_patterns['exclude'])} patterns")
 
     # Step 4: Auto-tune performance
-    click.echo("\n⚡ Step 4/5: Calculating performance settings...")
+    click.echo("\n⚡ Step 4/6: Calculating performance settings...")
     file_count = count_files(project_dir, result.suggested_patterns["include"])
     result.parallel_workers = calculate_parallel_workers(file_count)
     result.batch_size = calculate_batch_size(file_count)
@@ -415,8 +494,14 @@ def run_interactive_wizard(project_dir: Path) -> WizardResult:
     click.echo(f"   Workers: {result.parallel_workers}")
     click.echo(f"   Batch size: {result.batch_size}")
 
-    # Step 5: Optional features
-    click.echo("\n🔧 Step 5/5: Optional features...")
+    # Step 5: CLAUDE.md injection
+    click.echo("\n📋 Step 5/6: AI agent integration...")
+    result.inject_claude_md = click.confirm(
+        "   Inject codeindex instructions into CLAUDE.md?", default=True
+    )
+
+    # Step 6: Optional features
+    click.echo("\n🔧 Step 6/6: Optional features...")
 
     # Ask about Git Hooks
     result.enable_hooks = click.confirm("   Enable Git Hooks for auto-documentation?", default=False)

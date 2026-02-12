@@ -156,3 +156,29 @@ Feature: Interactive Setup Wizard
     And all languages should be auto-detected
     And all patterns should be auto-inferred
     And no manual input should be required
+
+  # ============================================================================
+  # Scenario Group 9: CLAUDE.md Injection
+  # ============================================================================
+
+  Scenario: Create CLAUDE.md when it does not exist
+    When I request CLAUDE.md injection
+    Then CLAUDE.md should be created in project root with codeindex section
+    And it should contain the codeindex marker
+    And it should contain "Always read README_AI.md"
+
+  Scenario: Inject into existing CLAUDE.md
+    Given the project has an existing CLAUDE.md
+    When I request CLAUDE.md injection
+    Then CLAUDE.md should contain the codeindex section
+    And the original content should be preserved after the injection
+
+  Scenario: Idempotent injection on re-run
+    Given CLAUDE.md already has codeindex injection
+    When I request CLAUDE.md injection
+    Then CLAUDE.md should contain exactly one codeindex section
+    And the content between markers should be updated
+
+  Scenario: Skip CLAUDE.md injection
+    When I skip CLAUDE.md injection
+    Then CLAUDE.md should not exist in project root
