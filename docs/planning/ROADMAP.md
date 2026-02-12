@@ -1,7 +1,7 @@
 # codeindex Strategic Roadmap
 
 **Last Updated**: 2026-02-11
-**Current Version**: v0.14.0 (+ Epic 16 test cleanup)
+**Current Version**: v0.15.0 (+ Epic 16 test cleanup)
 **Vision**: Universal Code Parser - Best-in-class multi-language AST parser for AI-assisted development
 **Positioning**: Focused on code parsing and structured data extraction, not AI analysis
 
@@ -971,4 +971,4 @@ A: Core features remain open-source. Enterprise features (team collaboration, an
 **Next Review**: 2026-03-31 (after v0.14.0 release)
 **Maintained By**: @dreamlx + community
 **Last Updated**: 2026-02-08
-**Current Version**: v0.14.0 (Released 2026-02-08)
+**Current Version**: v0.15.0 (Released 2026-02-08)
