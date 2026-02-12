@@ -84,8 +84,8 @@ class TestInitWizardPostMessage:
         assert result.exit_code == 0
         assert "scan-all" in result.output
 
-    def test_post_init_mentions_ai_optional(self, tmp_path):
-        """Post-init message should mention --ai as optional."""
+    def test_post_init_mentions_review_config(self, tmp_path):
+        """Post-init message should guide user to review config and scan."""
         import os
 
         from click.testing import CliRunner
@@ -105,9 +105,9 @@ class TestInitWizardPostMessage:
             os.chdir(original)
 
         assert result.exit_code == 0
-        # Should mention AI is optional
-        output_lower = result.output.lower()
-        assert "optional" in output_lower or "--ai" in result.output
+        # Should mention reviewing config and running scan-all
+        assert "Review .codeindex.yaml" in result.output
+        assert "scan-all" in result.output
 
     def test_generated_config_no_ai_command(self, tmp_path):
         """Generated config should NOT have active ai_command (AI is opt-in)."""
