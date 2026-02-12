@@ -2,53 +2,62 @@
 
 ## What is codeindex?
 
-codeindex is an AI-native code indexing tool that generates intelligent documentation (`README_AI.md`) for your codebase directories. It uses tree-sitter for code parsing and integrates with external AI CLIs to create comprehensive, context-aware documentation.
+codeindex is a universal code parser that extracts symbols, inheritance, call relationships, and imports from Python, PHP, and Java using tree-sitter. It generates AI-friendly documentation (`README_AI.md`) and structured JSON output for AI tools, knowledge graphs, and code intelligence platforms.
 
 ## Installation
 
 ### Using pipx (Recommended)
 
 ```bash
-pipx install ai-codeindex
+pipx install ai-codeindex[all]
 ```
 
 ### Using pip
 
 ```bash
-pip install ai-codeindex
+# All languages
+pip install ai-codeindex[all]
+
+# Or specific languages only
+pip install ai-codeindex[python]
+pip install ai-codeindex[php]
+pip install ai-codeindex[java]
 ```
 
 ### From source
 
 ```bash
-git clone https://github.com/yourusername/codeindex.git
+git clone https://github.com/dreamlx/codeindex.git
 cd codeindex
-pip install -e .
+pip install -e ".[all]"
 ```
 
 ## Quick Start
 
 ### 1. Initialize Configuration
 
-Navigate to your project and create a configuration file:
+Navigate to your project and run the setup wizard:
 
 ```bash
 cd /your/project
 codeindex init
 ```
 
-This creates `.codeindex.yaml` in your project root.
+This creates three files:
+- `.codeindex.yaml` — scan configuration (languages, include/exclude patterns)
+- `CLAUDE.md` — injects codeindex instructions so Claude Code uses README_AI.md automatically
+- `CODEINDEX.md` — project-level documentation reference
 
-### 2. Configure AI CLI
+### 2. Configure AI CLI (Optional)
 
-Edit `.codeindex.yaml` to set up your AI CLI command:
+For AI-enhanced documentation, edit `.codeindex.yaml`:
 
 ```yaml
-# Example with Claude CLI
+# AI CLI command (optional — scanning works without this)
 ai_command: 'claude -p "{prompt}" --allowedTools "Read"'
 
 # Or with other AI CLIs:
-# ai_command: 'opencode run "{prompt}"'
+# ai_command: 'openai chat "{prompt}" --model gpt-4'
 # ai_command: 'gemini "{prompt}"'
 
 include:
@@ -71,7 +80,11 @@ output_file: "README_AI.md"
 Generate documentation for a single directory:
 
 ```bash
+# Structural documentation (default, no AI needed)
 codeindex scan ./src/auth
+
+# AI-enhanced documentation (requires ai_command in config)
+codeindex scan ./src/auth --ai
 ```
 
 This creates `./src/auth/README_AI.md`.
@@ -96,23 +109,20 @@ Indexing Status
 Indexed: 3/4 (75%)
 ```
 
-### 5. Batch Scanning (v0.1.2+)
+### 5. Batch Scanning
 
-Scan all directories at once with two-phase processing:
+Scan all directories at once:
 
 ```bash
-# Smart batch scanning with AI enhancement
-codeindex scan-all                # Uses config ai_enhancement strategy
-codeindex scan-all --ai-all       # Enhance ALL directories with AI
-codeindex scan-all --no-ai        # SmartWriter only (fast, no AI costs)
+# Structural documentation for entire project
+codeindex scan-all
+
+# AI-enhanced documentation for entire project
+codeindex scan-all --ai
 
 # Traditional parallel scanning
 codeindex list-dirs | xargs -P 4 -I {} codeindex scan {}
 ```
-
-**Two-phase processing** (default):
-1. Phase 1: Generate all READMEs with SmartWriter (fast)
-2. Phase 2: Selectively enhance with AI (large directories only)
 
 ### 6. Symbol Indexes (v0.1.2+)
 
@@ -145,28 +155,21 @@ codeindex tech-debt ./src --format json
 codeindex tech-debt ./src --recursive
 ```
 
-## No AI? Use Fallback Mode
-
-If you don't have an AI CLI configured, you can generate basic documentation:
-
-```bash
-codeindex scan ./src/auth --fallback
-```
-
-This creates a structured overview without AI enhancement.
-
 ## Preview Before Generation
 
 Want to see what prompt will be sent to the AI?
 
 ```bash
-codeindex scan ./src/auth --dry-run
+codeindex scan ./src/auth --ai --dry-run
 ```
+
+> **Note**: `--dry-run` requires the `--ai` flag since it previews the AI prompt.
 
 ## Next Steps
 
 - [Configuration Guide](./configuration.md) - Deep dive into all config options
 - [Advanced Usage](./advanced-usage.md) - Parallel scanning, custom prompts
+- [Claude Code Integration](./claude-code-integration.md) - AI agent setup
 - [Contributing](./contributing.md) - Help improve codeindex
 
 ## Troubleshooting
@@ -191,6 +194,5 @@ chmod +x $(which codeindex)
 
 ## Need Help?
 
-- Check the [FAQ](./faq.md)
-- [Open an issue](https://github.com/yourusername/codeindex/issues)
-- [Join discussions](https://github.com/yourusername/codeindex/discussions)
+- [Open an issue](https://github.com/dreamlx/codeindex/issues)
+- [Join discussions](https://github.com/dreamlx/codeindex/discussions)

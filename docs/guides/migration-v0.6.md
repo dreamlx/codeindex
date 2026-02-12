@@ -131,7 +131,7 @@ codeindex scan ./src
 
 ```bash
 # 1. Validate config (should not show ai_enhancement warnings)
-codeindex scan-all --dry-run
+codeindex scan-all --ai --dry-run
 
 # 2. Test scan-all
 codeindex scan-all

@@ -81,10 +81,10 @@ Read(file_path="src/auth/authenticator.py")  # 再读具体文件
 
 ```bash
 # 重新扫描整个项目
-codeindex scan-all --fallback
+codeindex scan-all
 
 # 或只扫描修改的目录
-codeindex scan src/auth --fallback
+codeindex scan src/auth
 ```
 
 **注意：不要手动编辑 README_AI.md 文件，它们会被自动覆盖。**
@@ -127,7 +127,7 @@ codeindex scan src/auth --fallback
 第3步：按照现有模式添加新端点
 
 第4步：添加后重新生成索引
-      → codeindex scan src/api --fallback
+      → codeindex scan src/api
 ```
 
 #### 场景3：用户问"这个函数在哪里被调用？"
@@ -212,7 +212,7 @@ codeindex scan src/auth --fallback
 ---
 
 *此文件由 [codeindex](https://github.com/dreamlx/codeindex) 生成。*
-*如需更新索引，运行：`codeindex scan-all --fallback`*
+*如需更新索引，运行：`codeindex scan-all`*
 ```
 
 ### 2. 自定义项目特定信息
@@ -293,12 +293,12 @@ Claude：让我先查看 README_AI.md... [读取 src/README_AI.md]
 # 检查是否有 Python 文件修改
 if git diff --cached --name-only | grep -q '\.py$'; then
     echo "检测到 Python 文件修改，建议运行："
-    echo "  codeindex scan-all --fallback"
+    echo "  codeindex scan-all"
     echo ""
     echo "跳过索引更新？(y/N)"
     read -r response
     if [[ ! "$response" =~ ^[Yy]$ ]]; then
-        codeindex scan-all --fallback
+        codeindex scan-all
         git add README_AI.md **/README_AI.md
     fi
 fi

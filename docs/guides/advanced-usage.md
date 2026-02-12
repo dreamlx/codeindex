@@ -2,19 +2,16 @@
 
 ## Parallel Scanning
 
-### Using scan-all (v0.1.2+, Enhanced v0.3.0)
+### Using scan-all
 
-The modern way to scan entire projects with smart AI enhancement:
+The simplest way to scan entire projects:
 
 ```bash
-# Default: Selective AI enhancement (smart and cost-effective)
+# Structural documentation (default, no AI needed)
 codeindex scan-all
 
-# Enhance ALL directories with AI (best quality, more time/cost)
-codeindex scan-all --ai-all
-
-# No AI, just SmartWriter (fastest, no API costs)
-codeindex scan-all --no-ai
+# AI-enhanced documentation
+codeindex scan-all --ai
 
 # Custom timeout per directory
 codeindex scan-all --timeout 180
@@ -22,19 +19,6 @@ codeindex scan-all --timeout 180
 # Custom parallel workers
 codeindex scan-all --workers 4
 ```
-
-**How it works:**
-1. **Phase 1**: Generate all READMEs with SmartWriter (fast, local)
-2. **Phase 2**: Selectively enhance with AI based on strategy:
-   - `selective` (default): Only large directories (>40KB)
-   - `all`: Every directory gets AI enhancement
-   - Manual `--no-ai`: Skip Phase 2 entirely
-
-**Benefits over traditional parallel:**
-- Two-phase processing prevents duplicate work
-- Intelligent AI selection saves API costs
-- Rate limiting prevents API throttling
-- Progress tracking with Rich output
 
 ### Traditional Parallel with xargs
 
@@ -65,14 +49,6 @@ codeindex list-dirs | parallel --bar -j 4 codeindex scan {}
 
 # With timeout per job
 codeindex list-dirs | parallel --timeout 300 -j 4 codeindex scan {}
-```
-
-### Fallback Mode in Parallel
-
-Generate docs without AI for all directories:
-
-```bash
-codeindex list-dirs | xargs -P 4 -I {} codeindex scan {} --fallback
 ```
 
 ## Custom Prompts
@@ -157,11 +133,17 @@ git diff --name-only abc123 | xargs -n1 dirname | sort -u | \
   xargs -I {} codeindex scan {}
 ```
 
-### Watch Mode (Future)
+### Using `codeindex affected`
 
 ```bash
-# Future feature: watch and auto-regenerate
-codeindex watch ./src
+# Find directories affected by recent changes
+codeindex affected --since HEAD~5 --until HEAD
+
+# JSON output for scripting
+codeindex affected --json
+
+# Pipe to scan
+codeindex affected --json | jq '.directories[]' | xargs -I {} codeindex scan {}
 ```
 
 ## Symbol Indexing (v0.1.2+)
@@ -203,30 +185,6 @@ codeindex index --output PROJECT_OVERVIEW.md
 - Module descriptions extracted from README_AI.md
 - Entry points and CLI commands
 - Directory structure overview
-
-### Analyze Affected Directories
-
-Find which directories need updates after code changes:
-
-```bash
-# Analyze recent changes
-codeindex affected --since HEAD~5 --until HEAD
-
-# JSON output for scripting
-codeindex affected --json
-
-# Check specific commit range
-codeindex affected --since abc123 --until def456
-
-# Use in CI/CD
-codeindex affected --json | jq '.directories[]' | xargs -I {} codeindex scan {}
-```
-
-**Use cases:**
-- Incremental documentation updates
-- CI/CD integration
-- Pre-commit hooks
-- Change impact analysis
 
 ## Technical Debt Analysis (v0.3.0+)
 
@@ -274,12 +232,12 @@ codeindex tech-debt ./src --format json --output debt.json
 CRITICAL=$(jq '[.files[].issues[] | select(.severity == "CRITICAL")] | length' debt.json)
 
 if [ "$CRITICAL" -gt 0 ]; then
-  echo "❌ Found $CRITICAL critical technical debt issues"
+  echo "Found $CRITICAL critical technical debt issues"
   jq '.files[].issues[] | select(.severity == "CRITICAL")' debt.json
   exit 1
 fi
 
-echo "✅ No critical technical debt issues"
+echo "No critical technical debt issues"
 ```
 
 ### Quality Gates
@@ -291,64 +249,9 @@ Set thresholds for acceptable debt:
 AVG_QUALITY=$(jq '[.files[].quality_score] | add / length' debt.json)
 
 if (( $(echo "$AVG_QUALITY < 70" | bc -l) )); then
-  echo "❌ Average quality score $AVG_QUALITY below threshold (70)"
+  echo "Average quality score $AVG_QUALITY below threshold (70)"
   exit 1
 fi
-```
-
-## Multi-turn Dialogue for Super Large Files (v0.3.0+)
-
-### Automatic Detection
-
-For files >5000 lines or >100 symbols, use multi-turn dialogue:
-
-```bash
-# Auto-detect and use multi-turn when needed
-codeindex scan ./huge-file --strategy auto
-
-# Force multi-turn dialogue
-codeindex scan ./huge-file --strategy multi_turn
-
-# Force standard enhancement (single AI call)
-codeindex scan ./huge-file --strategy standard
-```
-
-### How Multi-turn Works
-
-**Three-round dialogue for better quality:**
-
-1. **Round 1: Architecture Overview** (10-20 lines)
-   - High-level architecture
-   - Main responsibilities
-   - Key design patterns
-
-2. **Round 2: Core Component Analysis** (30-60 lines)
-   - Detailed component breakdown
-   - Symbol grouping by responsibility
-   - Integration points
-
-3. **Round 3: Final README Synthesis** (100+ lines)
-   - Complete documentation
-   - Combines rounds 1 + 2
-   - Usage examples and patterns
-
-**Benefits:**
-- Better quality for huge files
-- Avoids AI context limits
-- Focused analysis per round
-- Graceful fallback on failure
-
-### Configuration
-
-Configure multi-turn thresholds:
-
-```yaml
-# .codeindex.yaml
-multi_turn:
-  enabled: true
-  line_threshold: 5000      # >5000 lines triggers multi-turn
-  symbol_threshold: 100     # >100 symbols triggers multi-turn
-  timeout_per_round: 120    # Timeout for each round
 ```
 
 ## Adaptive Symbol Extraction (v0.2.0+)
@@ -411,19 +314,12 @@ jobs:
           python-version: '3.11'
 
       - name: Install codeindex
-        run: pipx install codeindex
-
-      - name: Install Claude CLI
-        run: |
-          # Install your AI CLI here
-          npm install -g @anthropic-ai/claude-cli
+        run: pipx install ai-codeindex[all]
 
       - name: Generate indexes
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          codeindex init
-          codeindex list-dirs | xargs -P 4 -I {} codeindex scan {} --fallback
+          codeindex init --yes
+          codeindex scan-all
 
       - name: Commit changes
         run: |
@@ -441,8 +337,8 @@ jobs:
 update-index:
   image: python:3.11
   script:
-    - pip install ai-codeindex
-    - codeindex list-dirs | xargs -P 4 -I {} codeindex scan {} --fallback
+    - pip install ai-codeindex[all]
+    - codeindex scan-all
   artifacts:
     paths:
       - '**/README_AI.md'
@@ -488,28 +384,36 @@ exclude:
 output_file: "OVERVIEW.md"  # Instead of README_AI.md
 ```
 
-### JSON Output (Future)
+### JSON Output
 
 ```bash
-# Future feature: structured output
-codeindex scan ./src --format json > index.json
+# Single directory
+codeindex scan ./src --output json
+
+# Entire project
+codeindex scan-all --output json > parse_results.json
+
+# Parse single file
+codeindex parse myfile.py | jq .
 ```
 
-## Pre-commit Hooks
+## Git Hooks Integration
 
-Automatically regenerate indexes on commit:
+Automatically regenerate indexes on commit using codeindex's built-in hooks:
 
-```yaml
-# .pre-commit-config.yaml
-repos:
-  - repo: local
-    hooks:
-      - id: codeindex
-        name: Update code indexes
-        entry: bash -c 'git diff --cached --name-only | xargs -n1 dirname | sort -u | xargs -I {} codeindex scan {} --fallback'
-        language: system
-        pass_filenames: false
+```bash
+# Install all hooks (pre-commit + post-commit)
+codeindex hooks install --all
+
+# Or install individually
+codeindex hooks install pre-commit
+codeindex hooks install post-commit
+
+# Check hook status
+codeindex hooks status
 ```
+
+See [Git Hooks Integration Guide](./git-hooks-integration.md) for details.
 
 ## Multi-Project Workflows
 
@@ -534,82 +438,48 @@ monorepo/
 ```bash
 # Scan entire monorepo
 find . -name .codeindex.yaml -exec dirname {} \; | \
-  xargs -I {} sh -c 'cd {} && codeindex list-dirs | xargs -P 4 -I @ codeindex scan @'
+  xargs -I {} sh -c 'cd {} && codeindex scan-all'
 ```
 
 ## Debugging
 
-### Verbose Output
-
-```bash
-# Future feature: verbose logging
-codeindex scan ./src --verbose
-```
-
 ### Dry Run with Output
 
-Preview generated prompt:
+Preview generated AI prompt:
 
 ```bash
-codeindex scan ./src --dry-run > prompt.txt
+codeindex scan ./src --ai --dry-run > prompt.txt
 cat prompt.txt
 ```
 
-### Check Configuration
-
-```bash
-# Future feature: validate config
-codeindex validate-config
-```
+> **Note**: `--dry-run` requires the `--ai` flag since it previews the AI prompt.
 
 ## Integration with Other Tools
 
-### Use with MCP Servers
+### Use with Claude Code
 
 ```bash
 # Index repo for Claude Code
-codeindex list-dirs | xargs -P 4 -I {} codeindex scan {} --fallback
+codeindex scan-all
 
 # Now use with Claude Code skill
-claude /sc:arch-query "Where is authentication implemented?"
-```
-
-### Export to Other Formats
-
-```bash
-# Future feature: export to different formats
-codeindex export --format markdown > full-index.md
-codeindex export --format json > index.json
-codeindex export --format html > index.html
+claude /mo:arch "Where is authentication implemented?"
 ```
 
 ## Tips & Tricks
 
-### 1. Speed up with Fallback First
+### 1. Selective AI Enhancement
 
 ```bash
-# Generate basic docs first (fast)
-codeindex list-dirs | xargs -P 8 -I {} codeindex scan {} --fallback
+# Generate structural docs for everything (fast)
+codeindex scan-all
 
-# Then enhance with AI selectively
-codeindex scan ./src/core  # AI-enhanced
+# Then enhance critical modules with AI
+codeindex scan ./src/core --ai
+codeindex scan ./src/auth --ai
 ```
 
-### 2. Use Cache (Future Feature)
-
-```bash
-codeindex scan ./src --use-cache
-```
-
-### 3. Parallel + Dry Run
-
-Preview prompts for all directories:
-
-```bash
-codeindex list-dirs | xargs -I {} sh -c 'echo "=== {} ===" && codeindex scan {} --dry-run'
-```
-
-### 4. Conditional Scanning
+### 2. Conditional Scanning
 
 Only scan if README_AI.md is missing:
 
@@ -621,7 +491,7 @@ for dir in $(codeindex list-dirs); do
 done
 ```
 
-### 5. Custom AI Per Directory
+### 3. Custom AI Per Directory
 
 ```bash
 # Use different AI for different modules

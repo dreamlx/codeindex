@@ -133,7 +133,7 @@ ai_enhancement:
 # Triggered when file > 5000 lines OR > 100 symbols
 ```
 
-Controlled via CLI: `codeindex scan --strategy multi_turn`
+**Note**: The `--strategy` CLI flag was removed in v0.6.0. Multi-turn dialogue is now handled automatically when needed.
 
 **No config file changes needed** - works automatically
 
@@ -242,7 +242,7 @@ symbols:
 
 ```bash
 # Before enabling adaptive symbols
-codeindex scan src/ --fallback
+codeindex scan src/
 
 # Enable in .codeindex.yaml
 symbols:
@@ -250,10 +250,10 @@ symbols:
     enabled: true
 
 # Test on a single directory first
-codeindex scan src/codeindex --fallback
+codeindex scan src/codeindex
 
 # Compare outputs, then roll out project-wide
-codeindex scan-all --fallback
+codeindex scan-all
 ```
 
 ---
@@ -360,10 +360,10 @@ codeindex validate-config    # (future command)
 # 2. Tech debt thresholds (v0.3.0)
 
 ✅ Test before full rollout
-codeindex scan src/codeindex --fallback
+codeindex scan src/codeindex
 
 ✅ Regenerate documentation
-codeindex scan-all --fallback
+codeindex scan-all
 ```
 
 ### Upgrading from v0.1.x to v0.5.0-beta1
@@ -380,7 +380,7 @@ cp examples/.codeindex.yaml .codeindex.yaml.new
 # Merge your customizations
 
 ✅ Test
-codeindex scan . --dry-run
+codeindex scan . --ai --dry-run
 ```
 
 ---
@@ -424,7 +424,7 @@ symbols:
 codeindex init --validate    # (future command)
 
 # 2. Test on single directory
-codeindex scan src/core --dry-run
+codeindex scan src/core --ai --dry-run
 
 # 3. Compare before/after
 diff README_AI.md.old README_AI.md
@@ -469,6 +469,6 @@ A: For new projects: Yes. For existing projects: Test first, benefits are signif
 
 ---
 
-**Last Updated**: 2026-02-03
+**Last Updated**: 2026-02-12
 **Config Schema Version**: 1
-**codeindex Version**: v0.5.0-beta1
+**codeindex Version**: v0.17.1
