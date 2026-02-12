@@ -1,0 +1,82 @@
+"""Tests for {{ language.name }} inheritance extraction.
+
+Auto-generated from: test_generator/specs/{{ language.name | lower }}.yaml
+Generator: test_generator/generator.py
+Template: test_generator/templates/inheritance_test.py.j2
+
+DO NOT EDIT MANUALLY - changes will be overwritten.
+To modify tests, edit the YAML spec and regenerate.
+"""
+
+
+from {{ language.parser_module }} import {{ language.parser_function }}
+
+{% for scenario in test_scenarios %}
+
+class {{ scenario.class_name }}:
+    """{{ scenario.description }}"""
+{% for test in scenario.tests %}
+{% set tmpl = code_templates[test.template] %}
+{% set expected = tmpl.expected %}
+
+    def {{ test.method }}(self, tmp_path):
+        """{{ tmpl.description }}."""
+{% if tmpl.code is not none and tmpl.code | trim | length > 0 %}
+        code = {{ tmpl.code | to_code_string }}
+{% else %}
+        code = ""
+{% endif %}
+        test_file = tmp_path / "{{ tmpl.get('filename', 'test.' + language.extension) }}"
+        test_file.write_text(code)
+
+        result = {{ language.parser_function }}(test_file)
+
+{% if expected.parses_without_error is defined and expected.parses_without_error %}
+        assert result.inheritances is not None
+{% endif %}
+{% if expected.inheritance_count is defined %}
+        assert len(result.inheritances) == {{ expected.inheritance_count }}
+{% endif %}
+{% if expected.inheritances is defined %}
+{% for inh in expected.inheritances %}
+{% if inh.parent_contains is defined %}
+        assert result.inheritances[{{ loop.index0 }}].child == "{{ inh.child | py_escape }}"
+        assert "{{ inh.parent_contains | py_escape }}" in result.inheritances[{{ loop.index0 }}].parent
+{% else %}
+        assert result.inheritances[{{ loop.index0 }}].child == "{{ inh.child | py_escape }}"
+        assert result.inheritances[{{ loop.index0 }}].parent == "{{ inh.parent | py_escape }}"
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if expected.child_parents is defined %}
+{% for child, info in expected.child_parents.items() %}
+        {{ child | to_var_name }}_inh = [
+            inh for inh in result.inheritances if inh.child == "{{ child | py_escape }}"
+        ]
+        assert len({{ child | to_var_name }}_inh) == {{ info.count }}
+{% if info.parents is defined %}
+        {{ child | to_var_name }}_parents = {inh.parent for inh in {{ child | to_var_name }}_inh}
+{% for parent in info.parents %}
+        assert "{{ parent | py_escape }}" in {{ child | to_var_name }}_parents
+{% endfor %}
+{% endif %}
+{% if info.parent_contains is defined %}
+        assert "{{ info.parent_contains | py_escape }}" in {{ child | to_var_name }}_inh[0].parent
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if expected.filter_child_contains is defined %}
+        filtered_inh = [
+            inh for inh in result.inheritances
+            if "{{ expected.filter_child_contains | py_escape }}" in inh.child
+        ]
+        assert len(filtered_inh) == {{ expected.filtered_count }}
+{% if expected.filtered_inheritances is defined %}
+{% for inh in expected.filtered_inheritances %}
+        assert filtered_inh[{{ loop.index0 }}].child == "{{ inh.child | py_escape }}"
+        assert filtered_inh[{{ loop.index0 }}].parent == "{{ inh.parent | py_escape }}"
+{% endfor %}
+{% endif %}
+{% endif %}
+{% endfor %}
+{% endfor %}

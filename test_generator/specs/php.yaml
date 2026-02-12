@@ -1,0 +1,516 @@
+# PHP Inheritance Test Specification
+#
+# This YAML file is the single source of truth for PHP inheritance tests.
+# A generator reads this spec + a Jinja2 template to produce the test file.
+#
+# PHP-specific notes:
+#   - PHP uses "extends" for class inheritance and "implements" for interfaces
+#   - Namespace paths use backslash separators (App\Models\User)
+#   - In YAML double-quoted strings, use \\ for literal backslash
+#   - In code blocks (|), \\ produces a literal \\ in the Python test string,
+#     which write_text() writes as single \ to the PHP file
+#   - In expected values, use \\ for namespace separators
+#     (PyYAML loads \\ as \, then py_escape filter re-escapes for Python source)
+
+language:
+  name: PHP
+  extension: php
+  parser_module: codeindex.parser
+  parser_function: parse_file
+
+# =============================================================================
+# Code Templates
+# =============================================================================
+
+code_templates:
+
+  # ---------------------------------------------------------------------------
+  # Basic Inheritance - extends (4 templates)
+  # ---------------------------------------------------------------------------
+
+  extends_single:
+    description: "Single inheritance with extends keyword"
+    code: |
+      <?php
+      class BaseUser {
+          public function save() {}
+      }
+
+      class AdminUser extends BaseUser {
+          public function grant() {}
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "AdminUser"
+          parent: "BaseUser"
+
+  implements_single:
+    description: "Single interface implementation"
+    code: |
+      <?php
+      interface Authenticatable {
+          public function authenticate();
+      }
+
+      class User implements Authenticatable {
+          public function authenticate() {}
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "User"
+          parent: "Authenticatable"
+
+  implements_multiple:
+    description: "Multiple interface implementation"
+    code: |
+      <?php
+      interface Authenticatable {}
+      interface Loggable {}
+
+      class User implements Authenticatable, Loggable {
+      }
+    expected:
+      child_parents:
+        User:
+          count: 2
+          parents: ["Authenticatable", "Loggable"]
+
+  extends_and_implements:
+    description: "Class with extends and implements combined"
+    code: |
+      <?php
+      class Model {}
+      interface Authenticatable {}
+
+      class User extends Model implements Authenticatable {
+      }
+    expected:
+      child_parents:
+        User:
+          count: 2
+          parents: ["Model", "Authenticatable"]
+
+  # ---------------------------------------------------------------------------
+  # Namespace Inheritance (4 templates)
+  # ---------------------------------------------------------------------------
+
+  namespace_basic:
+    description: "Inheritance with namespace declarations"
+    code: |
+      <?php
+      namespace App\\Models;
+
+      class BaseModel {
+      }
+
+      class User extends BaseModel {
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "App\\Models\\User"
+          parent: "App\\Models\\BaseModel"
+
+  namespace_use_statement:
+    description: "Inheritance with use statement for parent class"
+    code: |
+      <?php
+      namespace App\\Models;
+
+      use App\\Base\\Model;
+
+      class User extends Model {
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "App\\Models\\User"
+          parent: "App\\Base\\Model"
+
+  namespace_multiple_use:
+    description: "Inheritance resolving multiple use statements"
+    code: |
+      <?php
+      namespace App\\Models;
+
+      use App\\Base\\Model;
+      use Illuminate\\Contracts\\Auth\\Authenticatable;
+
+      class User extends Model implements Authenticatable {
+      }
+    expected:
+      child_parents:
+        "App\\Models\\User":
+          count: 2
+          parents:
+            - "App\\Base\\Model"
+            - "Illuminate\\Contracts\\Auth\\Authenticatable"
+
+  namespace_aliased_use:
+    description: "Inheritance with aliased use statement"
+    code: |
+      <?php
+      namespace App\\Models;
+
+      use App\\Base\\Model as BaseModel;
+
+      class User extends BaseModel {
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "App\\Models\\User"
+          parent: "App\\Base\\Model"
+
+  # ---------------------------------------------------------------------------
+  # Class Modifiers (2 templates)
+  # ---------------------------------------------------------------------------
+
+  abstract_class_parent:
+    description: "Abstract class as parent"
+    code: |
+      <?php
+      abstract class BaseModel {
+          abstract public function save();
+      }
+
+      class User extends BaseModel {
+          public function save() {}
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "User"
+          parent: "BaseModel"
+
+  final_class_child:
+    description: "Final class as child (can extend but cannot be extended)"
+    code: |
+      <?php
+      class Model {
+      }
+
+      final class User extends Model {
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "User"
+          parent: "Model"
+
+  # ---------------------------------------------------------------------------
+  # Edge Cases (4 templates)
+  # ---------------------------------------------------------------------------
+
+  no_inheritance:
+    description: "Class with no inheritance"
+    code: |
+      <?php
+      class User {
+          public function save() {}
+      }
+    expected:
+      inheritance_count: 0
+
+  empty_file:
+    description: "Empty PHP file"
+    code: |
+      <?php
+    expected:
+      inheritance_count: 0
+
+  multiple_classes_inheritance:
+    description: "Multiple classes with different inheritance"
+    code: |
+      <?php
+      class BaseModel {
+      }
+
+      class User extends BaseModel {
+      }
+
+      class Post extends BaseModel {
+      }
+    expected:
+      inheritance_count: 2
+      child_parents:
+        User:
+          count: 1
+          parents: ["BaseModel"]
+        Post:
+          count: 1
+          parents: ["BaseModel"]
+
+  inheritance_chain:
+    description: "Inheritance chain (A extends B, B extends C)"
+    code: |
+      <?php
+      class Model {
+      }
+
+      class BaseUser extends Model {
+      }
+
+      class AdminUser extends BaseUser {
+      }
+    expected:
+      inheritance_count: 2
+      child_parents:
+        BaseUser:
+          count: 1
+          parents: ["Model"]
+        AdminUser:
+          count: 1
+          parents: ["BaseUser"]
+
+  # ---------------------------------------------------------------------------
+  # Group Imports (1 template)
+  # ---------------------------------------------------------------------------
+
+  group_import_inheritance:
+    description: "Inheritance with group import syntax"
+    code: |
+      <?php
+      namespace App\\Models;
+
+      use App\\Contracts\\{Authenticatable, Loggable};
+
+      class User implements Authenticatable, Loggable {
+      }
+    expected:
+      child_parents:
+        "App\\Models\\User":
+          count: 2
+          parents:
+            - "App\\Contracts\\Authenticatable"
+            - "App\\Contracts\\Loggable"
+
+  # ---------------------------------------------------------------------------
+  # Real-World Patterns (2 templates)
+  # ---------------------------------------------------------------------------
+
+  laravel_model:
+    description: "Laravel Model inheritance pattern"
+    code: |
+      <?php
+      namespace App\\Models;
+
+      use Illuminate\\Database\\Eloquent\\Model;
+      use Illuminate\\Contracts\\Auth\\Authenticatable;
+
+      class User extends Model implements Authenticatable {
+          protected $table = 'users';
+      }
+    expected:
+      child_parents:
+        "App\\Models\\User":
+          count: 2
+          parents:
+            - "Illuminate\\Database\\Eloquent\\Model"
+            - "Illuminate\\Contracts\\Auth\\Authenticatable"
+
+  symfony_controller:
+    description: "Symfony Controller inheritance pattern"
+    code: |
+      <?php
+      namespace App\\Controller;
+
+      use Symfony\\Bundle\\FrameworkBundle\\Controller\\AbstractController;
+
+      class UserController extends AbstractController {
+          public function index() {}
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "App\\Controller\\UserController"
+          parent: "Symfony\\Bundle\\FrameworkBundle\\Controller\\AbstractController"
+
+  # ---------------------------------------------------------------------------
+  # Advanced Templates (beyond legacy tests)
+  # ---------------------------------------------------------------------------
+
+  interface_extends_interface:
+    description: "Interface extending another interface"
+    code: |
+      <?php
+      interface Readable {
+          public function read();
+      }
+
+      interface Streamable extends Readable {
+          public function stream();
+      }
+    expected:
+      # Parser limitation: interface-to-interface inheritance not extracted
+      inheritance_count: 0
+
+  trait_usage:
+    description: "Class using a trait (use keyword inside class)"
+    code: |
+      <?php
+      trait Timestamps {
+          public function getCreatedAt() {}
+      }
+
+      class User {
+          use Timestamps;
+      }
+    expected:
+      # Traits used inside class are not inheritance relationships
+      inheritance_count: 0
+
+  extends_with_constructor:
+    description: "Inheritance with constructor"
+    code: |
+      <?php
+      class BaseModel {
+          public function __construct() {}
+      }
+
+      class User extends BaseModel {
+          public function __construct() {
+              parent::__construct();
+          }
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "User"
+          parent: "BaseModel"
+
+  multiple_interfaces_and_extends:
+    description: "Class extending and implementing multiple interfaces"
+    code: |
+      <?php
+      class Model {}
+      interface Authenticatable {}
+      interface Serializable {}
+
+      class User extends Model implements Authenticatable, Serializable {
+      }
+    expected:
+      child_parents:
+        User:
+          count: 3
+          parents: ["Model", "Authenticatable", "Serializable"]
+
+  readonly_class:
+    description: "PHP 8.2 readonly class with inheritance"
+    code: |
+      <?php
+      class BaseDTO {
+      }
+
+      readonly class UserDTO extends BaseDTO {
+          public function __construct(
+              public string $name,
+              public string $email,
+          ) {}
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "UserDTO"
+          parent: "BaseDTO"
+
+  enum_implements:
+    description: "PHP 8.1 enum implementing interface"
+    code: |
+      <?php
+      interface HasLabel {
+          public function label(): string;
+      }
+
+      enum Status: string implements HasLabel {
+          case Active = 'active';
+          case Inactive = 'inactive';
+
+          public function label(): string {
+              return $this->value;
+          }
+      }
+    expected:
+      # Parser limitation: enum inheritance not extracted
+      inheritance_count: 0
+
+# =============================================================================
+# Test Scenarios
+# =============================================================================
+
+test_scenarios:
+  - class_name: TestPHPInheritanceBasic
+    description: "Test basic PHP inheritance extraction."
+    tests:
+      - method: test_extends_single_inheritance
+        template: extends_single
+      - method: test_implements_single_interface
+        template: implements_single
+      - method: test_implements_multiple_interfaces
+        template: implements_multiple
+      - method: test_extends_and_implements_combined
+        template: extends_and_implements
+
+  - class_name: TestPHPInheritanceNamespace
+    description: "Test PHP inheritance with namespaces."
+    tests:
+      - method: test_inheritance_with_namespace
+        template: namespace_basic
+      - method: test_inheritance_with_use_statement
+        template: namespace_use_statement
+      - method: test_inheritance_with_multiple_use_statements
+        template: namespace_multiple_use
+      - method: test_inheritance_with_aliased_use
+        template: namespace_aliased_use
+
+  - class_name: TestPHPInheritanceModifiers
+    description: "Test PHP inheritance with class modifiers."
+    tests:
+      - method: test_abstract_class_as_parent
+        template: abstract_class_parent
+      - method: test_final_class_as_child
+        template: final_class_child
+
+  - class_name: TestPHPInheritanceEdgeCases
+    description: "Test PHP edge cases."
+    tests:
+      - method: test_no_inheritance
+        template: no_inheritance
+      - method: test_empty_file
+        template: empty_file
+      - method: test_multiple_classes_with_inheritance
+        template: multiple_classes_inheritance
+      - method: test_inheritance_chain
+        template: inheritance_chain
+
+  - class_name: TestPHPInheritanceGroupImports
+    description: "Test PHP group imports."
+    tests:
+      - method: test_group_import_with_inheritance
+        template: group_import_inheritance
+
+  - class_name: TestPHPInheritanceRealWorld
+    description: "Test real-world Laravel/Symfony patterns."
+    tests:
+      - method: test_laravel_model_style
+        template: laravel_model
+      - method: test_symfony_controller_style
+        template: symfony_controller
+
+  - class_name: TestPHPInheritanceAdvanced
+    description: "Test advanced PHP inheritance patterns."
+    tests:
+      - method: test_interface_extends_interface
+        template: interface_extends_interface
+      - method: test_trait_usage
+        template: trait_usage
+      - method: test_extends_with_constructor
+        template: extends_with_constructor
+      - method: test_multiple_interfaces_and_extends
+        template: multiple_interfaces_and_extends
+      - method: test_readonly_class
+        template: readonly_class
+      - method: test_enum_implements
+        template: enum_implements

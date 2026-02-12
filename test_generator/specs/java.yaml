@@ -1,0 +1,555 @@
+# Java Inheritance Test Specification
+#
+# This YAML file is the single source of truth for Java inheritance tests.
+# A generator reads this spec + a Jinja2 template to produce the test file.
+#
+# Java-specific notes:
+#   - Java uses "extends" for class/interface inheritance and "implements" for interfaces
+#   - Package names use dot separators (com.example.model.User)
+#   - Import resolution: explicit imports, java.lang implicit, same-package
+#   - Generics: type parameters are stripped from parent names (<T>, <K,V>)
+#   - Some tests use "parses_without_error" for framework patterns where
+#     exact inheritance count depends on import resolution behavior
+
+language:
+  name: Java
+  extension: java
+  parser_module: codeindex.parser
+  parser_function: parse_file
+
+# =============================================================================
+# Code Templates
+# =============================================================================
+
+code_templates:
+
+  # ---------------------------------------------------------------------------
+  # Basic Inheritance (6 templates)
+  # ---------------------------------------------------------------------------
+
+  extends_single:
+    description: "Basic single inheritance with extends"
+    code: |
+      class BaseUser {
+      }
+
+      class AdminUser extends BaseUser {
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "AdminUser"
+          parent: "BaseUser"
+
+  implements_multiple:
+    description: "Class implementing multiple interfaces"
+    code: |
+      interface Authenticatable {
+      }
+
+      interface Authorizable {
+      }
+
+      class User implements Authenticatable, Authorizable {
+      }
+    expected:
+      child_parents:
+        User:
+          count: 2
+          parents: ["Authenticatable", "Authorizable"]
+
+  extends_and_implements:
+    description: "Class with both extends and implements"
+    code: |
+      class BaseService {
+      }
+
+      interface Loggable {
+      }
+
+      class UserService extends BaseService implements Loggable {
+      }
+    expected:
+      child_parents:
+        UserService:
+          count: 2
+          parents: ["BaseService", "Loggable"]
+
+  interface_extends_interface:
+    description: "Interface extending another interface"
+    code: |
+      interface Serializable {
+      }
+
+      interface Comparable extends Serializable {
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "Comparable"
+          parent: "Serializable"
+
+  abstract_class:
+    description: "Abstract class inheritance"
+    code: |
+      abstract class BaseController {
+      }
+
+      class UserController extends BaseController {
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "UserController"
+          parent: "BaseController"
+
+  no_inheritance:
+    description: "Class with no inheritance"
+    code: |
+      class StandaloneClass {
+          public void method() {}
+      }
+    expected:
+      inheritance_count: 0
+
+  # ---------------------------------------------------------------------------
+  # Generic Types (4 templates)
+  # ---------------------------------------------------------------------------
+
+  generic_single_type:
+    description: "Generic with single type parameter"
+    code: |
+      import java.util.ArrayList;
+
+      class MyList<T> extends ArrayList<T> {
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "MyList"
+          parent: "java.util.ArrayList"
+
+  generic_multiple_types:
+    description: "Generic with multiple type parameters"
+    code: |
+      import java.util.HashMap;
+
+      class MyMap<K, V> extends HashMap<K, V> {
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "MyMap"
+          parent: "java.util.HashMap"
+
+  generic_bounded_type:
+    description: "Generic with bounded type parameter"
+    code: |
+      class BaseComparable<T extends Comparable<T>> {
+      }
+
+      class MyComparable extends BaseComparable<String> {
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "MyComparable"
+          parent: "BaseComparable"
+
+  generic_in_implements:
+    description: "Generic type in implements clause"
+    code: |
+      interface Comparable<T> {
+      }
+
+      class User implements Comparable<User> {
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "User"
+          parent: "Comparable"
+
+  # ---------------------------------------------------------------------------
+  # Import Resolution (5 templates)
+  # ---------------------------------------------------------------------------
+
+  import_explicit:
+    description: "Explicit import resolution"
+    code: |
+      package com.example.service;
+
+      import com.example.base.BaseService;
+
+      class UserService extends BaseService {
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "com.example.service.UserService"
+          parent: "com.example.base.BaseService"
+
+  java_lang_implicit:
+    description: "java.lang implicit import (Exception)"
+    code: |
+      class MyException extends Exception {
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "MyException"
+          parent: "java.lang.Exception"
+
+  same_package_class:
+    description: "Inheritance from same package class"
+    code: |
+      package com.example.model;
+
+      class BaseModel {
+      }
+
+      class User extends BaseModel {
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "com.example.model.User"
+          parent: "com.example.model.BaseModel"
+
+  multiple_imports:
+    description: "Resolving multiple imports"
+    code: |
+      package com.example.service;
+
+      import com.example.base.BaseService;
+      import com.example.mixin.Loggable;
+
+      class UserService extends BaseService implements Loggable {
+      }
+    expected:
+      child_parents:
+        "com.example.service.UserService":
+          count: 2
+          parents:
+            - "com.example.base.BaseService"
+            - "com.example.mixin.Loggable"
+
+  full_qualified_in_code:
+    description: "Full qualified name used directly in code"
+    code: |
+      package com.example;
+
+      class User extends com.example.base.BaseUser {
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "com.example.User"
+          parent: "com.example.base.BaseUser"
+
+  # ---------------------------------------------------------------------------
+  # Nested Classes (3 templates)
+  # ---------------------------------------------------------------------------
+
+  nested_class_extends:
+    description: "Nested class inheritance"
+    code: |
+      package com.example;
+
+      class BaseInner {
+      }
+
+      class Outer {
+          class Inner extends BaseInner {
+          }
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "com.example.Outer.Inner"
+          parent: "com.example.BaseInner"
+
+  nested_interface_implements:
+    description: "Nested class implementing interface"
+    code: |
+      interface CustomInterface {
+      }
+
+      class Container {
+          class Worker implements CustomInterface {
+          }
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "Container.Worker"
+          parent: "CustomInterface"
+
+  static_nested_class:
+    description: "Static nested class inheritance"
+    code: |
+      class BaseBuilder {
+      }
+
+      class User {
+          static class Builder extends BaseBuilder {
+          }
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "User.Builder"
+          parent: "BaseBuilder"
+
+  # ---------------------------------------------------------------------------
+  # Real-World Frameworks (4 templates)
+  # ---------------------------------------------------------------------------
+
+  spring_controller:
+    description: "Spring Boot controller inheritance"
+    code: |
+      package com.example.controller;
+
+      import org.springframework.web.bind.annotation.RestController;
+
+      @RestController
+      public class UserController extends BaseController {
+      }
+    expected:
+      # May have 0 or 1 inheritance depending on BaseController resolution
+      parses_without_error: true
+
+  jpa_entity:
+    description: "JPA Entity inheritance"
+    code: |
+      package com.example.model;
+
+      import javax.persistence.Entity;
+
+      @Entity
+      public class User extends BaseEntity {
+      }
+    expected:
+      parses_without_error: true
+
+  custom_exception:
+    description: "Custom exception extending RuntimeException"
+    code: |
+      package com.example.exception;
+
+      public class UserNotFoundException extends RuntimeException {
+          public UserNotFoundException(String message) {
+              super(message);
+          }
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "com.example.exception.UserNotFoundException"
+          parent: "java.lang.RuntimeException"
+
+  lombok_data_class:
+    description: "Lombok @Data class inheritance"
+    code: |
+      package com.example.dto;
+
+      import lombok.Data;
+
+      @Data
+      public class UserDTO extends BaseDTO {
+          private String name;
+          private String email;
+      }
+    expected:
+      parses_without_error: true
+
+  # ---------------------------------------------------------------------------
+  # Edge Cases (3 templates)
+  # ---------------------------------------------------------------------------
+
+  enum_implements:
+    description: "Enum implementing interface"
+    code: |
+      interface Identifiable {
+      }
+
+      enum Status implements Identifiable {
+          ACTIVE, INACTIVE
+      }
+    expected:
+      # Enum implementing interface - just ensure no crash
+      parses_without_error: true
+
+  record_implements:
+    description: "Record (Java 14+) implementing interface"
+    code: |
+      interface Identifiable {
+      }
+
+      record User(String name, int age) implements Identifiable {
+      }
+    expected:
+      # Record support may vary by tree-sitter version
+      parses_without_error: true
+
+  annotation_interface:
+    description: "Annotation interface (no inheritance expected)"
+    code: |
+      @interface MyAnnotation {
+          String value();
+      }
+    expected:
+      inheritance_count: 0
+
+  # ---------------------------------------------------------------------------
+  # Advanced Templates (beyond legacy tests)
+  # ---------------------------------------------------------------------------
+
+  diamond_inheritance:
+    description: "Diamond inheritance pattern via interfaces"
+    code: |
+      interface A {}
+      interface B extends A {}
+      interface C extends A {}
+      class D implements B, C {}
+    expected:
+      inheritance_count: 4
+      child_parents:
+        B:
+          count: 1
+          parents: ["A"]
+        C:
+          count: 1
+          parents: ["A"]
+        D:
+          count: 2
+          parents: ["B", "C"]
+
+  sealed_class:
+    description: "Sealed class (Java 17+)"
+    code: |
+      sealed class Shape permits Circle, Rectangle {}
+      final class Circle extends Shape {}
+      non-sealed class Rectangle extends Shape {}
+    expected:
+      # Sealed class support varies; just ensure no crash
+      parses_without_error: true
+
+  wildcard_extends:
+    description: "Wildcard extends in generic superclass"
+    code: |
+      import java.util.AbstractList;
+
+      class ReadOnlyList<T> extends AbstractList<T> {
+          public T get(int index) { return null; }
+          public int size() { return 0; }
+      }
+    expected:
+      inheritance_count: 1
+      inheritances:
+        - child: "ReadOnlyList"
+          parent: "java.util.AbstractList"
+
+  multiple_extends_interfaces:
+    description: "Interface extending multiple interfaces"
+    code: |
+      interface Readable {}
+      interface Writable {}
+
+      interface ReadWritable extends Readable, Writable {}
+    expected:
+      child_parents:
+        ReadWritable:
+          count: 2
+          parents: ["Readable", "Writable"]
+
+# =============================================================================
+# Test Scenarios
+# =============================================================================
+
+test_scenarios:
+  - class_name: TestBasicInheritance
+    description: "Test basic Java inheritance extraction."
+    tests:
+      - method: test_single_inheritance_extends
+        template: extends_single
+      - method: test_multiple_interfaces_implements
+        template: implements_multiple
+      - method: test_extends_and_implements_combined
+        template: extends_and_implements
+      - method: test_interface_extends_interface
+        template: interface_extends_interface
+      - method: test_abstract_class_inheritance
+        template: abstract_class
+      - method: test_no_inheritance
+        template: no_inheritance
+
+  - class_name: TestGenericTypes
+    description: "Test inheritance with generic types."
+    tests:
+      - method: test_generic_single_type_parameter
+        template: generic_single_type
+      - method: test_generic_multiple_type_parameters
+        template: generic_multiple_types
+      - method: test_generic_bounded_type
+        template: generic_bounded_type
+      - method: test_generic_in_implements
+        template: generic_in_implements
+
+  - class_name: TestImportResolution
+    description: "Test import resolution for fully qualified names."
+    tests:
+      - method: test_import_explicit
+        template: import_explicit
+      - method: test_java_lang_implicit_import
+        template: java_lang_implicit
+      - method: test_same_package_class
+        template: same_package_class
+      - method: test_multiple_imports_resolution
+        template: multiple_imports
+      - method: test_full_qualified_name_in_code
+        template: full_qualified_in_code
+
+  - class_name: TestNestedClasses
+    description: "Test nested class inheritance."
+    tests:
+      - method: test_nested_class_extends
+        template: nested_class_extends
+      - method: test_nested_interface_implements
+        template: nested_interface_implements
+      - method: test_static_nested_class
+        template: static_nested_class
+
+  - class_name: TestRealWorldFrameworks
+    description: "Test real-world framework patterns."
+    tests:
+      - method: test_spring_boot_controller
+        template: spring_controller
+      - method: test_jpa_entity
+        template: jpa_entity
+      - method: test_custom_exception
+        template: custom_exception
+      - method: test_lombok_data_class
+        template: lombok_data_class
+
+  - class_name: TestEdgeCases
+    description: "Test edge cases and Java modern features."
+    tests:
+      - method: test_enum_implements_interface
+        template: enum_implements
+      - method: test_record_implements_interface
+        template: record_implements
+      - method: test_annotation_interface
+        template: annotation_interface
+
+  - class_name: TestAdvancedJavaInheritance
+    description: "Test advanced Java inheritance patterns."
+    tests:
+      - method: test_diamond_inheritance
+        template: diamond_inheritance
+      - method: test_sealed_class
+        template: sealed_class
+      - method: test_wildcard_extends
+        template: wildcard_extends
+      - method: test_multiple_extends_interfaces
+        template: multiple_extends_interfaces

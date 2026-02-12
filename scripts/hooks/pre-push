@@ -59,16 +59,28 @@ echo ""
 if [ "$BRANCH" = "master" ]; then
     echo -e "${CYAN}📋 Master branch checks...${RESET}"
 
-    # Check version consistency
-    PYPROJECT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
-    LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
-
-    if [ -n "$LATEST_TAG" ] && [ "$PYPROJECT_VERSION" != "$LATEST_TAG" ]; then
-        echo -e "${YELLOW}⚠ Version mismatch:${RESET}"
-        echo "  pyproject.toml: $PYPROJECT_VERSION"
-        echo "  Latest tag:     $LATEST_TAG"
-        echo ""
-        echo -e "${YELLOW}→ This is OK if you're about to create a new release${RESET}"
+    # Full version consistency check (blocking)
+    REPO_ROOT=$(git rev-parse --show-toplevel)
+    VERSION_SCRIPT="$REPO_ROOT/scripts/check_version_consistency.py"
+    if [ -f "$VERSION_SCRIPT" ]; then
+        if ! python3 "$VERSION_SCRIPT"; then
+            echo ""
+            echo -e "${RED}✗ Version inconsistency detected. Fix before pushing to master.${RESET}"
+            echo -e "${YELLOW}→ Run: python3 scripts/check_version_consistency.py --fix${RESET}"
+            exit 1
+        fi
+        echo -e "${GREEN}✓ Version consistency check passed${RESET}"
+    else
+        # Fallback: basic check
+        PYPROJECT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+        LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+        if [ -n "$LATEST_TAG" ] && [ "$PYPROJECT_VERSION" != "$LATEST_TAG" ]; then
+            echo -e "${YELLOW}⚠ Version mismatch:${RESET}"
+            echo "  pyproject.toml: $PYPROJECT_VERSION"
+            echo "  Latest tag:     $LATEST_TAG"
+            echo ""
+            echo -e "${YELLOW}→ This is OK if you're about to create a new release${RESET}"
+        fi
     fi
 fi
 

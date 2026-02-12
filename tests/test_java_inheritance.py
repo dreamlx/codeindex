@@ -1,17 +1,22 @@
 """Tests for Java inheritance extraction.
 
-Epic 10 Part 3, Story 10.1.3: Java Inheritance Extraction
-Tests extraction of class inheritance relationships from Java code.
+Auto-generated from: test_generator/specs/java.yaml
+Generator: test_generator/generator.py
+Template: test_generator/templates/inheritance_test.py.j2
+
+DO NOT EDIT MANUALLY - changes will be overwritten.
+To modify tests, edit the YAML spec and regenerate.
 """
+
 
 from codeindex.parser import parse_file
 
 
 class TestBasicInheritance:
-    """Test basic Java inheritance extraction (AC1-AC3, AC7-AC10)."""
+    """Test basic Java inheritance extraction."""
 
     def test_single_inheritance_extends(self, tmp_path):
-        """Test basic single inheritance with extends (AC1)."""
+        """Basic single inheritance with extends."""
         code = """
 class BaseUser {
 }
@@ -19,18 +24,17 @@ class BaseUser {
 class AdminUser extends BaseUser {
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
-        inh = result.inheritances[0]
-        assert inh.child == "AdminUser"
-        assert inh.parent == "BaseUser"
+        assert result.inheritances[0].child == "AdminUser"
+        assert result.inheritances[0].parent == "BaseUser"
 
     def test_multiple_interfaces_implements(self, tmp_path):
-        """Test class implementing multiple interfaces (AC2)."""
+        """Class implementing multiple interfaces."""
         code = """
 interface Authenticatable {
 }
@@ -41,21 +45,21 @@ interface Authorizable {
 class User implements Authenticatable, Authorizable {
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
-        assert len(result.inheritances) == 2
-        children = [inh.child for inh in result.inheritances]
-        parents = [inh.parent for inh in result.inheritances]
-
-        assert all(child == "User" for child in children)
-        assert "Authenticatable" in parents
-        assert "Authorizable" in parents
+        user_inh = [
+            inh for inh in result.inheritances if inh.child == "User"
+        ]
+        assert len(user_inh) == 2
+        user_parents = {inh.parent for inh in user_inh}
+        assert "Authenticatable" in user_parents
+        assert "Authorizable" in user_parents
 
     def test_extends_and_implements_combined(self, tmp_path):
-        """Test class with both extends and implements (AC3)."""
+        """Class with both extends and implements."""
         code = """
 class BaseService {
 }
@@ -66,29 +70,21 @@ interface Loggable {
 class UserService extends BaseService implements Loggable {
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
-        assert len(result.inheritances) == 2
-
-        # Find extends relationship
-        extends_rel = next(
-            (inh for inh in result.inheritances if inh.parent == "BaseService"), None
-        )
-        assert extends_rel is not None
-        assert extends_rel.child == "UserService"
-
-        # Find implements relationship
-        implements_rel = next(
-            (inh for inh in result.inheritances if inh.parent == "Loggable"), None
-        )
-        assert implements_rel is not None
-        assert implements_rel.child == "UserService"
+        userservice_inh = [
+            inh for inh in result.inheritances if inh.child == "UserService"
+        ]
+        assert len(userservice_inh) == 2
+        userservice_parents = {inh.parent for inh in userservice_inh}
+        assert "BaseService" in userservice_parents
+        assert "Loggable" in userservice_parents
 
     def test_interface_extends_interface(self, tmp_path):
-        """Test interface extending another interface (AC7)."""
+        """Interface extending another interface."""
         code = """
 interface Serializable {
 }
@@ -96,18 +92,17 @@ interface Serializable {
 interface Comparable extends Serializable {
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
-        inh = result.inheritances[0]
-        assert inh.child == "Comparable"
-        assert inh.parent == "Serializable"
+        assert result.inheritances[0].child == "Comparable"
+        assert result.inheritances[0].parent == "Serializable"
 
     def test_abstract_class_inheritance(self, tmp_path):
-        """Test abstract class inheritance (AC8)."""
+        """Abstract class inheritance."""
         code = """
 abstract class BaseController {
 }
@@ -115,74 +110,68 @@ abstract class BaseController {
 class UserController extends BaseController {
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
-        inh = result.inheritances[0]
-        assert inh.child == "UserController"
-        assert inh.parent == "BaseController"
+        assert result.inheritances[0].child == "UserController"
+        assert result.inheritances[0].parent == "BaseController"
 
     def test_no_inheritance(self, tmp_path):
-        """Test class with no inheritance (AC10)."""
+        """Class with no inheritance."""
         code = """
 class StandaloneClass {
     public void method() {}
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 0
 
-
 class TestGenericTypes:
-    """Test inheritance with generic types (AC4)."""
+    """Test inheritance with generic types."""
 
     def test_generic_single_type_parameter(self, tmp_path):
-        """Test generic with single type parameter <T>."""
+        """Generic with single type parameter."""
         code = """
 import java.util.ArrayList;
 
 class MyList<T> extends ArrayList<T> {
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
-        inh = result.inheritances[0]
-        assert inh.child == "MyList"
-        # Should strip <T> from parent
-        assert inh.parent == "java.util.ArrayList"
+        assert result.inheritances[0].child == "MyList"
+        assert result.inheritances[0].parent == "java.util.ArrayList"
 
     def test_generic_multiple_type_parameters(self, tmp_path):
-        """Test generic with multiple type parameters <K, V>."""
+        """Generic with multiple type parameters."""
         code = """
 import java.util.HashMap;
 
 class MyMap<K, V> extends HashMap<K, V> {
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
-        inh = result.inheritances[0]
-        assert inh.child == "MyMap"
-        # Should strip <K, V> from parent
-        assert inh.parent == "java.util.HashMap"
+        assert result.inheritances[0].child == "MyMap"
+        assert result.inheritances[0].parent == "java.util.HashMap"
 
     def test_generic_bounded_type(self, tmp_path):
-        """Test generic with bounded type <T extends Comparable>."""
+        """Generic with bounded type parameter."""
         code = """
 class BaseComparable<T extends Comparable<T>> {
 }
@@ -190,19 +179,17 @@ class BaseComparable<T extends Comparable<T>> {
 class MyComparable extends BaseComparable<String> {
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
-        inh = result.inheritances[0]
-        assert inh.child == "MyComparable"
-        # Should strip <String> from parent
-        assert inh.parent == "BaseComparable"
+        assert result.inheritances[0].child == "MyComparable"
+        assert result.inheritances[0].parent == "BaseComparable"
 
     def test_generic_in_implements(self, tmp_path):
-        """Test generic type in implements clause."""
+        """Generic type in implements clause."""
         code = """
 interface Comparable<T> {
 }
@@ -210,23 +197,20 @@ interface Comparable<T> {
 class User implements Comparable<User> {
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
-        inh = result.inheritances[0]
-        assert inh.child == "User"
-        # Should strip <User> from parent
-        assert inh.parent == "Comparable"
-
+        assert result.inheritances[0].child == "User"
+        assert result.inheritances[0].parent == "Comparable"
 
 class TestImportResolution:
-    """Test import resolution for full qualified names (AC6, AC9)."""
+    """Test import resolution for fully qualified names."""
 
     def test_import_explicit(self, tmp_path):
-        """Test explicit import resolution (AC6)."""
+        """Explicit import resolution."""
         code = """
 package com.example.service;
 
@@ -235,36 +219,32 @@ import com.example.base.BaseService;
 class UserService extends BaseService {
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
-        inh = result.inheritances[0]
-        assert inh.child == "com.example.service.UserService"
-        # Should resolve via import
-        assert inh.parent == "com.example.base.BaseService"
+        assert result.inheritances[0].child == "com.example.service.UserService"
+        assert result.inheritances[0].parent == "com.example.base.BaseService"
 
     def test_java_lang_implicit_import(self, tmp_path):
-        """Test java.lang implicit import (AC9)."""
+        """java.lang implicit import (Exception)."""
         code = """
 class MyException extends Exception {
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
-        inh = result.inheritances[0]
-        assert inh.child == "MyException"
-        # Should resolve to java.lang.Exception
-        assert inh.parent == "java.lang.Exception"
+        assert result.inheritances[0].child == "MyException"
+        assert result.inheritances[0].parent == "java.lang.Exception"
 
     def test_same_package_class(self, tmp_path):
-        """Test inheritance from same package class."""
+        """Inheritance from same package class."""
         code = """
 package com.example.model;
 
@@ -274,19 +254,17 @@ class BaseModel {
 class User extends BaseModel {
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
-        inh = result.inheritances[0]
-        assert inh.child == "com.example.model.User"
-        # Same package class should have full qualified name
-        assert inh.parent == "com.example.model.BaseModel"
+        assert result.inheritances[0].child == "com.example.model.User"
+        assert result.inheritances[0].parent == "com.example.model.BaseModel"
 
     def test_multiple_imports_resolution(self, tmp_path):
-        """Test resolving multiple imports."""
+        """Resolving multiple imports."""
         code = """
 package com.example.service;
 
@@ -296,52 +274,41 @@ import com.example.mixin.Loggable;
 class UserService extends BaseService implements Loggable {
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
-        assert len(result.inheritances) == 2
-
-        # Check BaseService resolution
-        base_rel = next((inh for inh in result.inheritances if "BaseService" in inh.parent), None)
-        assert base_rel is not None
-        assert base_rel.parent == "com.example.base.BaseService"
-
-        # Check Loggable resolution
-        mixin_rel = next((inh for inh in result.inheritances if "Loggable" in inh.parent), None)
-        assert mixin_rel is not None
-        assert mixin_rel.parent == "com.example.mixin.Loggable"
+        com_example_service_userservice_inh = [
+            inh for inh in result.inheritances if inh.child == "com.example.service.UserService"
+        ]
+        assert len(com_example_service_userservice_inh) == 2
+        com_example_service_userservice_parents = {inh.parent for inh in com_example_service_userservice_inh}
+        assert "com.example.base.BaseService" in com_example_service_userservice_parents
+        assert "com.example.mixin.Loggable" in com_example_service_userservice_parents
 
     def test_full_qualified_name_in_code(self, tmp_path):
-        """Test full qualified name used directly in code."""
+        """Full qualified name used directly in code."""
         code = """
 package com.example;
 
 class User extends com.example.base.BaseUser {
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
-        inh = result.inheritances[0]
-        assert inh.child == "com.example.User"
-        # Should keep full qualified name
-        assert inh.parent == "com.example.base.BaseUser"
-
+        assert result.inheritances[0].child == "com.example.User"
+        assert result.inheritances[0].parent == "com.example.base.BaseUser"
 
 class TestNestedClasses:
-    """Test nested class inheritance (AC5).
-
-    NOTE: Deferred to Story 10.1.4 (Epic 10 Part 3 Phase 2).
-    Nested class support requires additional namespace context management.
-    """
+    """Test nested class inheritance."""
 
     def test_nested_class_extends(self, tmp_path):
-        """Test nested class inheritance (AC5)."""
+        """Nested class inheritance."""
         code = """
 package com.example;
 
@@ -353,19 +320,17 @@ class Outer {
     }
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
-        inh = result.inheritances[0]
-        # Nested class should have full path
-        assert inh.child == "com.example.Outer.Inner"
-        assert inh.parent == "com.example.BaseInner"
+        assert result.inheritances[0].child == "com.example.Outer.Inner"
+        assert result.inheritances[0].parent == "com.example.BaseInner"
 
     def test_nested_interface_implements(self, tmp_path):
-        """Test nested class implementing interface."""
+        """Nested class implementing interface."""
         code = """
 interface CustomInterface {
 }
@@ -375,18 +340,17 @@ class Container {
     }
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
-        inh = result.inheritances[0]
-        assert inh.child == "Container.Worker"
-        assert inh.parent == "CustomInterface"
+        assert result.inheritances[0].child == "Container.Worker"
+        assert result.inheritances[0].parent == "CustomInterface"
 
     def test_static_nested_class(self, tmp_path):
-        """Test static nested class inheritance."""
+        """Static nested class inheritance."""
         code = """
 class BaseBuilder {
 }
@@ -396,22 +360,20 @@ class User {
     }
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
-        inh = result.inheritances[0]
-        assert inh.child == "User.Builder"
-        assert inh.parent == "BaseBuilder"
-
+        assert result.inheritances[0].child == "User.Builder"
+        assert result.inheritances[0].parent == "BaseBuilder"
 
 class TestRealWorldFrameworks:
     """Test real-world framework patterns."""
 
     def test_spring_boot_controller(self, tmp_path):
-        """Test Spring Boot controller inheritance."""
+        """Spring Boot controller inheritance."""
         code = """
 package com.example.controller;
 
@@ -421,17 +383,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController extends BaseController {
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
-        # May have 0 or 1 inheritance depending on BaseController resolution
-        # At minimum should parse without error
         assert result.inheritances is not None
 
     def test_jpa_entity(self, tmp_path):
-        """Test JPA Entity inheritance."""
+        """JPA Entity inheritance."""
         code = """
 package com.example.model;
 
@@ -441,16 +401,15 @@ import javax.persistence.Entity;
 public class User extends BaseEntity {
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
-        # Should parse without error
         assert result.inheritances is not None
 
     def test_custom_exception(self, tmp_path):
-        """Test custom exception extending RuntimeException."""
+        """Custom exception extending RuntimeException."""
         code = """
 package com.example.exception;
 
@@ -460,18 +419,17 @@ public class UserNotFoundException extends RuntimeException {
     }
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
-        inh = result.inheritances[0]
-        assert inh.child == "com.example.exception.UserNotFoundException"
-        assert inh.parent == "java.lang.RuntimeException"
+        assert result.inheritances[0].child == "com.example.exception.UserNotFoundException"
+        assert result.inheritances[0].parent == "java.lang.RuntimeException"
 
     def test_lombok_data_class(self, tmp_path):
-        """Test Lombok @Data class inheritance."""
+        """Lombok @Data class inheritance."""
         code = """
 package com.example.dto;
 
@@ -483,20 +441,18 @@ public class UserDTO extends BaseDTO {
     private String email;
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
-        # Should parse without error
         assert result.inheritances is not None
-
 
 class TestEdgeCases:
     """Test edge cases and Java modern features."""
 
     def test_enum_implements_interface(self, tmp_path):
-        """Test enum implementing interface."""
+        """Enum implementing interface."""
         code = """
 interface Identifiable {
 }
@@ -505,17 +461,15 @@ enum Status implements Identifiable {
     ACTIVE, INACTIVE
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
-        # Enum implementing interface should be extracted
-        # (implementation may vary, just ensure no crash)
         assert result.inheritances is not None
 
     def test_record_implements_interface(self, tmp_path):
-        """Test record (Java 14+) implementing interface."""
+        """Record (Java 14+) implementing interface."""
         code = """
 interface Identifiable {
 }
@@ -523,26 +477,114 @@ interface Identifiable {
 record User(String name, int age) implements Identifiable {
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
-        # Record should be parsed (tree-sitter may or may not support)
-        # Just ensure no crash
         assert result.inheritances is not None
 
     def test_annotation_interface(self, tmp_path):
-        """Test annotation interface (no inheritance expected)."""
+        """Annotation interface (no inheritance expected)."""
         code = """
 @interface MyAnnotation {
     String value();
 }
 """
-        java_file = tmp_path / "test.java"
-        java_file.write_text(code)
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
 
-        result = parse_file(java_file)
+        result = parse_file(test_file)
 
-        # Annotation should not have inheritance
         assert len(result.inheritances) == 0
+
+class TestAdvancedJavaInheritance:
+    """Test advanced Java inheritance patterns."""
+
+    def test_diamond_inheritance(self, tmp_path):
+        """Diamond inheritance pattern via interfaces."""
+        code = """
+interface A {}
+interface B extends A {}
+interface C extends A {}
+class D implements B, C {}
+"""
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
+
+        result = parse_file(test_file)
+
+        assert len(result.inheritances) == 4
+        b_inh = [
+            inh for inh in result.inheritances if inh.child == "B"
+        ]
+        assert len(b_inh) == 1
+        b_parents = {inh.parent for inh in b_inh}
+        assert "A" in b_parents
+        c_inh = [
+            inh for inh in result.inheritances if inh.child == "C"
+        ]
+        assert len(c_inh) == 1
+        c_parents = {inh.parent for inh in c_inh}
+        assert "A" in c_parents
+        d_inh = [
+            inh for inh in result.inheritances if inh.child == "D"
+        ]
+        assert len(d_inh) == 2
+        d_parents = {inh.parent for inh in d_inh}
+        assert "B" in d_parents
+        assert "C" in d_parents
+
+    def test_sealed_class(self, tmp_path):
+        """Sealed class (Java 17+)."""
+        code = """
+sealed class Shape permits Circle, Rectangle {}
+final class Circle extends Shape {}
+non-sealed class Rectangle extends Shape {}
+"""
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
+
+        result = parse_file(test_file)
+
+        assert result.inheritances is not None
+
+    def test_wildcard_extends(self, tmp_path):
+        """Wildcard extends in generic superclass."""
+        code = """
+import java.util.AbstractList;
+
+class ReadOnlyList<T> extends AbstractList<T> {
+    public T get(int index) { return null; }
+    public int size() { return 0; }
+}
+"""
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
+
+        result = parse_file(test_file)
+
+        assert len(result.inheritances) == 1
+        assert result.inheritances[0].child == "ReadOnlyList"
+        assert result.inheritances[0].parent == "java.util.AbstractList"
+
+    def test_multiple_extends_interfaces(self, tmp_path):
+        """Interface extending multiple interfaces."""
+        code = """
+interface Readable {}
+interface Writable {}
+
+interface ReadWritable extends Readable, Writable {}
+"""
+        test_file = tmp_path / "test.java"
+        test_file.write_text(code)
+
+        result = parse_file(test_file)
+
+        readwritable_inh = [
+            inh for inh in result.inheritances if inh.child == "ReadWritable"
+        ]
+        assert len(readwritable_inh) == 2
+        readwritable_parents = {inh.parent for inh in readwritable_inh}
+        assert "Readable" in readwritable_parents
+        assert "Writable" in readwritable_parents

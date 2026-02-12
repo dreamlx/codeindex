@@ -90,17 +90,13 @@ endif
 	@echo "$(GREEN)✓ Updated pyproject.toml$(RESET)"
 	@git diff pyproject.toml
 
-check-version:  ## Verify version consistency
+check-version:  ## Verify version consistency across all files
 	@echo "$(CYAN)Checking version consistency...$(RESET)"
+	@python3 scripts/check_version_consistency.py || (echo "$(RED)✗ Version inconsistency found$(RESET)"; echo "Run: python3 scripts/check_version_consistency.py --fix"; exit 1)
 	@PYPROJECT_VERSION=$$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/'); \
 	LATEST_TAG=$$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//'); \
-	echo "  pyproject.toml: $$PYPROJECT_VERSION"; \
-	echo "  Latest Git tag: $$LATEST_TAG"; \
 	if [ "$$PYPROJECT_VERSION" != "$$LATEST_TAG" ]; then \
-		echo "$(YELLOW)⚠ Version mismatch!$(RESET)"; \
-		echo "Run: make bump-version VERSION=$$LATEST_TAG"; \
-	else \
-		echo "$(GREEN)✓ Versions match$(RESET)"; \
+		echo "$(YELLOW)⚠ pyproject.toml ($$PYPROJECT_VERSION) != latest tag ($$LATEST_TAG)$(RESET)"; \
 	fi
 
 # Release workflow
@@ -136,13 +132,16 @@ endif
 	@ruff check src/ tests/ || (echo "$(RED)✗ Lint errors found$(RESET)"; exit 1)
 	@echo "$(GREEN)✓ No lint errors$(RESET)"
 	@echo ""
-	@echo "$(CYAN)[5/5] Checking CHANGELOG has version entry...$(RESET)"
-	@if ! grep -q "## \[$(VERSION)\]" CHANGELOG.md; then \
-		echo "$(RED)Error: Version [$(VERSION)] not found in CHANGELOG.md$(RESET)"; \
-		echo "$(YELLOW)  Please add a '## [$(VERSION)] - YYYY-MM-DD' section to CHANGELOG.md$(RESET)"; \
+	@echo "$(CYAN)[5/6] Checking version files exist...$(RESET)"
+	@if [ ! -f "RELEASE_NOTES_v$(VERSION).md" ]; then \
+		echo "$(RED)Error: RELEASE_NOTES_v$(VERSION).md not found$(RESET)"; \
 		exit 1; \
 	fi
-	@echo "$(GREEN)✓ CHANGELOG.md has version [$(VERSION)]$(RESET)"
+	@echo "$(GREEN)✓ Release notes found$(RESET)"
+	@echo ""
+	@echo "$(CYAN)[6/6] Checking version consistency...$(RESET)"
+	@python3 scripts/check_version_consistency.py || (echo "$(RED)✗ Version inconsistency found$(RESET)"; echo "Run: python3 scripts/check_version_consistency.py --fix"; exit 1)
+	@echo "$(GREEN)✓ Version consistency OK$(RESET)"
 	@echo ""
 	@echo "$(GREEN)=== All pre-release checks passed ===$(RESET)"
 
