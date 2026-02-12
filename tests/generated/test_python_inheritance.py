@@ -24,10 +24,10 @@ class BaseUser:
 class AdminUser(BaseUser):
     pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
         assert result.inheritances[0].child == "AdminUser"
@@ -41,10 +41,10 @@ from models import BaseModel
 class User(BaseModel):
     pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
         assert result.inheritances[0].child == "User"
@@ -58,10 +58,10 @@ import models
 class User(models.BaseModel):
     pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
         assert result.inheritances[0].child == "User"
@@ -82,10 +82,10 @@ class Serializable:
 class User(Loggable, Serializable):
     pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         user_inh = [
             inh for inh in result.inheritances if inh.child == "User"
@@ -101,10 +101,10 @@ class User(Loggable, Serializable):
 class AdminUser(BaseUser, PermissionMixin, Loggable):
     pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         adminuser_inh = [
             inh for inh in result.inheritances if inh.child == "AdminUser"
@@ -124,10 +124,10 @@ import utils
 class User(BaseModel, utils.Loggable):
     pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         user_inh = [
             inh for inh in result.inheritances if inh.child == "User"
@@ -143,10 +143,10 @@ class TestNoInheritance:
 class User:
     pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 0
 
@@ -159,10 +159,10 @@ class User:
 class Post:
     pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 0
 
@@ -179,10 +179,10 @@ class Outer:
     class Inner(BaseInner):
         pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         filtered_inh = [
             inh for inh in result.inheritances
@@ -199,10 +199,10 @@ class Outer:
     class Inner:
         pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         filtered_inh = [
             inh for inh in result.inheritances
@@ -221,10 +221,10 @@ class Outer:
         class Inner(Base):
             pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         filtered_inh = [
             inh for inh in result.inheritances
@@ -247,10 +247,10 @@ T = TypeVar('T')
 class Container(Generic[T]):
     pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         container_inh = [
             inh for inh in result.inheritances if inh.child == "Container"
@@ -266,10 +266,10 @@ from typing import List
 class UserList(List[str]):
     pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         userlist_inh = [
             inh for inh in result.inheritances if inh.child == "UserList"
@@ -288,10 +288,10 @@ V = TypeVar('V')
 class Cache(Generic[K, V]):
     pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         cache_inh = [
             inh for inh in result.inheritances if inh.child == "Cache"
@@ -317,10 +317,10 @@ class Post:
 class Comment(Post):
     pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 2
         user_inh = [
@@ -348,10 +348,10 @@ class B(A):
 class C(B):
     pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 2
         b_inh = [
@@ -378,10 +378,10 @@ class Derived(Base):
     def derived_method(self):
         pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
         assert result.inheritances[0].child == "Derived"
@@ -393,10 +393,10 @@ class TestEdgeCases:
     def test_empty_file(self, tmp_path):
         """Empty file."""
         code = ""
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 0
 
@@ -408,10 +408,10 @@ def function():
 
 variable = 42
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 0
 
@@ -426,10 +426,10 @@ class Base:
 class Derived(Base):  # Inherits from Base
     pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
         assert result.inheritances[0].child == "Derived"
@@ -441,10 +441,10 @@ class Derived(Base):  # Inherits from Base
 class User(object):
     pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
         assert result.inheritances[0].child == "User"
@@ -467,10 +467,10 @@ class Circle(Shape):
     def area(self):
         return 3.14
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 2
         shape_inh = [
@@ -498,10 +498,10 @@ class Base:
 class Child(Base):
     age: int
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
         assert result.inheritances[0].child == "Child"
@@ -517,10 +517,10 @@ class Color(Enum):
     GREEN = 2
     BLUE = 3
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
         color_inh = [
@@ -541,10 +541,10 @@ class ValidationError(AppError):
 class NotFoundError(AppError):
     pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 3
         apperror_inh = [
@@ -578,10 +578,10 @@ class SoftDeleteMixin:
 class Model(TimestampMixin, SoftDeleteMixin):
     pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         model_inh = [
             inh for inh in result.inheritances if inh.child == "Model"
@@ -606,10 +606,10 @@ class C(A):
 class D(B, C):
     pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 4
         b_inh = [
@@ -645,10 +645,10 @@ class Widget(Drawable):
     def draw(self) -> None:
         pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 2
         drawable_inh = [
@@ -672,10 +672,10 @@ class Singleton(type):
 class MyClass(metaclass=Singleton):
     pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         singleton_inh = [
             inh for inh in result.inheritances if inh.child == "Singleton"
@@ -697,10 +697,10 @@ class Base:
 class Child(Base):
     pass
 """
-        py_file = tmp_path / "test.py"
-        py_file.write_text(code)
+        test_file = tmp_path / "test.py"
+        test_file.write_text(code)
 
-        result = parse_file(py_file)
+        result = parse_file(test_file)
 
         assert len(result.inheritances) == 1
         assert result.inheritances[0].child == "Child"

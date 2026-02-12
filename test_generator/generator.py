@@ -72,7 +72,19 @@ def load_template(template_path: str) -> jinja2.Template:
             return '""'
         return '"""\n' + code + '"""'
 
+    def py_escape(s):
+        """Escape backslashes for embedding in Python string literals."""
+        return s.replace("\\", "\\\\")
+
+    def to_var_name(s):
+        """Convert a string to a valid Python variable name."""
+        import re
+
+        return re.sub(r"[^a-zA-Z0-9_]", "_", s).lower()
+
     env.filters["to_code_string"] = to_code_string
+    env.filters["py_escape"] = py_escape
+    env.filters["to_var_name"] = to_var_name
 
     return env.get_template(path.name)
 
