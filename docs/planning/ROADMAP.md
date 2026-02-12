@@ -66,22 +66,27 @@
 
 **2026 Priorities** (Ranked by Impact):
 
-1. 🔥 **Multi-Language Support** (v0.16.0+)
+1. 🔥 **CLI UX & Quality** (v0.16.0)
+   - Zero-AI-required default experience
+   - Java project quality improvements
+   - Foundation: User feedback from real projects (zcyl-backend)
+
+2. 🌐 **Multi-Language Support** (v0.17.0+)
    - TypeScript/JavaScript, Go, Rust, C#
    - Enterprise adoption enabler
    - Foundation: Parser modularization (Epic 13 ✅)
    - Completed: Python (v0.1.0 ✅), PHP (v0.5.0 ✅), Java (v0.7.0-v0.8.0 ✅)
 
-2. 🚀 **Framework Intelligence** (v0.18.0+)
+3. 🚀 **Framework Intelligence** (v0.19.0+)
    - Express, Laravel, FastAPI, Django
    - Route extraction + business logic mapping
    - Completed: ThinkPHP (v0.5.0 ✅), Spring (v0.8.0 ✅)
 
-3. 📊 **Cross-Platform Support** (deferred)
+4. 📊 **Cross-Platform Support** (deferred)
    - Windows, macOS, Linux CI validation
    - Foundation: Windows compatibility (Epic 14 ✅)
 
-4. 🔗 **Tool Integration** (v0.13.0+ ✅)
+5. 🔗 **Tool Integration** (v0.13.0+ ✅)
    - Single file parsing for tool chains
    - JSON output for downstream tools
    - LoomGraph integration (knowledge graph)
@@ -149,11 +154,37 @@
 
 ---
 
-### v0.16.0 - TypeScript/JavaScript Language Support (Next)
+### v0.16.0 - CLI UX Restructuring + Java Improvements (Next)
+
+**Theme**: Zero-AI-required user experience, Java project quality
+
+**Epic**: Epic 19 - CLI UX Restructuring + Java Improvements
+
+**Key Features**:
+- Reverse scan/scan-all defaults: structural mode is default, `--ai` is opt-in
+- Deprecate `--fallback` flag (now a no-op with warning)
+- Update init wizard: AI config clearly optional, parser detection guidance
+- Skip pass-through directories in scan-all (no redundant READMEs)
+- Java auto-recursive tech-debt
+- Language-aware noise analysis (Java getter/setter not counted as noise)
+
+**Success Criteria**:
+- [ ] `codeindex scan-all` works without AI configuration
+- [ ] `--ai` flag required for AI-enhanced documentation
+- [ ] `codeindex init` detects missing parsers and guides installation
+- [ ] Java Maven projects: no redundant README_AI.md in pass-through directories
+- [ ] Java tech-debt: zero getter/setter false positives
+- [ ] All 991+ tests pass after changes
+
+**Estimated Duration**: 9-15 hours (6 stories)
+
+---
+
+### v0.17.0 - TypeScript/JavaScript Language Support
 
 **Theme**: Web development ecosystem foundation
 
-**Epic**: Epic 19 - TypeScript/JavaScript Support
+**Epic**: Epic 20 - TypeScript/JavaScript Support
 
 **Key Features**:
 - TypeScript/JavaScript parser (tree-sitter-typescript)
@@ -173,11 +204,11 @@
 
 ---
 
-### v0.17.0 - Go Language Support
+### v0.18.0 - Go Language Support
 
 **Theme**: Cloud-native ecosystem
 
-**Epic**: Epic 20 - Go Support
+**Epic**: Epic 21 - Go Support
 
 **Key Features**:
 - Go parser (tree-sitter-go)
@@ -197,11 +228,11 @@
 
 ---
 
-### v0.18.0 - Framework Intelligence Expansion
+### v0.19.0 - Framework Intelligence Expansion
 
 **Theme**: Framework-aware code understanding
 
-**Epic**: Epic 21 - Framework Routes Expansion
+**Epic**: Epic 22 - Framework Routes Expansion
 
 **Key Features**:
 - Express.js route extraction (TypeScript/JavaScript)
@@ -218,11 +249,11 @@
 
 ---
 
-### v0.19.0 - Rust Language Support
+### v0.20.0 - Rust Language Support
 
 **Theme**: Systems programming
 
-**Epic**: Epic 22 - Rust Support
+**Epic**: Epic 23 - Rust Support
 
 **Key Features**:
 - Rust parser (tree-sitter-rust)
@@ -235,7 +266,7 @@
 
 ---
 
-### v0.20.0 - C# Language Support
+### v0.21.0 - C# Language Support
 
 **Theme**: .NET ecosystem
 
@@ -296,23 +327,24 @@
 | ~~Docstring AI Processor~~ | v0.6.0 ✅ | Foundation for multi-language docs |
 | ~~Java Parser~~ | v0.7.0-v0.8.0 ✅ | Enterprise adoption blocker |
 | ~~Spring Routes~~ | v0.8.0 ✅ | Most popular Java framework |
-| TypeScript Parser | v0.16.0 | Web development essential |
+| CLI UX Restructuring | v0.16.0 | Affects all new users (zero-AI default) |
+| TypeScript Parser | v0.17.0 | Web development essential |
 
 ### P1 (Should Have - High Impact)
 
 | Feature | Version | Rationale |
 |---------|---------|-----------|
 | ~~Maven/Gradle Detection~~ | v0.7.0 ✅ | Java build system integration |
-| Go Parser | v0.17.0 | Cloud-native ecosystem |
-| FastAPI Routes | v0.18.0 | Modern Python API framework |
+| Go Parser | v0.18.0 | Cloud-native ecosystem |
+| FastAPI Routes | v0.19.0 | Modern Python API framework |
 
 ### P2 (Nice to Have - Enhancement)
 
 | Feature | Version | Rationale |
 |---------|---------|-----------|
 | ~~JavaDoc Extraction~~ | v0.6.0 ✅ | Better documentation quality |
-| Rust Parser | v0.19.0 | Systems programming community |
-| Laravel Routes | v0.18.0 | PHP framework leader |
+| Rust Parser | v0.20.0 | Systems programming community |
+| Laravel Routes | v0.19.0 | PHP framework leader |
 
 ### ⚠️ Features Moved to LoomGraph
 
@@ -334,10 +366,10 @@
 | 1 | **Python** | v0.1.0 | ✅ Complete (Parsing + LoomGraph: v0.9.0) |
 | 2 | **PHP** | v0.5.0 | ✅ Complete (Parsing + LoomGraph: v0.10.0) |
 | 3 | **Java** | v0.7.0-v0.8.0 | ✅ Complete (Parsing + Spring Routes) |
-| 4 | **TypeScript/JavaScript** | v0.16.0 | 📋 Next (Epic 19) |
-| 5 | **Go** | v0.17.0 | 📋 Planned (Epic 20) |
-| 6 | **Rust** | v0.19.0 | 📋 Planned (Epic 22) |
-| 7 | **C#** | v0.20.0 | 📋 Planned |
+| 4 | **TypeScript/JavaScript** | v0.17.0 | 📋 Planned (Epic 20) |
+| 5 | **Go** | v0.18.0 | 📋 Planned (Epic 21) |
+| 6 | **Rust** | v0.20.0 | 📋 Planned (Epic 23) |
+| 7 | **C#** | v0.21.0 | 📋 Planned |
 | 8 | **C++** | v1.0.0 | 📋 Planned |
 
 ---
@@ -350,10 +382,10 @@
 |------|-----------|----------|----------------|--------|
 | 1 | **ThinkPHP** | PHP | v0.5.0 | ✅ Complete |
 | 2 | **Spring Boot** | Java | v0.8.0 | ✅ Complete |
-| 3 | **FastAPI** | Python | v0.18.0 | 📋 Planned (Epic 21) |
-| 4 | **Django** | Python | v0.18.0 | 📋 Planned (Epic 21) |
-| 5 | **Express.js** | TypeScript | v0.18.0 | 📋 Planned (Epic 21) |
-| 6 | **Laravel** | PHP | v0.18.0 | 📋 Planned (Epic 21) |
+| 3 | **FastAPI** | Python | v0.19.0 | 📋 Planned (Epic 22) |
+| 4 | **Django** | Python | v0.19.0 | 📋 Planned (Epic 22) |
+| 5 | **Express.js** | TypeScript | v0.19.0 | 📋 Planned (Epic 22) |
+| 6 | **Laravel** | PHP | v0.19.0 | 📋 Planned (Epic 22) |
 | 7 | **ASP.NET Core** | C# | v1.0.0 | 📋 Planned |
 | 8 | **Gin** | Go | v1.0.0 | 📋 Planned |
 
@@ -384,10 +416,11 @@
 
 | Epic | Version | Priority | Status |
 |------|---------|----------|--------|
-| **Epic 19** | v0.16.0 | P0 | 📋 Next (TypeScript/JavaScript Support) |
-| **Epic 20** | v0.17.0 | P1 | 📋 Planned (Go Language Support) |
-| **Epic 21** | v0.18.0 | P1 | 📋 Planned (Framework Routes Expansion) |
-| **Epic 22** | v0.19.0 | P2 | 📋 Planned (Rust Language Support) |
+| **Epic 19** | v0.16.0 | P0 | 🔥 Active (CLI UX Restructuring + Java Improvements) |
+| **Epic 20** | v0.17.0 | P0 | 📋 Next (TypeScript/JavaScript Support) |
+| **Epic 21** | v0.18.0 | P1 | 📋 Planned (Go Language Support) |
+| **Epic 22** | v0.19.0 | P1 | 📋 Planned (Framework Routes Expansion) |
+| **Epic 23** | v0.20.0 | P2 | 📋 Planned (Rust Language Support) |
 
 ### Deferred Epics
 
@@ -412,8 +445,8 @@
 
 | Metric | Current (v0.15.1) | Next Target | v1.0.0 Target |
 |--------|-------------------|-------------|---------------|
-| **Languages Supported** | 3 (Python, PHP, Java) | 4 (+ TypeScript/JS) | 8+ |
-| **Frameworks Supported** | 2 (ThinkPHP, Spring) | 4 (+ Express, FastAPI) | 10+ |
+| **Languages Supported** | 3 (Python, PHP, Java) | 3 (CLI UX improvements) | 8+ |
+| **Frameworks Supported** | 2 (ThinkPHP, Spring) | 2 (v0.16.0 is UX focus) | 10+ |
 | **Test Coverage** | 90%+ | 90%+ | 95%+ |
 | **Tests Passing** | 991 | 1050+ | 2000+ |
 | **Max Project Size** | 500k LOC | 1M LOC | 5M LOC |
@@ -450,7 +483,13 @@
 2. **High Value**: Developers need API overview most
 3. **Differentiator**: Most indexers don't extract routes
 
-### Why TypeScript Next? (v0.16.0)
+### Why CLI UX First? (v0.16.0)
+
+1. **New User Blocking**: Current defaults require AI config, blocking 80%+ of use cases
+2. **Real Project Feedback**: Java testing (zcyl-backend) revealed 31% redundant READMEs
+3. **Foundation**: Better UX benefits all future language additions
+
+### Why TypeScript Next? (v0.17.0)
 
 1. **Web Development**: TypeScript is #4 most popular language
 2. **React Ecosystem**: Component detection adds unique value

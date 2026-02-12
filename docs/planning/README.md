@@ -9,7 +9,7 @@
 
 | Epic | Version | Priority | Status | Document |
 |------|---------|----------|--------|----------|
-| _No active epics_ | - | - | Planning next version | See ROADMAP.md for future plans |
+| [Epic 19: CLI UX Restructuring + Java Improvements](active/epic19-cli-ux-restructuring.md) | v0.16.0 | P0 | Planning | 6 stories, 9-15h estimated |
 
 ---
 
