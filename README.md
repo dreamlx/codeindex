@@ -574,7 +574,7 @@ Want to add support for your favorite framework? See [CLAUDE.md](CLAUDE.md#frame
 
 ## 📋 Recent Updates
 
-**Current version**: v0.16.1
+**Current version**: v0.17.0
 
 ### Key Features
 
