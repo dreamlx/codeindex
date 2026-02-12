@@ -40,10 +40,10 @@ codeindex focuses on **code parsing and structured data extraction** using tree-
 - 🛣️ **Framework Route Extraction** (v0.5.0+): Auto-detect and extract routes from web frameworks
   - **ThinkPHP** (v0.5.0+): Convention-based routing with line numbers and PHPDoc descriptions
   - **Spring Boot** (v0.8.0+): @GetMapping, @PostMapping, REST controllers with path variables
-  - **Laravel** (v0.16.0): Explicit route definitions (Epic 17)
-  - **FastAPI** (v0.16.0): Decorator-based routes (Epic 17)
-  - **Django** (v0.16.0): URL patterns (Epic 17)
-  - **Express.js** (v0.16.0): TypeScript/JavaScript routes (Epic 17)
+  - **Laravel** (planned): Explicit route definitions (Epic 17)
+  - **FastAPI** (planned): Decorator-based routes (Epic 17)
+  - **Django** (planned): URL patterns (Epic 17)
+  - **Express.js** (planned): TypeScript/JavaScript routes (Epic 17)
 - 📝 **AI Docstring Extraction** (v0.4.0+, Epic 9): Multi-language documentation normalization
   - **Hybrid mode**: Selective AI processing (<$1 per 250 directories)
   - **All-AI mode**: Maximum quality for critical projects
@@ -574,7 +574,7 @@ Want to add support for your favorite framework? See [CLAUDE.md](CLAUDE.md#frame
 
 ## 📋 Recent Updates
 
-**Current version**: v0.16.0
+**Current version**: v0.16.1
 
 ### Key Features
 
@@ -591,14 +591,14 @@ Want to add support for your favorite framework? See [CLAUDE.md](CLAUDE.md#frame
 - 📊 **Technical Debt Analysis**: Detect code quality issues and complexity metrics
 - 🚀 **Automated Release Workflow**: One-command releases with GitHub Actions + PyPI Trusted Publisher
 
-### Latest Improvements (v0.14.0)
+### Latest Improvements (v0.16.0)
 
-- ✅ Interactive Setup Wizard with smart auto-detection
-- ✅ Makefile automation for development and releases
-- ✅ Git hooks for code quality (pre-commit, post-commit, pre-push)
-- ✅ Modular CLI architecture (6 focused modules)
-- ✅ Adaptive symbol extraction (5-150 symbols per file)
-- ✅ Parallel scanning for faster indexing
+- ✅ **Structural mode default**: `scan`/`scan-all` works immediately without AI config
+- ✅ **`--ai` opt-in**: AI-enhanced docs now require explicit `--ai` flag
+- ✅ **Post-commit auto-update**: `codeindex hooks install post-commit` for automatic README_AI.md sync
+- ✅ **Parser detection**: Init wizard warns about missing tree-sitter parsers
+- ✅ **Pass-through directory skip**: Avoids redundant docs in deep Java structures
+- ✅ **Java tech-debt improvements**: Auto-recursive + language-aware noise analysis
 
 **See**: [CHANGELOG.md](CHANGELOG.md) for complete version history
 
@@ -1199,14 +1199,16 @@ See [Strategic Roadmap](docs/planning/ROADMAP.md) for detailed plans.
 - ✅ Framework routes (ThinkPHP, Spring Boot)
 - ✅ Interactive Setup Wizard (`codeindex init`)
 
-**In Progress (v0.15.0)**:
-- 🔄 Template-based test generation system (Epic 18)
-- 🔄 Test architecture migration (Python/PHP/Java → YAML specs)
+**Completed (v0.16.0)**:
+- ✅ CLI UX Restructuring: structural mode default, --ai opt-in (Epic 19)
+- ✅ Java improvements: auto-recursive tech-debt, noise analysis
+- ✅ Post-commit hook auto-update README_AI.md
+- ✅ Parser installation detection in init wizard
 
-**Next (v0.16.0 - v0.18.0)**:
-- 📋 Framework routes expansion: Express, Laravel, FastAPI, Django (v0.16.0, Epic 17)
-- 📋 Rust language support (v0.17.0, Epic 19)
-- 📋 C# language support (v0.18.0)
+**Next**:
+- 📋 Framework routes expansion: Express, Laravel, FastAPI, Django (Epic 17)
+- 📋 Rust language support
+- 📋 C# language support
 
 **Not Included** (Moved to LoomGraph):
 - ❌ Code similarity search → [LoomGraph v0.3.0](https://github.com/dreamlx/LoomGraph)
