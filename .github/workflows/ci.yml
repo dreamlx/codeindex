@@ -41,7 +41,7 @@ jobs:
 
     - name: Run tests with coverage
       run: |
-        pytest -v --ignore=examples/ --cov=src/codeindex --cov-report=term-missing --cov-report=xml
+        pytest -v --cov=src/codeindex --cov-report=term-missing --cov-report=xml
 
     - name: Upload coverage to Codecov (Ubuntu Python 3.11 only)
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
