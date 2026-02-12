@@ -351,8 +351,6 @@ exit 0
 # Post-commit hook for codeindex
 # Smart incremental update based on change analysis
 
-set -e
-
 # Colors
 RED='\\033[0;31m'
 GREEN='\\033[0;32m'
@@ -368,8 +366,11 @@ if [ -z "$NON_DOC_FILES" ]; then
     exit 0  # Only doc files changed, skip to avoid loop
 fi
 
-# Try to activate virtual environment
+# Set up working directory
 REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT"
+
+# Try to activate virtual environment
 if [ -f "$REPO_ROOT/.venv/bin/activate" ]; then
     source "$REPO_ROOT/.venv/bin/activate"
 elif [ -f "$REPO_ROOT/venv/bin/activate" ]; then
@@ -413,7 +414,60 @@ if [ -z "$AFFECTED_DIRS" ]; then
 fi
 
 DIR_COUNT=$(echo "$AFFECTED_DIRS" | wc -l | tr -d ' ')
-echo "   Found ${DIR_COUNT} directory(ies) to check"
+echo "   Found ${DIR_COUNT} directory(ies) to update"
+
+# Update README_AI.md for each affected directory
+UPDATED_LIST=/tmp/codeindex_updated_$$
+rm -f "$UPDATED_LIST"
+
+while IFS= read -r dir; do
+    [ -z "$dir" ] && continue
+
+    README_PATH="$REPO_ROOT/$dir/README_AI.md"
+
+    # Skip if no README_AI.md exists (not indexed yet)
+    if [ ! -f "$README_PATH" ]; then
+        echo "   ${YELLOW}⚠ $dir: not indexed (run 'codeindex scan $dir' first)${NC}"
+        continue
+    fi
+
+    echo "   ${CYAN}→ Updating $dir/README_AI.md${NC}"
+    if codeindex scan "$dir" 2>&1 | tail -1; then
+        echo "   ${GREEN}✓ $dir: updated${NC}"
+        echo "$README_PATH" >> "$UPDATED_LIST"
+    else
+        echo "   ${YELLOW}⚠ $dir: scan failed, skipping${NC}"
+    fi
+done <<< "$AFFECTED_DIRS"
+
+# Auto-commit updated README_AI.md files
+if [ -f "$UPDATED_LIST" ]; then
+    UPDATED_COUNT=$(wc -l < "$UPDATED_LIST" | tr -d ' ')
+
+    if [ "$UPDATED_COUNT" -gt 0 ]; then
+        # Stage updated files
+        while IFS= read -r readme; do
+            git add "$readme"
+        done < "$UPDATED_LIST"
+
+        # Check if there are actual staged changes
+        if git diff --cached --quiet; then
+            echo "   ${GREEN}✓ README_AI.md already up to date${NC}"
+        else
+            echo "\\n${CYAN}→ Committing ${UPDATED_COUNT} updated README_AI.md file(s)...${NC}"
+
+            COMMIT_HASH=$(git rev-parse --short HEAD)
+            git commit --no-verify -m "docs: auto-update README_AI.md for ${COMMIT_HASH}
+
+Updated by post-commit hook based on code changes.
+Update level: ${LEVEL}"
+
+            echo "${GREEN}✓ README_AI.md updates committed${NC}"
+        fi
+    fi
+
+    rm -f "$UPDATED_LIST"
+fi
 
 echo "\\n${GREEN}✓ Post-commit hook completed${NC}\\n"
 exit 0

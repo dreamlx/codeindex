@@ -575,6 +575,30 @@ Configuration is in `.codeindex.yaml`. Key parameters:
 
 ---
 
+## 🔄 Auto-Update Hooks
+
+Keep README_AI.md in sync with code changes automatically:
+
+```bash
+# Install post-commit hook
+codeindex hooks install post-commit
+
+# Check hook status
+codeindex hooks status
+```
+
+When installed, README_AI.md files auto-update on every commit.
+Configure behavior in `.codeindex.yaml`:
+
+```yaml
+hooks:
+  post_commit:
+    enabled: true
+    mode: auto  # auto | sync | async | prompt | disabled
+```
+
+---
+
 ## 🎯 Best Practices for AI Agents
 
 1. **Always read README_AI.md first** before exploring source code
