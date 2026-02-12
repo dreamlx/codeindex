@@ -31,6 +31,9 @@ class {{ scenario.class_name }}:
 
         result = {{ language.parser_function }}(test_file)
 
+{% if expected.parses_without_error is defined and expected.parses_without_error %}
+        assert result.inheritances is not None
+{% endif %}
 {% if expected.inheritance_count is defined %}
         assert len(result.inheritances) == {{ expected.inheritance_count }}
 {% endif %}
