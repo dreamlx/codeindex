@@ -216,6 +216,13 @@ def tech_debt(path: Path, format: str, output: Path | None, recursive: bool, qui
 
         # Handle empty directory
         if not files_to_analyze:
+            if not recursive and not quiet:
+                has_java = "java" in (config.languages or [])
+                if has_java:
+                    console.print(
+                        "[yellow]Hint: Java projects have deep package structures. "
+                        "Try adding --recursive (-r) flag.[/yellow]"
+                    )
             report = reporter.generate_report()
             _format_and_output(report, format, output, quiet)
             return

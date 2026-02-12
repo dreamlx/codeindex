@@ -152,14 +152,9 @@ def scan_directory(
             continue
 
         if item.is_file():
-            # Filter by language/extension
-            if item.suffix == ".py" and "python" in config.languages:
+            # Filter by language/extension using unified extension map
+            if item.suffix in get_language_extensions(config.languages):
                 files.append(item)
-            elif item.suffix in (".php", ".phtml") and "php" in config.languages:
-                files.append(item)
-            elif item.suffix == ".java" and "java" in config.languages:
-                files.append(item)
-            # Add more language support here in V2
         elif item.is_dir() and recursive:
             # Recursively scan subdirectories
             sub_result = scan_directory(item, config, base_path, recursive)
@@ -193,15 +188,11 @@ def find_all_directories(root: Path, config: Config) -> list[Path]:
             return
 
         # Check if this directory has indexable files (non-recursive scan)
-        has_files = False
-        for item in current.iterdir():
-            if item.is_file():
-                if item.suffix == ".py" and "python" in config.languages:
-                    has_files = True
-                    break
-                elif item.suffix in (".php", ".phtml") and "php" in config.languages:
-                    has_files = True
-                    break
+        supported_exts = get_language_extensions(config.languages)
+        has_files = any(
+            item.is_file() and item.suffix in supported_exts
+            for item in current.iterdir()
+        )
 
         if has_files:
             dirs_to_index.append(current)
