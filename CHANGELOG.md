@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.3] - 2026-02-13
+
+### Changed
+
+- **CLAUDE.md template improved**: Added first-time setup instructions (review config → scan-all → optional hooks) to the injected CLAUDE.md section, so AI agents know to configure `.codeindex.yaml` before scanning.
+- **Post-init message updated**: Now guides users to "Review .codeindex.yaml" as step 1, ensuring include/exclude patterns are verified before scanning.
+
 ## [0.17.2] - 2026-02-13
 
 ### Changed
