@@ -1,6 +1,6 @@
 # Planning Index
 
-**Last Updated**: 2026-02-12
+**Last Updated**: 2026-02-13
 **Current Version**: v0.17.3
 
 ---
@@ -9,7 +9,19 @@
 
 | Epic | Version | Priority | Status | Document |
 |------|---------|----------|--------|----------|
-| [Epic 19: CLI UX Restructuring + Java Improvements](active/epic19-cli-ux-restructuring.md) | v0.16.0 | P0 | Planning | 6 stories, 9-15h estimated |
+| [Epic 22: Multi-Agent Onboarding](active/epic22-multi-agent-onboarding.md) | v0.20.0+ | P2 | Planning | Cursor, Windsurf, Cline, Copilot support |
+
+---
+
+## 📋 Planned Epics (No Planning Doc Yet)
+
+| Epic | Version | Priority | Summary |
+|------|---------|----------|---------|
+| **Epic 20**: TypeScript/JavaScript Support | v0.18.0 | P0 | tree-sitter-typescript, JSDoc, React components |
+| **Epic 21**: Go Language Support | v0.19.0 | P1 | tree-sitter-go, GoDoc, interface implementations |
+| **Epic 23**: Framework Routes Expansion | v0.20.0 | P1 | Express, Laravel, FastAPI, Django |
+| **Epic 24**: Rust Language Support | v0.21.0 | P2 | tree-sitter-rust, RustDoc, traits |
+| **Epic 25**: C# Language Support | v0.22.0 | P2 | tree-sitter-c-sharp, XML docs, .NET |
 
 ---
 
@@ -17,6 +29,7 @@
 
 | Epic | Version | Completion Date | Summary |
 |------|---------|-----------------|---------|
+| [Epic 19: CLI UX Restructuring](completed/epic19-cli-ux-restructuring/plan.md) | v0.16.0 | 2026-02-12 | Zero-AI default, --ai opt-in, pass-through skip, Java improvements |
 | [Epic 18: Test Architecture Migration](completed/epic18-test-migration/plan.md) | v0.15.0 | 2026-02-12 | YAML+Jinja2 template test system (58 tasks, 2 days) |
 | [Epic 16: Test Suite Refactoring](completed/epic16-test-suite-refactoring/plan.md) | v0.14.0+ | 2026-02-11 | Test cleanup (~701 lines removed, 100% BDD coverage) |
 | [Epic 15: User Onboarding Enhancement](completed/epic15-user-onboarding/plan.md) | v0.14.0 | 2026-02-10 | Interactive wizard + Help system |

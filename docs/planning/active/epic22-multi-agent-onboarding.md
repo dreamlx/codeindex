@@ -1,8 +1,8 @@
-# Epic 19: Multi-Agent Onboarding Flow
+# Epic 22: Multi-Agent Onboarding Flow
 
 **Status**: Planning
 **Priority**: P2
-**Target**: v0.19.0+
+**Target**: v0.20.0+
 
 ---
 
