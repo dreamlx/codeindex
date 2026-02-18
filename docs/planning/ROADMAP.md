@@ -1,7 +1,7 @@
 # codeindex Strategic Roadmap
 
 **Last Updated**: 2026-02-18
-**Current Version**: v0.18.0
+**Current Version**: v0.19.0
 **Vision**: Universal Code Parser - Best-in-class multi-language AST parser for AI-assisted development
 **Positioning**: Focused on code parsing and structured data extraction, not AI analysis
 
@@ -526,4 +526,4 @@
 **Next Review**: 2026-03-31
 **Maintained By**: @dreamlx
 **Last Updated**: 2026-02-18
-**Current Version**: v0.18.0
+**Current Version**: v0.19.0
