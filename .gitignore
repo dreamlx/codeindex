@@ -30,3 +30,6 @@ htmlcov/
 
 # Project specific
 .codeindex.yaml
+
+# Validation reports (generated)
+scripts/validation/reports/*.md

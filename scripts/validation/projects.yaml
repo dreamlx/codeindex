@@ -1,0 +1,54 @@
+# Real Project Validation Registry
+# Used by scripts/validate_real_projects.py
+#
+# Each project defines:
+#   path: absolute path to project root
+#   language: primary language
+#   framework: web framework (if any)
+#   sample_files: files to test with `codeindex parse`
+#   sample_dir: directory to test with `codeindex tech-debt`
+#   known_class: a class name expected in PROJECT_SYMBOLS.md (for L2 navigation eval)
+#   thresholds: minimum acceptable metrics
+
+projects:
+  php_admin:
+    path: "~/Dropbox/Projects/php_admin-main-c59644bb607125803a5d14400b64be9068b82488"
+    language: php
+    framework: thinkphp
+    sample_files:
+      - "Application/Token/Business/Token.class.php"
+      - "Application/Cashier/Business/Config.class.php"
+    sample_dir: "Application"
+    known_class: "Token"
+    thresholds:
+      min_parse_success_rate: 0.80
+      min_symbol_count: 500
+      min_readme_count: 5
+
+  zcyl_backend:
+    path: "~/Dropbox/Projects/zcyl-backend"
+    language: java
+    framework: spring_boot
+    sample_files:
+      - "zcyl-mall/zcyl-mall-core/src/test/java/com/zcyl/mall/core/BaseTest.java"
+      - "zcyl-mall/zcyl-mall-core/src/test/java/com/zcyl/mall/core/center/order/split/biz/AutoSplitOrderBizTest.java"
+    sample_dir: "zcyl-common"
+    known_class: "BaseTest"
+    thresholds:
+      min_parse_success_rate: 0.80
+      min_symbol_count: 500
+      min_readme_count: 5
+
+  loomgraph:
+    path: "~/Dropbox/Projects/LoomGraph"
+    language: python
+    framework: null
+    sample_files:
+      - "src/loomgraph/core/config.py"
+      - "src/loomgraph/core/models.py"
+    sample_dir: "src"
+    known_class: "LoomConfig"
+    thresholds:
+      min_parse_success_rate: 0.90
+      min_symbol_count: 100
+      min_readme_count: 3
