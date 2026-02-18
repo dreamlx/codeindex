@@ -1,7 +1,8 @@
 # codeindex Makefile
 # Automated release and development workflow
 
-.PHONY: help install install-dev install-hooks test lint clean build release bump-version check-version
+.PHONY: help install install-dev install-hooks test lint clean build release bump-version check-version \
+       validate-real-projects validate-l1 validate-l2 validate-l3 validate-save-baseline
 
 # Colors for output
 CYAN := \033[0;36m
@@ -202,6 +203,27 @@ status:  ## Show git and version status
 	@echo ""
 	@echo "$(GREEN)Recent tags:$(RESET)"
 	@git tag | tail -5
+
+# Real project validation
+validate-real-projects:  ## Run all validation layers on real projects
+	@echo "$(CYAN)Running real project validation (all layers)...$(RESET)"
+	python scripts/validate_real_projects.py
+
+validate-l1:  ## Run L1 functional validation (fast, no AI)
+	@echo "$(CYAN)Running L1 functional validation...$(RESET)"
+	python scripts/validate_real_projects.py --layer l1
+
+validate-l2:  ## Run L2 quality validation (metrics + AI)
+	@echo "$(CYAN)Running L2 quality validation...$(RESET)"
+	python scripts/validate_real_projects.py --layer l2
+
+validate-l3:  ## Run L3 experience validation (AI only)
+	@echo "$(CYAN)Running L3 experience validation...$(RESET)"
+	python scripts/validate_real_projects.py --layer l3
+
+validate-save-baseline:  ## Run all validations and save as baseline
+	@echo "$(CYAN)Running validation and saving baseline...$(RESET)"
+	python scripts/validate_real_projects.py --save-baseline
 
 # CI helpers (used by GitHub Actions)
 ci-install:  ## Install dependencies for CI

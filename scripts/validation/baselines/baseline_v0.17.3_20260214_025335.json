@@ -1,0 +1,342 @@
+{
+  "version": "0.17.3",
+  "timestamp": "2026-02-14T02:53:35.940149+00:00",
+  "projects": {
+    "php_admin": {
+      "project": "php_admin",
+      "l1": {
+        "project": "php_admin",
+        "passed": 7,
+        "failed": 0,
+        "total_time": 19.5,
+        "commands": [
+          {
+            "command": "codeindex init --yes",
+            "exit_code": 0,
+            "elapsed": 0.09,
+            "timed_out": false,
+            "stderr_snippet": ""
+          },
+          {
+            "command": "codeindex scan-all --fallback",
+            "exit_code": 0,
+            "elapsed": 14.0,
+            "timed_out": false,
+            "stderr_snippet": ""
+          },
+          {
+            "command": "codeindex status",
+            "exit_code": 0,
+            "elapsed": 0.15,
+            "timed_out": false,
+            "stderr_snippet": ""
+          },
+          {
+            "command": "codeindex tech-debt Application",
+            "exit_code": 0,
+            "elapsed": 0.1,
+            "timed_out": false,
+            "stderr_snippet": ""
+          },
+          {
+            "command": "codeindex parse Application/Token/Business/Token.class.php",
+            "exit_code": 0,
+            "elapsed": 0.1,
+            "timed_out": false,
+            "stderr_snippet": ""
+          },
+          {
+            "command": "codeindex parse Application/Cashier/Business/Config.class.php",
+            "exit_code": 0,
+            "elapsed": 0.1,
+            "timed_out": false,
+            "stderr_snippet": ""
+          },
+          {
+            "command": "codeindex symbols",
+            "exit_code": 0,
+            "elapsed": 4.95,
+            "timed_out": false,
+            "stderr_snippet": ""
+          }
+        ]
+      },
+      "l2": {
+        "project": "php_admin",
+        "metrics": {
+          "readme_count": 251,
+          "readme_total_size_kb": 896.2,
+          "parse_success_rate": 0.9971,
+          "total_files_parsed": 5128,
+          "total_symbols": 47236,
+          "total_errors": 15,
+          "route_count": 0
+        },
+        "ai_evals": [
+          {
+            "eval_name": "architecture_comprehension",
+            "score": 2.0,
+            "findings": "1. Zero symbols extracted - no classes, methods, controllers, or models are documented despite having 3 files. 2. No route information extracted despite ThinkPHP framework detection. 3. No description of what the Application module actually contains or does. 4. Missing file listing - we don't know what the 3 files are. 5. No controller/model/view breakdown typical of ThinkPHP MVC projects. 6. No dependency or configuration information. 7. The module description 'Module directory' is completely generic and uninformative. 8. No ThinkPHP-specific details like middleware, routes, or service providers.",
+            "success": true
+          },
+          {
+            "eval_name": "symbol_navigation",
+            "score": 5.0,
+            "findings": "1. INDEX TRUNCATED: Only ~60 of 627 Controllers shown (A-B range alphabetically); remaining ~567 Controllers and all other symbol types (likely Models, Services, etc.) are missing from the provided excerpt - 'Token' may exist in the unshown portion. 2. INCONSISTENT METADATA: Some entries have descriptions/docstrings (e.g., '\u80fd\u529b\u7533\u8bf7\u6743\u9650'), others have version tags (e.g., '[1.6.48]'), and many have neither - no consistent schema. 3. NO CROSS-REFERENCES: No import/dependency information linking symbols to each other. 4. FLAT LIST FORMAT: Linear alphabetical listing requires full scanning; no grouping by module/namespace beyond the top-level type heading. 5. SINGLE TYPE SHOWN: Only 'Controller' type is visible in the truncated output; total 1712 symbols across presumably multiple types (Model, Service, etc.) but the type breakdown is unknown. 6. NO LINE NUMBERS: File paths are shown but no line numbers for precise navigation. 7. GOOD: Namespace-qualified names (e.g., 'Retail\\Controller\\...') aid disambiguation; file paths included for each symbol.",
+            "success": false
+          },
+          {
+            "eval_name": "documentation_accuracy",
+            "score": 2.0,
+            "findings": "1. Symbols count is 0, but the source file contains a class 'Token' with at least 5 methods (createToken, checkToken, refreshToken, validateToken, getConfig) and a static property ($_config) - these should be detected as symbols. 2. Files count is 3 but no file listing is provided, so we cannot verify if Token.class.php is even referenced. 3. No mention of the Token class, its methods, or its purpose (JWT token generation/validation/refresh). 4. No mention of dependencies/imports (Lcobucci/JWT library, SystemClock, etc.). 5. The README_AI.md is at the root/overview level and only shows a single 'Application' module directory with zero architectural detail about what the application actually does. 6. Framework is identified as ThinkPHP which appears correct (vendor() function, .class.php naming convention), but no route or controller information is extracted despite ThinkPHP being a supported framework.",
+            "success": true
+          }
+        ],
+        "threshold_failures": []
+      },
+      "l3": {
+        "project": "php_admin",
+        "ai_evals": [
+          {
+            "eval_name": "onboarding_flow",
+            "score": 7.0,
+            "findings": "Several issues: (1) The document is truncated mid-sentence at the end ('ins...' - likely 'installation' section is cut off), so installation instructions are incomplete. (2) No testing section at all - no test framework, no test commands, no test directory mentioned. (3) No linting or code style guidelines for PHP. (4) No dependency management instructions (no composer.json or vendor installation steps). (5) Database credentials are hardcoded in the document (172.16.31.56:3307, password 'php@dev2025') which is a security concern - should reference env vars or a config mechanism instead. (6) The OpenSpec section at the top references openspec/AGENTS.md but never explains what OpenSpec is or whether it's actually set up in this project. (7) No CI/CD or deployment workflow documented. (8) No git branching strategy or commit message conventions specified. (9) PHP 7.3 is mentioned as a requirement but no other environment prerequisites (extensions, composer version, etc.) are listed.",
+            "success": true
+          },
+          {
+            "eval_name": "step_by_step_flow",
+            "score": 4.0,
+            "findings": "The flow breaks down at step 2 (scan-all --fallback). While the 3-step sequence (init \u2192 scan-all \u2192 status) is logically ordered, the scan produced 0 symbols from 3 files, making the README_AI.md nearly useless for feature planning. The 'Application/' module is identified but in ThinkPHP that is merely the top-level container \u2014 the real targets (controllers, models, services under Application/Home/, Application/Admin/, etc.) are invisible. Without symbol extraction, I cannot identify which controller or model to modify. The workflow continuity from init to scan is fine (steps 1\u21922), but the output quality of step 2 breaks the chain to the actual goal: understanding the codebase enough to add a feature. Step 3 (status) confirms coverage but coverage of 0-symbol documentation is meaningless.",
+            "success": false
+          },
+          {
+            "eval_name": "ambiguity_detection",
+            "score": 4.0,
+            "findings": "The CLAUDE.md provides a reasonably detailed architecture overview and a useful progressive-loading strategy for code indexes, but it suffers from critical gaps: the entry point definition is truncated, the README_AI.md index is empty (contradicting the documented symbol counts), there are no local development setup instructions, and the OpenSpec system is referenced without explanation. An AI agent following these instructions would immediately hit dead ends when trying to use the index files (0 symbols), would not know how to run or test the application, and would be confused by version mismatches and incomplete sentences. The Chinese/English mixing, while workable, adds cognitive overhead without a stated convention.",
+            "success": false
+          }
+        ]
+      }
+    },
+    "zcyl_backend": {
+      "project": "zcyl_backend",
+      "l1": {
+        "project": "zcyl_backend",
+        "passed": 7,
+        "failed": 0,
+        "total_time": 1.11,
+        "commands": [
+          {
+            "command": "codeindex init --yes",
+            "exit_code": 0,
+            "elapsed": 0.16,
+            "timed_out": false,
+            "stderr_snippet": ""
+          },
+          {
+            "command": "codeindex scan-all --fallback",
+            "exit_code": 0,
+            "elapsed": 0.28,
+            "timed_out": false,
+            "stderr_snippet": ""
+          },
+          {
+            "command": "codeindex status",
+            "exit_code": 0,
+            "elapsed": 0.12,
+            "timed_out": false,
+            "stderr_snippet": ""
+          },
+          {
+            "command": "codeindex tech-debt zcyl-common",
+            "exit_code": 0,
+            "elapsed": 0.17,
+            "timed_out": false,
+            "stderr_snippet": ""
+          },
+          {
+            "command": "codeindex parse zcyl-mall/zcyl-mall-core/src/test/java/com/zcyl/mall/core/BaseTest.java",
+            "exit_code": 0,
+            "elapsed": 0.11,
+            "timed_out": false,
+            "stderr_snippet": ""
+          },
+          {
+            "command": "codeindex parse zcyl-mall/zcyl-mall-core/src/test/java/com/zcyl/mall/core/center/order/split/biz/AutoSplitOrderBizTest.java",
+            "exit_code": 0,
+            "elapsed": 0.1,
+            "timed_out": false,
+            "stderr_snippet": ""
+          },
+          {
+            "command": "codeindex symbols",
+            "exit_code": 0,
+            "elapsed": 0.17,
+            "timed_out": false,
+            "stderr_snippet": ""
+          }
+        ]
+      },
+      "l2": {
+        "project": "zcyl_backend",
+        "metrics": {
+          "readme_count": 64,
+          "readme_total_size_kb": 83.94,
+          "parse_success_rate": 1.0,
+          "total_files_parsed": 142,
+          "total_symbols": 1044,
+          "total_errors": 0,
+          "route_count": 0
+        },
+        "ai_evals": [
+          {
+            "eval_name": "architecture_comprehension",
+            "score": 2.0,
+            "findings": "1. **Zero symbols and zero files detected** - The scanner found no source files, meaning no classes, interfaces, methods, or annotations were extracted. This renders the document nearly useless for code navigation.\n2. **No Spring Boot specifics** - Missing: controller endpoints, service classes, configuration properties, bean definitions, security filter chains, gateway route configurations.\n3. **Module descriptions are empty placeholders** - 'Module directory' tells an AI agent nothing about purpose, dependencies, or contents.\n4. **No dependency/relationship information** - How do the three modules depend on each other? Which is the main application module?\n5. **No technology stack details** - Spring Boot version, Java version, build tool (Maven/Gradle), key dependencies (Spring Security, Spring Cloud Gateway, etc.) are all absent.\n6. **No package structure** - No indication of package hierarchy within each module.\n7. **No configuration information** - Missing application.yml/properties details, profiles, or environment setup.",
+            "success": true
+          },
+          {
+            "eval_name": "symbol_navigation",
+            "score": 4.0,
+            "findings": "1. The symbol 'BaseTest' is not present in the index. The index only contains 34 symbols and appears to cover production code only \u2014 no test classes are indexed. 2. The 'Other' category is a catch-all bucket with 15 symbols (44% of total), which undermines the purpose of type-based categorization. Classes like HmacSha256SignatureValidator (clearly a utility/service), LoggingAspect (an Aspect), and GatewayResponse (a VO/DTO) are all lumped together. 3. The index was truncated mid-row in the 'All Classes' table (ApiResponse row is the last complete entry visible, then it cuts off at 'FileController' line), meaning the full alphabetical table is incomplete. 4. Inner classes defined in the same file (e.g., LogModel, UserInfo, GatewayResponse all sharing a file with another top-level class) are listed but their relationship to the containing file is not clarified \u2014 this could confuse navigation. 5. No method-level symbols are indexed, limiting usefulness for finding specific functionality. 6. Namespace separator uses backslash (\\) which is unconventional for Java (should be dot notation). 7. Javadoc snippets included for some symbols but not others, and when present they show raw author/date metadata rather than functional descriptions, providing little navigation value.",
+            "success": false
+          },
+          {
+            "eval_name": "documentation_accuracy",
+            "score": 2.0,
+            "findings": "The README_AI.md describes a project called zcyl-backend with 3 modules (zcyl-common, zcyl-gateway, zcyl-security) but completely misses the zcyl-mall module where the source file resides. The source file is located in zcyl-mall/zcyl-mall-core which is not listed in the module structure at all. Additionally, the README shows 0 files and 0 symbols, which is inaccurate given that source files clearly exist. The BaseTest class, its annotations (@RunWith, @SpringBootTest), its setCurrentUser() method, and its dependencies (fastjson, UserContext, CurrentUser, SpringRunner) are entirely absent from the documentation.",
+            "success": true
+          }
+        ],
+        "threshold_failures": []
+      },
+      "l3": {
+        "project": "zcyl_backend",
+        "ai_evals": [
+          {
+            "eval_name": "step_by_step_flow",
+            "score": 3.0,
+            "findings": "The flow breaks down at step 4 (reading README_AI.md for module identification). The overview shows 0 files and 0 symbols, and all three modules are described only as 'Module directory' with no architectural context. While module names (zcyl-gateway, zcyl-security, zcyl-common) hint at purpose via naming conventions, the generated documentation provides no actionable information \u2014 no file listings, no symbol extraction, no dependency mapping, and no description of responsibilities. The --fallback mode produces a structurally correct but informationally empty index. Without knowing what feature to add, and with no module-level detail, the documentation cannot guide module selection. The workflow steps (init \u2192 scan-all \u2192 status \u2192 read docs) are logically sequenced, but the output quality at the scan step is too low to support the next logical step (identify module \u2192 navigate code \u2192 implement).",
+            "success": false
+          }
+        ]
+      }
+    },
+    "loomgraph": {
+      "project": "loomgraph",
+      "l1": {
+        "project": "loomgraph",
+        "passed": 7,
+        "failed": 0,
+        "total_time": 0.83,
+        "commands": [
+          {
+            "command": "codeindex init --yes",
+            "exit_code": 0,
+            "elapsed": 0.1,
+            "timed_out": false,
+            "stderr_snippet": ""
+          },
+          {
+            "command": "codeindex scan-all --fallback",
+            "exit_code": 0,
+            "elapsed": 0.18,
+            "timed_out": false,
+            "stderr_snippet": ""
+          },
+          {
+            "command": "codeindex status",
+            "exit_code": 0,
+            "elapsed": 0.11,
+            "timed_out": false,
+            "stderr_snippet": ""
+          },
+          {
+            "command": "codeindex tech-debt src",
+            "exit_code": 0,
+            "elapsed": 0.1,
+            "timed_out": false,
+            "stderr_snippet": ""
+          },
+          {
+            "command": "codeindex parse src/loomgraph/core/config.py",
+            "exit_code": 0,
+            "elapsed": 0.1,
+            "timed_out": false,
+            "stderr_snippet": ""
+          },
+          {
+            "command": "codeindex parse src/loomgraph/core/models.py",
+            "exit_code": 0,
+            "elapsed": 0.1,
+            "timed_out": false,
+            "stderr_snippet": ""
+          },
+          {
+            "command": "codeindex symbols",
+            "exit_code": 0,
+            "elapsed": 0.14,
+            "timed_out": false,
+            "stderr_snippet": ""
+          }
+        ]
+      },
+      "l2": {
+        "project": "loomgraph",
+        "metrics": {
+          "readme_count": 9,
+          "readme_total_size_kb": 11.1,
+          "parse_success_rate": 1.0,
+          "total_files_parsed": 53,
+          "total_symbols": 334,
+          "total_errors": 0,
+          "route_count": 0
+        },
+        "ai_evals": [
+          {
+            "eval_name": "architecture_comprehension",
+            "score": 1.0,
+            "findings": "Critical gaps: (1) No files were detected despite being a Python project - the scanner likely failed or the directory was empty/excluded. (2) Zero symbols extracted means no classes, functions, or modules are documented. (3) No description of what LoomGraph does or its purpose. (4) No dependency information. (5) No API or interface documentation. (6) The 'None framework' designation suggests misconfiguration. (7) No import relationships or module interactions documented.",
+            "success": true
+          },
+          {
+            "eval_name": "symbol_navigation",
+            "score": 7.0,
+            "findings": "1) LoomConfig does not exist as a defined class in the codebase - the index correctly omits it. However, the validation config (scripts/validation/projects.yaml) incorrectly lists 'LoomConfig' as a known_class, which would cause validation failures. The actual main config class is 'Settings' in src/loomgraph/core/config.py. 2) All 35 classes are categorized as 'Other' rather than being typed as 'Class' - this suggests the symbol kind detection may not be working properly. 3) The namespace column shows '-' for every class, providing no useful information. 4) Functions lack docstring snippets while classes have them - inconsistent treatment. 5) Duplicate symbol names (two 'GitError' classes in different files) are listed but could benefit from disambiguation hints. 6) No method-level symbols are indexed, only top-level classes and module-level functions, limiting navigation for large classes.",
+            "success": false
+          },
+          {
+            "eval_name": "documentation_accuracy",
+            "score": 1.0,
+            "findings": "The README_AI.md contains zero useful information about the source file. It shows 0 files and 0 symbols, completely missing the entire config.py module which contains 8 classes (ASTExtractionConfig, SemanticEnhancementConfig, IndexingConfig, EmbeddingConfig, LightRAGConfig, RetrievalConfig, Settings, plus module-level functions), multiple configuration fields, YAML config loading logic, global settings management, and the full configuration priority system. The README appears to be a bare scaffold that was generated at the top-level overview layer without actually indexing the source code contents.",
+            "success": true
+          }
+        ],
+        "threshold_failures": []
+      },
+      "l3": {
+        "project": "loomgraph",
+        "ai_evals": [
+          {
+            "eval_name": "onboarding_flow",
+            "score": 7.0,
+            "findings": "Several issues: (1) The CLAUDE.md is split between two projects \u2014 the top half references codeindex conventions while the bottom half defines LoomGraph, which could confuse an agent about which project it's actually working on. (2) The CLI command reference is truncated mid-sentence ('loomgr') \u2014 the 'Step 3: inject into LightRAG' command is incomplete. (3) No dependency installation instructions specific to LoomGraph (only mentions `uv pip install -e \".[dev]\"` but doesn't clarify if codeindex/LightRAG need to be installed locally as dependencies). (4) The 'Project Structure' section shows planned directories but doesn't indicate which ones actually exist vs. are aspirational. (5) Missing: how to run the MCP server locally, what the current development status is (MVP? alpha? which features are implemented?), and how the three repos coordinate during development (e.g., do you need all three running locally?). (6) The H200 server IPs/ports are hardcoded \u2014 no guidance on what to do if the server is down or how to use a local fallback. (7) The codeindex section at the top references a `.codeindex.yaml` that may not exist yet in this project.",
+            "success": true
+          },
+          {
+            "eval_name": "step_by_step_flow",
+            "score": 3.0,
+            "findings": "The workflow steps (init \u2192 scan-all \u2192 status) execute correctly in sequence, but the generated README_AI.md for LoomGraph is nearly empty: 0 files, 0 symbols, and only a bare 'src/' module listed with no description. This means the scan-all --fallback step produced a skeleton overview without extracting any meaningful code structure. The flow breaks down between steps 2 and 3: scan-all completes but yields no actionable information (no symbols, no file listings, no architectural context), so 'status' confirming coverage is misleading \u2014 coverage exists but is vacuous. Without symbols, file descriptions, or component relationships, a developer cannot identify which module to modify for any feature. The root cause is likely that LoomGraph's src/ structure doesn't match codeindex's supported language parsers, or the include/exclude patterns in .codeindex.yaml filter out all source files. The logical next step \u2014 using the README_AI.md to navigate code \u2014 is completely blocked because the document contains no navigable content.",
+            "success": false
+          },
+          {
+            "eval_name": "ambiguity_detection",
+            "score": 4.0,
+            "findings": "The documentation suffers from three critical structural problems: (1) Identity confusion \u2014 codeindex instructions are embedded in what appears to be LoomGraph's CLAUDE.md, making it impossible for an AI agent to know which project context applies; (2) Reality mismatch \u2014 the CLAUDE.md describes a fully-architected project with multiple modules, tests, and infrastructure, but README_AI.md reveals the project is essentially empty (0 files, 0 symbols), leaving the agent unable to distinguish between 'planned but not built' and 'built but not indexed'; (3) Missing operational instructions \u2014 while the architecture vision is well-documented, the practical how-to for development (environment setup, dependency installation, running services, testing) is entirely absent for LoomGraph, despite being extremely detailed for codeindex. An AI agent receiving these instructions would likely either apply codeindex conventions incorrectly to LoomGraph, or stall due to inability to resolve the gap between documented architecture and actual project state.",
+            "success": false
+          }
+        ]
+      }
+    }
+  }
+}
