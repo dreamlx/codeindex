@@ -35,11 +35,23 @@ class ScanResult:
         """Get Java files only."""
         return [f for f in self.files if f.suffix == ".java"]
 
+    @property
+    def typescript_files(self) -> list[Path]:
+        """Get TypeScript files only."""
+        return [f for f in self.files if f.suffix in (".ts", ".tsx")]
+
+    @property
+    def javascript_files(self) -> list[Path]:
+        """Get JavaScript files only."""
+        return [f for f in self.files if f.suffix in (".js", ".jsx")]
+
 
 LANGUAGE_EXTENSIONS = {
     "python": [".py"],
     "php": [".php", ".phtml"],
     "java": [".java"],
+    "typescript": [".ts", ".tsx"],
+    "javascript": [".js", ".jsx"],
 }
 
 

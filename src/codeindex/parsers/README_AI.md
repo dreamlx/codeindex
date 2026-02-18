@@ -325,3 +325,13 @@ Test fixtures include real-world code patterns and edge cases.
 - **v0.2.3**: Added PHP parser with enhanced PHPDoc support and namespace extraction
 - **v0.2.0**: Introduced `BaseLanguageParser` architecture
 - **v0.1.0**: Initial Python parser implementation
+
+---
+
+## Recent Changes
+
+**Commit ``**: 
+
+Changed files:
+- `__init__.py`
+- `typescript_parser.py`

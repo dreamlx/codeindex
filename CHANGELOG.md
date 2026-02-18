@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-02-19
+
+### Added
+
+- **TypeScript/JavaScript language support** (Epic 20): Full parsing for `.ts`, `.tsx`, `.js`, `.jsx` files using tree-sitter-typescript and tree-sitter-javascript. Single `TypeScriptParser` class handles all 4 file types with 3 grammar variants (typescript, tsx, javascript).
+  - **Symbol extraction**: classes, functions, methods, interfaces, enums, type aliases, const/let/var declarations, arrow functions, getter/setters, abstract classes, generics
+  - **Import/export extraction**: ES module imports (named, default, namespace, side-effect), CommonJS `require()`, type-only imports, re-exports, barrel exports
+  - **Inheritance extraction**: class extends, implements, interface extends (single and multiple)
+  - **Call extraction**: function calls, method calls, static calls, constructor calls (`new`), chained calls
+  - **TS-specific features**: decorators, React JSX/TSX components, namespaces, ambient declarations (.d.ts)
+  - 77 new tests (68 unit + 9 integration), all passing
+- **New optional dependency group**: `pip install ai-codeindex[typescript]` installs tree-sitter-typescript and tree-sitter-javascript
+- **Scanner support**: `typescript` and `javascript` in `LANGUAGE_EXTENSIONS` and `.codeindex.yaml` config
+- **CLI integration**: `codeindex parse file.ts` produces JSON output with full symbol/import/call data
+
 ## [0.18.0] - 2026-02-18
 
 ### Added

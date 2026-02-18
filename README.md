@@ -7,7 +7,7 @@
 
 **Universal Code Parser — Best-in-class multi-language AST parser for AI-assisted development.**
 
-codeindex extracts symbols, inheritance relationships, call graphs, and imports from Python, PHP, and Java using tree-sitter. Perfect for feeding structured code data to AI tools, knowledge graphs, and code intelligence platforms.
+codeindex extracts symbols, inheritance relationships, call graphs, and imports from Python, PHP, Java, TypeScript, and JavaScript using tree-sitter. Perfect for feeding structured code data to AI tools, knowledge graphs, and code intelligence platforms.
 
 ---
 
@@ -17,11 +17,11 @@ codeindex extracts symbols, inheritance relationships, call graphs, and imports 
 
 ## Features
 
-- **Multi-language AST parsing** — Python, PHP, Java via tree-sitter (TypeScript, Go, Rust, C# planned)
+- **Multi-language AST parsing** — Python, PHP, Java, TypeScript, JavaScript via tree-sitter (Go, Rust, C# planned)
 - **AI-powered documentation** — Generate README files using Claude, GPT, or any AI CLI
 - **Single file parse** — `codeindex parse <file>` with JSON output for tool integration
 - **Structured JSON output** — `--output json` for CI/CD, knowledge graphs, and downstream tools
-- **Call relationship extraction** — Function/method call graphs across Python, Java, PHP
+- **Call relationship extraction** — Function/method call graphs across Python, Java, PHP, TypeScript, JavaScript
 - **Inheritance extraction** — Class hierarchy and interface relationships
 - **Framework route extraction** — ThinkPHP and Spring Boot route tables (more planned)
 - **Technical debt analysis** — Detect large files, god classes, symbol overload
@@ -47,6 +47,7 @@ pip install ai-codeindex[all]
 pip install ai-codeindex[python]
 pip install ai-codeindex[php]
 pip install ai-codeindex[java]
+pip install ai-codeindex[typescript]
 pip install ai-codeindex[python,php]
 ```
 
@@ -161,7 +162,7 @@ For manual setup, MCP skills (`/mo:arch`, `/mo:index`), and Git hooks integratio
 | Python | ✅ Supported | v0.1.0 | Classes, functions, methods, imports, docstrings, inheritance, calls |
 | PHP | ✅ Supported | v0.5.0 | Classes (extends/implements), methods, properties, PHPDoc, inheritance, calls |
 | Java | ✅ Supported | v0.7.0 | Classes, interfaces, enums, records, annotations, Spring routes, Lombok, calls |
-| TypeScript/JS | 🧪 Tests Ready | v0.14.0 | Parser implementation in progress (Epic 15) |
+| TypeScript/JS | ✅ Supported | v0.19.0 | Classes, interfaces, enums, type aliases, arrow functions, JSX/TSX, imports/exports, calls |
 | Go | 📋 Planned | — | Packages, interfaces, struct methods |
 | Rust | 📋 Planned | — | Structs, traits, modules |
 | C# | 📋 Planned | — | Classes, interfaces, .NET projects |
@@ -261,7 +262,6 @@ See [Release Automation Guide](docs/development/QUICK_START_RELEASE.md) for deta
 
 **Next**:
 - Framework routes expansion: Express, Laravel, FastAPI, Django (Epic 17)
-- TypeScript parser implementation (Epic 15)
 - Go, Rust, C# language support
 
 **Moved to [LoomGraph](https://github.com/dreamlx/LoomGraph)**:
