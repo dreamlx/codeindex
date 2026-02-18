@@ -268,3 +268,101 @@ class TestTopSymbolsSummary:
             )
             content = result.path.read_text()
             assert "Key Components" not in content
+
+
+# ---------------------------------------------------------------------------
+# T4: 2-Level Directory Tree in Overview
+# ---------------------------------------------------------------------------
+
+class TestTwoLevelTree:
+    """Tests for 2-level directory tree display in overview."""
+
+    def test_shows_grandchild_directories(self):
+        """Overview tree should show subdirectories of each child module."""
+        writer = _make_writer()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            # Application/ has 3 subdirs with README_AI.md
+            _make_child_readme(root / "Application" / "Admin", files=10, symbols=50)
+            _make_child_readme(root / "Application" / "Cashier", files=20, symbols=100)
+            _make_child_readme(root / "Application" / "Token", files=3, symbols=15)
+            # Application/ itself needs a README too
+            _make_child_readme(root / "Application", files=33, symbols=165)
+
+            result = writer.write_readme(
+                dir_path=root,
+                parse_results=[],
+                level="overview",
+                child_dirs=[root / "Application"],
+            )
+            content = result.path.read_text()
+            # Grandchildren should appear in tree
+            assert "Admin" in content
+            assert "Cashier" in content
+            assert "Token" in content
+
+    def test_tree_shows_two_levels_structure(self):
+        """Tree should have proper 2-level indentation."""
+        writer = _make_writer()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            _make_child_readme(root / "src" / "core", files=5, symbols=20)
+            _make_child_readme(root / "src" / "utils", files=3, symbols=10)
+            _make_child_readme(root / "src", files=8, symbols=30)
+            _make_child_readme(root / "tests", files=4, symbols=12)
+
+            result = writer.write_readme(
+                dir_path=root,
+                parse_results=[],
+                level="overview",
+                child_dirs=[root / "src", root / "tests"],
+            )
+            content = result.path.read_text()
+            # Level 1 dirs should be present
+            assert "src/" in content
+            assert "tests/" in content
+            # Level 2 dirs (under src/) should be present
+            assert "core" in content
+            assert "utils" in content
+
+    def test_no_grandchildren_when_none_exist(self):
+        """Leaf child with no subdirs → no extra indentation."""
+        writer = _make_writer()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            _make_child_readme(root / "simple", files=5, symbols=20)
+
+            result = writer.write_readme(
+                dir_path=root,
+                parse_results=[],
+                level="overview",
+                child_dirs=[root / "simple"],
+            )
+            content = result.path.read_text()
+            assert "simple/" in content
+            # Should not have any nested tree lines (│)
+            tree_section = content.split("```")[1] if "```" in content else ""
+            assert "│" not in tree_section
+
+    def test_many_grandchildren_are_capped(self):
+        """Child with 30+ subdirs → show first N + summary."""
+        writer = _make_writer()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            app = root / "Application"
+            # Create 30 subdirectories with READMEs
+            for i in range(30):
+                _make_child_readme(app / f"Module{i:02d}", files=5, symbols=10)
+            _make_child_readme(app, files=150, symbols=300)
+
+            result = writer.write_readme(
+                dir_path=root,
+                parse_results=[],
+                level="overview",
+                child_dirs=[root / "Application"],
+            )
+            content = result.path.read_text()
+            # Should show some modules but not all 30
+            assert "Module00" in content
+            # Should indicate there are more
+            assert "more" in content.lower() or "..." in content

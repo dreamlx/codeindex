@@ -183,10 +183,32 @@ class SmartWriter:
                 f"{dir_path.name}/",
             ])
 
-            # Group child dirs by first-level subdirectory
-            for child in sorted(child_dirs):
+            max_grandchildren = 15  # Cap per module to avoid bloat
+            sorted_children = sorted(child_dirs)
+            for idx, child in enumerate(sorted_children):
                 rel_path = child.relative_to(dir_path)
-                lines.append(f"├── {rel_path}/")
+                is_last_child = idx == len(sorted_children) - 1
+                prefix = "└── " if is_last_child else "├── "
+                lines.append(f"{prefix}{rel_path}/")
+
+                # 2nd level: subdirectories with README_AI.md
+                grandchildren = sorted(
+                    d for d in child.iterdir()
+                    if d.is_dir() and (d / "README_AI.md").exists()
+                )
+                if grandchildren:
+                    branch = "    " if is_last_child else "│   "
+                    shown = grandchildren[:max_grandchildren]
+                    for gi, gc in enumerate(shown):
+                        is_last_gc = (
+                            gi == len(shown) - 1
+                            and len(grandchildren) <= max_grandchildren
+                        )
+                        gc_prefix = "└── " if is_last_gc else "├── "
+                        lines.append(f"{branch}{gc_prefix}{gc.name}/")
+                    if len(grandchildren) > max_grandchildren:
+                        remaining = len(grandchildren) - max_grandchildren
+                        lines.append(f"{branch}└── ... +{remaining} more")
 
             lines.extend([
                 "```",
