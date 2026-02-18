@@ -1,13 +1,13 @@
 # codeindex Strategic Roadmap
 
-**Last Updated**: 2026-02-13
+**Last Updated**: 2026-02-18
 **Current Version**: v0.18.0
 **Vision**: Universal Code Parser - Best-in-class multi-language AST parser for AI-assisted development
 **Positioning**: Focused on code parsing and structured data extraction, not AI analysis
 
 ---
 
-## 📍 Current Status (v0.17.3)
+## 📍 Current Status (v0.18.0)
 
 ### ✅ Completed Capabilities
 
@@ -39,11 +39,14 @@
 | **CLAUDE.md Injection** | v0.17.0 | ✅ AI agent auto-onboarding |
 | **Docs Consolidation** | v0.17.2 | ✅ Guides 14→8, stale content fixed |
 | **Init Setup Flow** | v0.17.3 | ✅ Config review → scan → hooks |
+| **Enriched Overview/Navigation** | v0.18.0 | ✅ Recursive stats, smart descriptions, Key Components |
+| **Real Project Validation** | v0.18.0 | ✅ 3-layer validation framework (L1/L2/L3) |
 
 ### 📚 Version History
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| **v0.18.0** | 2026-02-18 | 📊 Enriched overview/navigation README + validation framework |
 | **v0.17.3** | 2026-02-13 | 🔧 Improved CLAUDE.md setup flow for AI agent onboarding |
 | **v0.17.2** | 2026-02-13 | 📚 Docs audit & consolidation (14→8 guides) |
 | **v0.17.1** | 2026-02-12 | 📝 README.md restructure (-76%), CHANGELOG trim (-70%) |
@@ -103,7 +106,7 @@
 
 ## 🗓️ Version Roadmap
 
-### Completed Versions (v0.6.0 - v0.17.3)
+### Completed Versions (v0.6.0 - v0.18.0)
 
 <details>
 <summary>Click to expand completed version details</summary>
@@ -180,7 +183,16 @@
 
 ---
 
-### v0.18.0 - TypeScript/JavaScript Language Support (Next)
+#### v0.18.0 - Enriched Overview/Navigation README ✅ (Released: 2026-02-18)
+- Recursive stats aggregation, smart module descriptions, Key Components table
+- 2-level directory tree in overview, real project validation framework
+- Tests: 1066 passing
+
+</details>
+
+---
+
+### v0.19.0 - TypeScript/JavaScript Language Support (Next)
 
 **Theme**: Web development ecosystem foundation
 
@@ -204,7 +216,7 @@
 
 ---
 
-### v0.19.0 - Go Language Support
+### v0.20.0 - Go Language Support
 
 **Theme**: Cloud-native ecosystem
 
@@ -228,7 +240,7 @@
 
 ---
 
-### v0.20.0 - Framework Intelligence Expansion
+### v0.21.0 - Framework Intelligence Expansion
 
 **Theme**: Framework-aware code understanding
 
@@ -249,7 +261,7 @@
 
 ---
 
-### v0.21.0 - Rust Language Support
+### v0.22.0 - Rust Language Support
 
 **Theme**: Systems programming
 
@@ -266,7 +278,7 @@
 
 ---
 
-### v0.22.0 - C# Language Support
+### v0.23.0 - C# Language Support
 
 **Theme**: .NET ecosystem
 
@@ -330,24 +342,24 @@
 | ~~Java Parser~~ | v0.7.0-v0.8.0 ✅ | Enterprise adoption blocker |
 | ~~Spring Routes~~ | v0.8.0 ✅ | Most popular Java framework |
 | ~~CLI UX Restructuring~~ | v0.16.0 ✅ | Affects all new users (zero-AI default) |
-| TypeScript Parser | v0.18.0 | Web development essential |
+| TypeScript Parser | v0.19.0 | Web development essential |
 
 ### P1 (Should Have - High Impact)
 
 | Feature | Version | Rationale |
 |---------|---------|-----------|
 | ~~Maven/Gradle Detection~~ | v0.7.0 ✅ | Java build system integration |
-| Go Parser | v0.19.0 | Cloud-native ecosystem |
-| FastAPI Routes | v0.20.0 | Modern Python API framework |
+| Go Parser | v0.20.0 | Cloud-native ecosystem |
+| FastAPI Routes | v0.21.0 | Modern Python API framework |
 
 ### P2 (Nice to Have - Enhancement)
 
 | Feature | Version | Rationale |
 |---------|---------|-----------|
 | ~~JavaDoc Extraction~~ | v0.6.0 ✅ | Better documentation quality |
-| Rust Parser | v0.21.0 | Systems programming community |
-| Laravel Routes | v0.20.0 | PHP framework leader |
-| Multi-Agent Onboarding | v0.20.0 | Support Cursor, Windsurf, Cline, Copilot |
+| Rust Parser | v0.22.0 | Systems programming community |
+| Laravel Routes | v0.21.0 | PHP framework leader |
+| Multi-Agent Onboarding | v0.21.0 | Support Cursor, Windsurf, Cline, Copilot |
 
 ### ⚠️ Features Moved to LoomGraph
 
@@ -369,10 +381,10 @@
 | 1 | **Python** | v0.1.0 | ✅ Complete (Parsing + LoomGraph: v0.9.0) |
 | 2 | **PHP** | v0.5.0 | ✅ Complete (Parsing + LoomGraph: v0.10.0) |
 | 3 | **Java** | v0.7.0-v0.8.0 | ✅ Complete (Parsing + Spring Routes) |
-| 4 | **TypeScript/JavaScript** | v0.18.0 | 📋 Planned (Epic 20) |
-| 5 | **Go** | v0.19.0 | 📋 Planned (Epic 21) |
-| 6 | **Rust** | v0.21.0 | 📋 Planned (Epic 24) |
-| 7 | **C#** | v0.22.0 | 📋 Planned (Epic 25) |
+| 4 | **TypeScript/JavaScript** | v0.19.0 | 📋 Planned (Epic 20) |
+| 5 | **Go** | v0.20.0 | 📋 Planned (Epic 21) |
+| 6 | **Rust** | v0.22.0 | 📋 Planned (Epic 24) |
+| 7 | **C#** | v0.23.0 | 📋 Planned (Epic 25) |
 | 8 | **C++** | v1.0.0 | 📋 Planned |
 
 ---
@@ -385,10 +397,10 @@
 |------|-----------|----------|----------------|--------|
 | 1 | **ThinkPHP** | PHP | v0.5.0 | ✅ Complete |
 | 2 | **Spring Boot** | Java | v0.8.0 | ✅ Complete |
-| 3 | **FastAPI** | Python | v0.20.0 | 📋 Planned (Epic 23) |
-| 4 | **Django** | Python | v0.20.0 | 📋 Planned (Epic 23) |
-| 5 | **Express.js** | TypeScript | v0.20.0 | 📋 Planned (Epic 23) |
-| 6 | **Laravel** | PHP | v0.20.0 | 📋 Planned (Epic 23) |
+| 3 | **FastAPI** | Python | v0.21.0 | 📋 Planned (Epic 23) |
+| 4 | **Django** | Python | v0.21.0 | 📋 Planned (Epic 23) |
+| 5 | **Express.js** | TypeScript | v0.21.0 | 📋 Planned (Epic 23) |
+| 6 | **Laravel** | PHP | v0.21.0 | 📋 Planned (Epic 23) |
 | 7 | **ASP.NET Core** | C# | v1.0.0 | 📋 Planned |
 | 8 | **Gin** | Go | v1.0.0 | 📋 Planned |
 
@@ -420,12 +432,12 @@
 
 | Epic | Version | Priority | Status |
 |------|---------|----------|--------|
-| **Epic 20** | v0.18.0 | P0 | 📋 Next (TypeScript/JavaScript Support) |
-| **Epic 21** | v0.19.0 | P1 | 📋 Planned (Go Language Support) |
-| **Epic 22** | v0.20.0 | P2 | 📋 Planned (Multi-Agent Onboarding) |
-| **Epic 23** | v0.20.0 | P1 | 📋 Planned (Framework Routes Expansion) |
-| **Epic 24** | v0.21.0 | P2 | 📋 Planned (Rust Language Support) |
-| **Epic 25** | v0.22.0 | P2 | 📋 Planned (C# Language Support) |
+| **Epic 20** | v0.19.0 | P0 | 📋 Next (TypeScript/JavaScript Support) |
+| **Epic 21** | v0.20.0 | P1 | 📋 Planned (Go Language Support) |
+| **Epic 22** | v0.21.0 | P2 | 📋 Planned (Multi-Agent Onboarding) |
+| **Epic 23** | v0.21.0 | P1 | 📋 Planned (Framework Routes Expansion) |
+| **Epic 24** | v0.22.0 | P2 | 📋 Planned (Rust Language Support) |
+| **Epic 25** | v0.23.0 | P2 | 📋 Planned (C# Language Support) |
 
 ### Deferred Epics
 
@@ -448,12 +460,12 @@
 
 ### Technical Metrics
 
-| Metric | Current (v0.17.3) | Next Target (v0.18.0) | v1.0.0 Target |
+| Metric | Current (v0.18.0) | Next Target (v0.19.0) | v1.0.0 Target |
 |--------|-------------------|----------------------|---------------|
 | **Languages Supported** | 3 (Python, PHP, Java) | 4 (+TypeScript/JS) | 8+ |
 | **Frameworks Supported** | 2 (ThinkPHP, Spring) | 2 | 10+ |
 | **Test Coverage** | 90%+ | 90%+ | 95%+ |
-| **Tests Passing** | 1060 | 1150+ | 2000+ |
+| **Tests Passing** | 1066 | 1150+ | 2000+ |
 | **Max Project Size** | 500k LOC | 1M LOC | 5M LOC |
 | **Platforms Supported** | macOS, Linux (Windows partial) | + Windows CI | 3 (Production-ready) |
 
@@ -494,7 +506,7 @@
 2. **Real Project Feedback**: Java testing (zcyl-backend) revealed 31% redundant READMEs
 3. **Foundation**: Better UX benefits all future language additions
 
-### Why TypeScript Next? (v0.18.0)
+### Why TypeScript Next? (v0.19.0)
 
 1. **Web Development**: TypeScript is #4 most popular language
 2. **React Ecosystem**: Component detection adds unique value
@@ -513,5 +525,5 @@
 **Roadmap Status**: 🎯 Active
 **Next Review**: 2026-03-31
 **Maintained By**: @dreamlx
-**Last Updated**: 2026-02-13
+**Last Updated**: 2026-02-18
 **Current Version**: v0.18.0
