@@ -1,5 +1,6 @@
 """Smart README writer with grouping, size limits, and hierarchical levels."""
 
+import re
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
@@ -155,10 +156,14 @@ class SmartWriter:
                 "",
             ])
 
-        # Statistics
-        total_files = len(parse_results)
-        total_symbols = sum(len(r.symbols) for r in parse_results)
+        # Statistics — aggregate from child READMEs for accurate totals
+        direct_files = len(parse_results)
+        direct_symbols = sum(len(r.symbols) for r in parse_results)
         total_modules = len(child_dirs)
+
+        child_stats = self._collect_recursive_stats(child_dirs)
+        total_files = direct_files + child_stats["files"]
+        total_symbols = direct_symbols + child_stats["symbols"]
 
         lines.extend([
             "## Overview",
@@ -178,10 +183,32 @@ class SmartWriter:
                 f"{dir_path.name}/",
             ])
 
-            # Group child dirs by first-level subdirectory
-            for child in sorted(child_dirs):
+            max_grandchildren = 15  # Cap per module to avoid bloat
+            sorted_children = sorted(child_dirs)
+            for idx, child in enumerate(sorted_children):
                 rel_path = child.relative_to(dir_path)
-                lines.append(f"├── {rel_path}/")
+                is_last_child = idx == len(sorted_children) - 1
+                prefix = "└── " if is_last_child else "├── "
+                lines.append(f"{prefix}{rel_path}/")
+
+                # 2nd level: subdirectories with README_AI.md
+                grandchildren = sorted(
+                    d for d in child.iterdir()
+                    if d.is_dir() and (d / "README_AI.md").exists()
+                )
+                if grandchildren:
+                    branch = "    " if is_last_child else "│   "
+                    shown = grandchildren[:max_grandchildren]
+                    for gi, gc in enumerate(shown):
+                        is_last_gc = (
+                            gi == len(shown) - 1
+                            and len(grandchildren) <= max_grandchildren
+                        )
+                        gc_prefix = "└── " if is_last_gc else "├── "
+                        lines.append(f"{branch}{gc_prefix}{gc.name}/")
+                    if len(grandchildren) > max_grandchildren:
+                        remaining = len(grandchildren) - max_grandchildren
+                        lines.append(f"{branch}└── ... +{remaining} more")
 
             lines.extend([
                 "```",
@@ -201,6 +228,19 @@ class SmartWriter:
 
             lines.append("")
 
+            # Key Components table (top symbols across all modules)
+            top_symbols = self._collect_top_symbols(child_dirs)
+            if top_symbols:
+                lines.extend([
+                    "## Key Components",
+                    "",
+                    "| Symbol | Type | Module |",
+                    "|--------|------|--------|",
+                ])
+                for name, kind, module in top_symbols:
+                    lines.append(f"| {name} | {kind} | {module} |")
+                lines.append("")
+
         return "\n".join(lines)
 
     def _generate_navigation(
@@ -218,9 +258,13 @@ class SmartWriter:
             "",
         ]
 
-        # Statistics
-        total_files = len(parse_results)
-        total_symbols = sum(len(r.symbols) for r in parse_results)
+        # Statistics — aggregate from child READMEs for accurate totals
+        direct_files = len(parse_results)
+        direct_symbols = sum(len(r.symbols) for r in parse_results)
+
+        child_stats = self._collect_recursive_stats(child_dirs)
+        total_files = direct_files + child_stats["files"]
+        total_symbols = direct_symbols + child_stats["symbols"]
 
         lines.extend([
             "## Overview",
@@ -599,22 +643,105 @@ class SmartWriter:
 
         return key[:5]  # Limit to 5 key symbols
 
+
+    def _collect_recursive_stats(
+        self, child_dirs: list[Path], output_file: str = "README_AI.md"
+    ) -> dict:
+        """Aggregate file/symbol counts from child README_AI.md files."""
+        total_files = 0
+        total_symbols = 0
+        for child in child_dirs:
+            readme = child / output_file
+            if readme.exists():
+                try:
+                    content = readme.read_text(encoding="utf-8", errors="replace")
+                    files_match = re.search(r'\*\*Files\*\*:\s*(\d+)', content)
+                    symbols_match = re.search(r'\*\*Symbols\*\*:\s*(\d+)', content)
+                    if files_match:
+                        total_files += int(files_match.group(1))
+                    if symbols_match:
+                        total_symbols += int(symbols_match.group(1))
+                except Exception:
+                    pass
+        return {"files": total_files, "symbols": total_symbols}
+
+    def _collect_top_symbols(
+        self,
+        child_dirs: list[Path],
+        output_file: str = "README_AI.md",
+        limit: int = 15,
+    ) -> list[tuple[str, str, str]]:
+        """Collect top symbols from child READMEs.
+
+        Returns list of (name, kind, module) tuples.
+        """
+        symbols: list[tuple[str, str, str]] = []
+        for child in child_dirs:
+            for readme in child.rglob(output_file):
+                try:
+                    content = readme.read_text(encoding="utf-8", errors="replace")
+                    module = readme.parent.name
+                    for m in re.finditer(
+                        r'\*\*(class|function)\*\*\s+`(?:\w+\s+)?(\w+)`', content
+                    ):
+                        kind, name = m.group(1), m.group(2)
+                        symbols.append((name, kind, module))
+                except Exception:
+                    pass
+
+        # Deduplicate, return top N
+        seen: set[str] = set()
+        result: list[tuple[str, str, str]] = []
+        for name, kind, module in symbols:
+            if name not in seen:
+                seen.add(name)
+                result.append((name, kind, module))
+            if len(result) >= limit:
+                break
+        return result
+
     def _extract_module_description(self, dir_path: Path, output_file: str = "README_AI.md") -> str:
-        """Extract brief description from a child module's README."""
+        """Extract brief description from a child module's README.
+
+        Strategies (in order):
+        1. Parse structured stats (Files/Symbols) + class names from README_AI.md
+        2. Find first free-text line (non-header, non-list)
+        3. Fallback to "Module directory"
+        """
         readme_path = dir_path / output_file
         if not readme_path.exists():
             return "Module directory"
 
         try:
-            content = readme_path.read_text(encoding="utf-8")
-            lines = content.split("\n")
+            content = readme_path.read_text(encoding="utf-8", errors="replace")
 
-            # Look for first non-empty, non-header line
-            for line in lines[2:15]:  # Skip header, check first 15 lines
+            # Strategy 1: Structured info from codeindex output
+            files_match = re.search(r'\*\*Files\*\*:\s*(\d+)', content)
+            symbols_match = re.search(r'\*\*Symbols\*\*:\s*(\d+)', content)
+            classes = re.findall(r'\*\*class\*\*\s+`(?:class\s+)?(\w+)`', content)
+
+            parts = []
+            if files_match:
+                parts.append(f"{files_match.group(1)} files")
+            if symbols_match:
+                parts.append(f"{symbols_match.group(1)} symbols")
+            if classes:
+                top_classes = classes[:5]
+                class_str = f"classes: {', '.join(top_classes)}"
+                if len(classes) > 5:
+                    class_str += f" +{len(classes) - 5} more"
+                parts.append(class_str)
+
+            if parts:
+                return " | ".join(parts)
+
+            # Strategy 2: First free-text line
+            lines = content.split("\n")
+            for line in lines[2:15]:
                 line = line.strip()
                 if line and not line.startswith("#") and not line.startswith("<!--"):
                     if line.startswith("-"):
-                        continue  # Skip list items
+                        continue
                     return line[:80]
 
             return "Module directory"

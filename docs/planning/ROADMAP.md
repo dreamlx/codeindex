@@ -1,13 +1,13 @@
 # codeindex Strategic Roadmap
 
-**Last Updated**: 2026-02-12
-**Current Version**: v0.17.3
+**Last Updated**: 2026-02-13
+**Current Version**: v0.18.0
 **Vision**: Universal Code Parser - Best-in-class multi-language AST parser for AI-assisted development
 **Positioning**: Focused on code parsing and structured data extraction, not AI analysis
 
 ---
 
-## 📍 Current Status (v0.15.1)
+## 📍 Current Status (v0.17.3)
 
 ### ✅ Completed Capabilities
 
@@ -35,11 +35,21 @@
 | **Test Suite Refactoring** | v0.14.0+ | ✅ Legacy cleanup + 100% BDD coverage |
 | **Test Architecture Migration** | v0.15.0 | ✅ YAML+Jinja2 template system |
 | **Java scan-all + tech-debt fixes** | v0.15.1 | ✅ Unified extension checking |
+| **CLI UX Restructuring** | v0.16.0 | ✅ Zero-AI default, --ai opt-in |
+| **CLAUDE.md Injection** | v0.17.0 | ✅ AI agent auto-onboarding |
+| **Docs Consolidation** | v0.17.2 | ✅ Guides 14→8, stale content fixed |
+| **Init Setup Flow** | v0.17.3 | ✅ Config review → scan → hooks |
 
 ### 📚 Version History
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| **v0.17.3** | 2026-02-13 | 🔧 Improved CLAUDE.md setup flow for AI agent onboarding |
+| **v0.17.2** | 2026-02-13 | 📚 Docs audit & consolidation (14→8 guides) |
+| **v0.17.1** | 2026-02-12 | 📝 README.md restructure (-76%), CHANGELOG trim (-70%) |
+| **v0.17.0** | 2026-02-12 | 🤖 CLAUDE.md injection via `codeindex init` |
+| **v0.16.1** | 2026-02-12 | 🐛 Fix false v0.16.0 claims in README |
+| **v0.16.0** | 2026-02-12 | 🎨 CLI UX Restructuring (Epic 19) - zero-AI default |
 | **v0.15.1** | 2026-02-12 | 🐛 Java scan-all fix, tech-debt hint, getter/setter scoring |
 | **v0.15.0** | 2026-02-12 | 🧪 Test Architecture Migration (YAML+Jinja2 template system) |
 | **v0.14.0** | 2026-02-10 | 🎯 User Onboarding Enhancement (Interactive Wizard + Help System) |
@@ -66,37 +76,34 @@
 
 **2026 Priorities** (Ranked by Impact):
 
-1. 🔥 **CLI UX & Quality** (v0.16.0)
-   - Zero-AI-required default experience
-   - Java project quality improvements
-   - Foundation: User feedback from real projects (zcyl-backend)
-
-2. 🌐 **Multi-Language Support** (v0.17.0+)
+1. 🌐 **Multi-Language Support** (v0.18.0+)
    - TypeScript/JavaScript, Go, Rust, C#
    - Enterprise adoption enabler
    - Foundation: Parser modularization (Epic 13 ✅)
    - Completed: Python (v0.1.0 ✅), PHP (v0.5.0 ✅), Java (v0.7.0-v0.8.0 ✅)
 
-3. 🚀 **Framework Intelligence** (v0.19.0+)
+2. 🚀 **Framework Intelligence** (v0.20.0+)
    - Express, Laravel, FastAPI, Django
    - Route extraction + business logic mapping
    - Completed: ThinkPHP (v0.5.0 ✅), Spring (v0.8.0 ✅)
 
-4. 📊 **Cross-Platform Support** (deferred)
-   - Windows, macOS, Linux CI validation
-   - Foundation: Windows compatibility (Epic 14 ✅)
+3. 🤖 **Multi-Agent Onboarding** (v0.20.0+)
+   - Support Cursor, Windsurf, Cline, GitHub Copilot instruction injection
+   - Unified instruction template across AI coding tools
+   - Foundation: CLAUDE.md injection (v0.17.0 ✅)
+
+4. 🔥 ~~CLI UX & Quality~~ (v0.16.0 ✅)
+   - Zero-AI-required default experience
+   - Java project quality improvements
 
 5. 🔗 **Tool Integration** (v0.13.0+ ✅)
-   - Single file parsing for tool chains
-   - JSON output for downstream tools
-   - LoomGraph integration (knowledge graph)
-   - Completed: parse command (Epic 12 ✅)
+   - Single file parsing, JSON output, LoomGraph integration
 
 ---
 
 ## 🗓️ Version Roadmap
 
-### Completed Versions (v0.6.0 - v0.15.1)
+### Completed Versions (v0.6.0 - v0.17.3)
 
 <details>
 <summary>Click to expand completed version details</summary>
@@ -150,37 +157,30 @@
 - Fixed getter/setter false positives in Java symbol scoring
 - Tests: 991 passing
 
+#### v0.16.0 - CLI UX Restructuring ✅ (Released: 2026-02-12)
+- Reversed scan defaults: structural mode is default, `--ai` is opt-in
+- Deprecated `--fallback` flag (no-op with warning)
+- Skip pass-through directories in scan-all (31% fewer redundant READMEs)
+- Java auto-recursive tech-debt, language-aware noise analysis
+- **Epic 19** | Tests: 1049 passing
+
+#### v0.17.0 - CLAUDE.md Injection ✅ (Released: 2026-02-12)
+- `codeindex init` injects instructions into CLAUDE.md automatically
+- Idempotent updates via HTML comment markers
+- AI agents auto-discover codeindex on session start
+- Tests: 1049 passing
+
+#### v0.17.1-v0.17.3 - Documentation & Onboarding ✅ (Released: 2026-02-13)
+- README.md restructure (-76%), CHANGELOG trim (-70%)
+- Docs/guides audit & consolidation (14→8 files)
+- Improved CLAUDE.md template with setup flow (review config → scan → hooks)
+- Tests: 1060 passing
+
 </details>
 
 ---
 
-### v0.16.0 - CLI UX Restructuring + Java Improvements (Next)
-
-**Theme**: Zero-AI-required user experience, Java project quality
-
-**Epic**: Epic 19 - CLI UX Restructuring + Java Improvements
-
-**Key Features**:
-- Reverse scan/scan-all defaults: structural mode is default, `--ai` is opt-in
-- Deprecate `--fallback` flag (now a no-op with warning)
-- Update init wizard: AI config clearly optional, parser detection guidance
-- Skip pass-through directories in scan-all (no redundant READMEs)
-- Java auto-recursive tech-debt
-- Language-aware noise analysis (Java getter/setter not counted as noise)
-
-**Success Criteria**:
-- [ ] `codeindex scan-all` works without AI configuration
-- [ ] `--ai` flag required for AI-enhanced documentation
-- [ ] `codeindex init` detects missing parsers and guides installation
-- [ ] Java Maven projects: no redundant README_AI.md in pass-through directories
-- [ ] Java tech-debt: zero getter/setter false positives
-- [ ] All 991+ tests pass after changes
-
-**Estimated Duration**: 9-15 hours (6 stories)
-
----
-
-### v0.17.0 - TypeScript/JavaScript Language Support
+### v0.18.0 - TypeScript/JavaScript Language Support (Next)
 
 **Theme**: Web development ecosystem foundation
 
@@ -204,7 +204,7 @@
 
 ---
 
-### v0.18.0 - Go Language Support
+### v0.19.0 - Go Language Support
 
 **Theme**: Cloud-native ecosystem
 
@@ -228,11 +228,11 @@
 
 ---
 
-### v0.19.0 - Framework Intelligence Expansion
+### v0.20.0 - Framework Intelligence Expansion
 
 **Theme**: Framework-aware code understanding
 
-**Epic**: Epic 22 - Framework Routes Expansion
+**Epic**: Epic 23 - Framework Routes Expansion
 
 **Key Features**:
 - Express.js route extraction (TypeScript/JavaScript)
@@ -249,11 +249,11 @@
 
 ---
 
-### v0.20.0 - Rust Language Support
+### v0.21.0 - Rust Language Support
 
 **Theme**: Systems programming
 
-**Epic**: Epic 23 - Rust Support
+**Epic**: Epic 24 - Rust Support
 
 **Key Features**:
 - Rust parser (tree-sitter-rust)
@@ -266,9 +266,11 @@
 
 ---
 
-### v0.21.0 - C# Language Support
+### v0.22.0 - C# Language Support
 
 **Theme**: .NET ecosystem
+
+**Epic**: Epic 25 - C# Support
 
 **Key Features**:
 - C# parser (tree-sitter-c-sharp)
@@ -327,24 +329,25 @@
 | ~~Docstring AI Processor~~ | v0.6.0 ✅ | Foundation for multi-language docs |
 | ~~Java Parser~~ | v0.7.0-v0.8.0 ✅ | Enterprise adoption blocker |
 | ~~Spring Routes~~ | v0.8.0 ✅ | Most popular Java framework |
-| CLI UX Restructuring | v0.16.0 | Affects all new users (zero-AI default) |
-| TypeScript Parser | v0.17.0 | Web development essential |
+| ~~CLI UX Restructuring~~ | v0.16.0 ✅ | Affects all new users (zero-AI default) |
+| TypeScript Parser | v0.18.0 | Web development essential |
 
 ### P1 (Should Have - High Impact)
 
 | Feature | Version | Rationale |
 |---------|---------|-----------|
 | ~~Maven/Gradle Detection~~ | v0.7.0 ✅ | Java build system integration |
-| Go Parser | v0.18.0 | Cloud-native ecosystem |
-| FastAPI Routes | v0.19.0 | Modern Python API framework |
+| Go Parser | v0.19.0 | Cloud-native ecosystem |
+| FastAPI Routes | v0.20.0 | Modern Python API framework |
 
 ### P2 (Nice to Have - Enhancement)
 
 | Feature | Version | Rationale |
 |---------|---------|-----------|
 | ~~JavaDoc Extraction~~ | v0.6.0 ✅ | Better documentation quality |
-| Rust Parser | v0.20.0 | Systems programming community |
-| Laravel Routes | v0.19.0 | PHP framework leader |
+| Rust Parser | v0.21.0 | Systems programming community |
+| Laravel Routes | v0.20.0 | PHP framework leader |
+| Multi-Agent Onboarding | v0.20.0 | Support Cursor, Windsurf, Cline, Copilot |
 
 ### ⚠️ Features Moved to LoomGraph
 
@@ -366,10 +369,10 @@
 | 1 | **Python** | v0.1.0 | ✅ Complete (Parsing + LoomGraph: v0.9.0) |
 | 2 | **PHP** | v0.5.0 | ✅ Complete (Parsing + LoomGraph: v0.10.0) |
 | 3 | **Java** | v0.7.0-v0.8.0 | ✅ Complete (Parsing + Spring Routes) |
-| 4 | **TypeScript/JavaScript** | v0.17.0 | 📋 Planned (Epic 20) |
-| 5 | **Go** | v0.18.0 | 📋 Planned (Epic 21) |
-| 6 | **Rust** | v0.20.0 | 📋 Planned (Epic 23) |
-| 7 | **C#** | v0.21.0 | 📋 Planned |
+| 4 | **TypeScript/JavaScript** | v0.18.0 | 📋 Planned (Epic 20) |
+| 5 | **Go** | v0.19.0 | 📋 Planned (Epic 21) |
+| 6 | **Rust** | v0.21.0 | 📋 Planned (Epic 24) |
+| 7 | **C#** | v0.22.0 | 📋 Planned (Epic 25) |
 | 8 | **C++** | v1.0.0 | 📋 Planned |
 
 ---
@@ -382,10 +385,10 @@
 |------|-----------|----------|----------------|--------|
 | 1 | **ThinkPHP** | PHP | v0.5.0 | ✅ Complete |
 | 2 | **Spring Boot** | Java | v0.8.0 | ✅ Complete |
-| 3 | **FastAPI** | Python | v0.19.0 | 📋 Planned (Epic 22) |
-| 4 | **Django** | Python | v0.19.0 | 📋 Planned (Epic 22) |
-| 5 | **Express.js** | TypeScript | v0.19.0 | 📋 Planned (Epic 22) |
-| 6 | **Laravel** | PHP | v0.19.0 | 📋 Planned (Epic 22) |
+| 3 | **FastAPI** | Python | v0.20.0 | 📋 Planned (Epic 23) |
+| 4 | **Django** | Python | v0.20.0 | 📋 Planned (Epic 23) |
+| 5 | **Express.js** | TypeScript | v0.20.0 | 📋 Planned (Epic 23) |
+| 6 | **Laravel** | PHP | v0.20.0 | 📋 Planned (Epic 23) |
 | 7 | **ASP.NET Core** | C# | v1.0.0 | 📋 Planned |
 | 8 | **Gin** | Go | v1.0.0 | 📋 Planned |
 
@@ -411,16 +414,18 @@
 | **Epic 15** | v0.14.0 | User Onboarding Enhancement (Interactive Wizard) |
 | **Epic 16** | v0.14.0+ | Test Suite Refactoring (BDD coverage) |
 | **Epic 18** | v0.15.0 | Test Architecture Migration (YAML+Jinja2 templates) |
+| **Epic 19** | v0.16.0 | CLI UX Restructuring + Java Improvements |
 
 ### Future Epics
 
 | Epic | Version | Priority | Status |
 |------|---------|----------|--------|
-| **Epic 19** | v0.16.0 | P0 | 🔥 Active (CLI UX Restructuring + Java Improvements) |
-| **Epic 20** | v0.17.0 | P0 | 📋 Next (TypeScript/JavaScript Support) |
-| **Epic 21** | v0.18.0 | P1 | 📋 Planned (Go Language Support) |
-| **Epic 22** | v0.19.0 | P1 | 📋 Planned (Framework Routes Expansion) |
-| **Epic 23** | v0.20.0 | P2 | 📋 Planned (Rust Language Support) |
+| **Epic 20** | v0.18.0 | P0 | 📋 Next (TypeScript/JavaScript Support) |
+| **Epic 21** | v0.19.0 | P1 | 📋 Planned (Go Language Support) |
+| **Epic 22** | v0.20.0 | P2 | 📋 Planned (Multi-Agent Onboarding) |
+| **Epic 23** | v0.20.0 | P1 | 📋 Planned (Framework Routes Expansion) |
+| **Epic 24** | v0.21.0 | P2 | 📋 Planned (Rust Language Support) |
+| **Epic 25** | v0.22.0 | P2 | 📋 Planned (C# Language Support) |
 
 ### Deferred Epics
 
@@ -443,12 +448,12 @@
 
 ### Technical Metrics
 
-| Metric | Current (v0.15.1) | Next Target | v1.0.0 Target |
-|--------|-------------------|-------------|---------------|
-| **Languages Supported** | 3 (Python, PHP, Java) | 3 (CLI UX improvements) | 8+ |
-| **Frameworks Supported** | 2 (ThinkPHP, Spring) | 2 (v0.16.0 is UX focus) | 10+ |
+| Metric | Current (v0.17.3) | Next Target (v0.18.0) | v1.0.0 Target |
+|--------|-------------------|----------------------|---------------|
+| **Languages Supported** | 3 (Python, PHP, Java) | 4 (+TypeScript/JS) | 8+ |
+| **Frameworks Supported** | 2 (ThinkPHP, Spring) | 2 | 10+ |
 | **Test Coverage** | 90%+ | 90%+ | 95%+ |
-| **Tests Passing** | 991 | 1050+ | 2000+ |
+| **Tests Passing** | 1060 | 1150+ | 2000+ |
 | **Max Project Size** | 500k LOC | 1M LOC | 5M LOC |
 | **Platforms Supported** | macOS, Linux (Windows partial) | + Windows CI | 3 (Production-ready) |
 
@@ -489,7 +494,7 @@
 2. **Real Project Feedback**: Java testing (zcyl-backend) revealed 31% redundant READMEs
 3. **Foundation**: Better UX benefits all future language additions
 
-### Why TypeScript Next? (v0.17.0)
+### Why TypeScript Next? (v0.18.0)
 
 1. **Web Development**: TypeScript is #4 most popular language
 2. **React Ecosystem**: Component detection adds unique value
@@ -508,5 +513,5 @@
 **Roadmap Status**: 🎯 Active
 **Next Review**: 2026-03-31
 **Maintained By**: @dreamlx
-**Last Updated**: 2026-02-12
-**Current Version**: v0.17.3
+**Last Updated**: 2026-02-13
+**Current Version**: v0.18.0

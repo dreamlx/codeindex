@@ -91,9 +91,6 @@
 - **test_thinkphp_route_extractor.py** - TestThinkPHPRouteLineNumbers, test_extract_routes_only_public_methods
 - **test_windows_path_optimization.py** - TestRelativePathOptimization, TestAbsolutePathBackwardCompatibility, TestPathLengthReduction, TestWindowsCrossDrive, TestSymlinkHandling, TestPathSeparatorNormalization, TestExistingScannerBehavior. Tests Windows path length optimization (Issue #8): verifies relative path usage reduces path lengths, maintains backward compatibility with absolute paths, handles cross-drive scenarios, symlink resolution, and cross-platform path separator normalization.
 
----
-
-## Recent Changes
 
 **test_claude_md_injection.py**: New test suite for CLAUDE.md injection functions (inject_claude_md / has_claude_md_injection) from codeindex.init_wizard. TestInjectClaudeMd (8 tests) validates: file creation when CLAUDE.md is missing, created file contains codeindex section with markers and instructions (README_AI.md reference, codeindex status, codeindex scan-all), prepending section to existing CLAUDE.md with original content preserved, idempotent replacement between markers (no duplication on re-run), idempotent update preserves surrounding content, return path correctness, empty file handling, whitespace-only file handling. TestHasClaudeMdInjection (4 tests) validates: returns False when no CLAUDE.md exists, returns False when file exists without marker, returns True after inject_claude_md runs, returns True when marker manually present. Imports CLAUDE_MD_MARKER_END, CLAUDE_MD_MARKER_START, CLAUDE_MD_SECTION, has_claude_md_injection, inject_claude_md from codeindex.init_wizard.
 
@@ -106,3 +103,18 @@
 **test_scanner_passthrough.py**: New test suite for pass-through directory skipping (Epic 19 Story 19.5). Tests the is_pass_through function and DirectoryTree integration for skipping directories that have no code files and exactly one subdirectory. Validates behavior for Java Maven deep directory structures (src/main/java/com/zcyl/), Python flat structures, navigation-value directories with multiple subdirs, excluded subdirectory handling, non-code file ignoring, and deep pass-through chain skipping. Imports from codeindex.config.Config, codeindex.scanner.is_pass_through, and codeindex.directory_tree.DirectoryTree.
 
 **test_cli_scan_defaults_bdd.py**: New BDD test suite for CLI scan default behavior (Epic 19 Story 19.1). Tests the reversed scan defaults where structural mode (SmartWriter) is the default and AI is opt-in via --ai flag. Covers scan command scenarios: default structural output without AI, AI invocation with --ai flag, error handling when ai_command is missing, --fallback deprecation warning, --dry-run requiring --ai. Also covers scan-all command scenarios: default SmartWriter processing, AI opt-in for all directories, --fallback deprecation. Uses Click CliRunner, pytest_bdd scenarios from features/cli_scan_defaults.feature, and InProjectDir context manager for project directory isolation.
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_smart_writer_enriched.py`
+
+---
+
+## Recent Changes
+
+**Commit ``**: 
+
+Changed files:
+- `test_smart_writer_enriched.py`
