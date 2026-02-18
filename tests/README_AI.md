@@ -104,6 +104,12 @@
 
 **test_cli_scan_defaults_bdd.py**: New BDD test suite for CLI scan default behavior (Epic 19 Story 19.1). Tests the reversed scan defaults where structural mode (SmartWriter) is the default and AI is opt-in via --ai flag. Covers scan command scenarios: default structural output without AI, AI invocation with --ai flag, error handling when ai_command is missing, --fallback deprecation warning, --dry-run requiring --ai. Also covers scan-all command scenarios: default SmartWriter processing, AI opt-in for all directories, --fallback deprecation. Uses Click CliRunner, pytest_bdd scenarios from features/cli_scan_defaults.feature, and InProjectDir context manager for project directory isolation.
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_smart_writer_enriched.py`
+
 ---
 
 ## Recent Changes

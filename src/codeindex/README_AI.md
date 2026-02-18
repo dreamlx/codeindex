@@ -122,6 +122,12 @@
 - **cli_tech_debt.py**: Added Java-aware hint when tech-debt analysis on a non-recursive scan returns empty results for Java-configured projects
 - **symbol_scorer.py**: Java files no longer penalize getter/setter method names (`get*`, `set*`, `is*`, `has*`) since these follow standard JavaBeans convention; penalty retained for other languages
 
+
+**Commit ``**: 
+
+Changed files:
+- `smart_writer.py`
+
 ---
 
 ## Recent Changes
