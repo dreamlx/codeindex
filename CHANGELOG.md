@@ -7,9 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-02-18
+
 ### Added
 
 - **Enriched overview/navigation README_AI.md**: Overview and navigation level READMEs now show aggregated file/symbol counts from child modules instead of zeros. Module descriptions show structured info (e.g., "42 files | 313 symbols | classes: Config, Door...") instead of "Module directory". Overview level includes a Key Components table surfacing top class/function symbols across the project.
+- **2-level directory tree in overview**: Module Structure tree now expands one level deeper, showing subdirectories of each top-level module (capped at 15 per module). Provides better architecture visibility for AI agents.
 - **Real project validation framework**: `scripts/validate_real_projects.py` with 3-layer validation (L1 functional, L2 quality+AI, L3 experience). Includes baseline comparison, regression detection, and `make validate-*` targets.
 
 ## [0.17.3] - 2026-02-13
