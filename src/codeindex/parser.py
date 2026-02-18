@@ -246,6 +246,10 @@ FILE_EXTENSIONS: Dict[str, str] = {
     ".php": "php",
     ".phtml": "php",
     ".java": "java",
+    ".ts": "typescript",
+    ".tsx": "tsx",
+    ".js": "javascript",
+    ".jsx": "javascript",
 }
 
 # Parser cache for lazy loading (avoids re-initialization)
@@ -289,6 +293,18 @@ def _get_parser(language: str) -> Parser | None:
             import tree_sitter_java as tsjava
 
             lang = Language(tsjava.language())
+        elif language == "typescript":
+            import tree_sitter_typescript as ts_ts
+
+            lang = Language(ts_ts.language_typescript())
+        elif language == "tsx":
+            import tree_sitter_typescript as ts_ts
+
+            lang = Language(ts_ts.language_tsx())
+        elif language == "javascript":
+            import tree_sitter_javascript as ts_js
+
+            lang = Language(ts_js.language())
         else:
             return None
 
@@ -306,13 +322,15 @@ def _get_parser(language: str) -> Parser | None:
 
 
 def parse_file(path: Path, language: str | None = None) -> ParseResult:
-    """Parse a source file (Python, PHP, or Java) and extract symbols and imports.
+    """Parse a source file and extract symbols and imports.
 
     Epic 13, Phase 3: Simplified entry point that delegates to language parsers.
+    Supports Python, PHP, Java, TypeScript, and JavaScript.
 
     Args:
         path: Path to the source file
-        language: Optional language override ("python", "php", "java").
+        language: Optional language override ("python", "php", "java",
+                  "typescript", "tsx", "javascript").
                   If None, language is detected from file extension.
 
     Returns:
@@ -347,7 +365,7 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
         return ParseResult(path=path, error=f"Unsupported language: {language}", file_lines=0)
 
     # Delegate to language-specific parser (Epic 13 refactoring)
-    from .parsers import JavaParser, PhpParser, PythonParser
+    from .parsers import JavaParser, PhpParser, PythonParser, TypeScriptParser
 
     if language == "python":
         lang_parser = PythonParser(parser)
@@ -355,6 +373,8 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
         lang_parser = PhpParser(parser)
     elif language == "java":
         lang_parser = JavaParser(parser)
+    elif language in ("typescript", "tsx", "javascript"):
+        lang_parser = TypeScriptParser(parser, grammar_name=language)
     else:
         return ParseResult(path=path, error=f"Unsupported language: {language}", file_lines=0)
 

@@ -441,7 +441,7 @@ include:        # Directories to scan
   - src/
 exclude:        # Patterns to skip
   - "**/__pycache__/**"
-languages:      # Currently: python only
+languages:      # Supported: python, php, java, typescript, javascript
   - python
 output_file: README_AI.md
 
