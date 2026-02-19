@@ -7,7 +7,7 @@
 
 ---
 
-## 📍 Current Status (v0.18.0)
+## 📍 Current Status (v0.19.0)
 
 ### ✅ Completed Capabilities
 

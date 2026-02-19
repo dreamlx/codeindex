@@ -22,9 +22,9 @@ languages:
   - python
   - php
   - java
+  - typescript
+  - javascript
   # Planned:
-  # - typescript
-  # - javascript
   # - go
 
 # Directories to include
@@ -267,7 +267,7 @@ codeindex scan-all --docstring-mode hybrid --show-cost
 
 - **PHP**: PHPDoc (`/** */`), inline comments (`//`)
 - **Python**: Docstrings (triple quotes, module-level)
-- **JavaScript/TypeScript**: JSDoc (planned)
+- **JavaScript/TypeScript**: JSDoc extraction planned (language parsing supported since v0.19.0)
 
 ### Example Use Cases
 
