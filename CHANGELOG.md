@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-02-20
+
+### Added
+
+- **Enhanced tech-debt detection** (#20): Expanded from 2 to 5 detection dimensions with language-aware thresholds.
+  - **Long method/function detection**: >80 lines (MEDIUM), >150 lines (HIGH)
+  - **Too many top-level functions**: >15 functions per file (MEDIUM)
+  - **High import coupling**: >8 internal/relative imports (MEDIUM)
+  - **Language-aware file size thresholds**: Compact languages (Python/TS/JS: 800/1500/2500) vs verbose languages (PHP/Java/Go: 1500/2500/5000)
+  - **3-tier file size detection**: medium_file/large_file/super_large_file
+  - **2-tier God Class detection**: warning at >20 methods (MEDIUM), critical at >50 (CRITICAL)
+  - 25 new tests, 55 total tech-debt tests
+
+### Changed
+
+- **SmartWriter refactored** into modular `writers/` package: `core.py`, `detailed_generator.py`, `navigation_generator.py`, `overview_generator.py`, `utils.py`. Original `smart_writer.py` reduced from 864 to thin re-export wrapper.
+- **FileSizeClassifier thresholds lowered**: super_large 5000→2500, large 2000→1500, medium added at 800 lines.
+
 ## [0.19.0] - 2026-02-19
 
 ### Added

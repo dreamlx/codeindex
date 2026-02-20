@@ -1,13 +1,13 @@
 # codeindex Strategic Roadmap
 
 **Last Updated**: 2026-02-20
-**Current Version**: v0.19.0
+**Current Version**: v0.20.0
 **Vision**: Universal Code Parser - Best-in-class multi-language AST parser for AI-assisted development
 **Positioning**: Focused on code parsing and structured data extraction, not AI analysis
 
 ---
 
-## 📍 Current Status (v0.19.0)
+## 📍 Current Status (v0.20.0)
 
 ### ✅ Completed Capabilities
 
@@ -41,11 +41,16 @@
 | **Init Setup Flow** | v0.17.3 | ✅ Config review → scan → hooks |
 | **Enriched Overview/Navigation** | v0.18.0 | ✅ Recursive stats, smart descriptions, Key Components |
 | **Real Project Validation** | v0.18.0 | ✅ 3-layer validation framework (L1/L2/L3) |
+| **TypeScript/JavaScript Support** | v0.19.0 | ✅ Full TS/JS/TSX/JSX parsing |
+| **Enhanced Tech-Debt Detection** | v0.20.0 | ✅ 5 dimensions, language-aware thresholds |
+| **SmartWriter Modularization** | v0.20.0 | ✅ Writers package refactor |
 
 ### 📚 Version History
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| **v0.20.0** | 2026-02-20 | 🔍 Enhanced tech-debt (5 dims) + SmartWriter modularization |
+| **v0.19.0** | 2026-02-19 | 📘 TypeScript/JavaScript language support |
 | **v0.18.0** | 2026-02-18 | 📊 Enriched overview/navigation README + validation framework |
 | **v0.17.3** | 2026-02-13 | 🔧 Improved CLAUDE.md setup flow for AI agent onboarding |
 | **v0.17.2** | 2026-02-13 | 📚 Docs audit & consolidation (14→8 guides) |
@@ -509,4 +514,4 @@
 **Next Review**: 2026-03-31
 **Maintained By**: @dreamlx
 **Last Updated**: 2026-02-20
-**Current Version**: v0.19.0
+**Current Version**: v0.20.0
