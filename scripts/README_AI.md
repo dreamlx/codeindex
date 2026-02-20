@@ -94,6 +94,12 @@ _验证PHP项目的符号提取效果
 - sys
 - typing
 
+
+**Commit ``**: 
+
+Changed files:
+- `validate_real_projects.py`
+
 ---
 
 ## Recent Changes
@@ -101,4 +107,4 @@ _验证PHP项目的符号提取效果
 **Commit ``**: 
 
 Changed files:
-- `validate_real_projects.py`
+- `check_docs_release.py`
