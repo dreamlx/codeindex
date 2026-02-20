@@ -406,6 +406,18 @@ Read(file_path="docs/architecture/design-philosophy.md")
 
 ## 🏗️ Part 3: Architecture Reference
 
+### 三仓库架构
+
+> **一句话**: codeindex 负责**看**（AST 解析），LoomGraph 负责**想**和**说**（映射调度 + Skill 编排），LightRAG 负责**记**（存储检索）。
+
+| 仓库 | 职责 | GitHub | 本地路径 |
+|------|------|--------|----------|
+| **codeindex** | AST 解析，提取 Symbol/Call/Inheritance | dreamlx/codeindex | `/Users/dreamlinx/Projects/codeindex` |
+| **LoomGraph** | Pipeline 调度，Embedding，CLI/Skill | dreamlx/LoomGraph | `/Users/dreamlinx/Projects/LoomGraph` |
+| **LightRAG** | 图谱存储，向量检索，查询 | dreamlx/LightRAG | `/Users/dreamlinx/Projects/LightRAG` |
+
+数据流: `codeindex scan` → ParseResult → `LoomGraph embed/inject` → LightRAG API → PostgreSQL
+
 ### Core Pipeline
 
 1. **Scanner** (`scanner.py`) - Directory walking, file filtering → `ScanResult`
