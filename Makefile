@@ -1,88 +1,130 @@
 # codeindex Makefile
 # Automated release and development workflow
 
-.PHONY: help install install-dev install-hooks test lint clean build release bump-version check-version check-docs \
-       validate-real-projects validate-l1 validate-l2 validate-l3 validate-save-baseline
+.PHONY: help install install-dev install-hooks \
+        test test-fast test-cov lint lint-fix format clean \
+        check-version check-docs status build check-dist \
+        pre-release-check release bump-version \
+        validate-real-projects validate-l1 validate-l2 validate-l3 validate-save-baseline \
+        ci-install ci-test ci-build
 
-# Colors for output
+# Colors
 CYAN := \033[0;36m
 GREEN := \033[0;32m
 YELLOW := \033[0;33m
 RED := \033[0;31m
 RESET := \033[0m
 
+# ============================================================================
+# Help
+# ============================================================================
+
 help:  ## Show this help message
 	@echo "$(CYAN)codeindex Makefile$(RESET)"
 	@echo ""
-	@echo "$(GREEN)Development Commands:$(RESET)"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(CYAN)%-20s$(RESET) %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  $(CYAN)%-25s$(RESET) %s\n", $$1, $$2}'
 	@echo ""
-	@echo "$(GREEN)Release Commands:$(RESET)"
-	@echo "  $(CYAN)make release VERSION=0.13.0$(RESET)  - Full release workflow (tag + push)"
-	@echo "  $(CYAN)make bump-version VERSION=0.13.0$(RESET) - Update version in files"
-	@echo ""
+	@echo "$(GREEN)Examples:$(RESET)"
+	@echo "  make release VERSION=0.19.0    Full release workflow"
+	@echo "  make bump-version VERSION=0.20.0  Update version only"
+
+# ============================================================================
+# Setup
+# ============================================================================
 
 install:  ## Install package in editable mode
 	pip install -e ".[all]"
 
-install-dev:  ## Install package with dev dependencies
+install-dev:  ## Install with dev dependencies
 	pip install -e ".[dev,all]"
 
-install-hooks:  ## Install Git hooks for automated checks
+install-hooks:  ## Install Git hooks (pre-commit, pre-push)
 	@echo "$(CYAN)Installing Git hooks...$(RESET)"
 	@mkdir -p .git/hooks
 	@cp scripts/hooks/pre-push .git/hooks/pre-push
 	@chmod +x .git/hooks/pre-push
 	@echo "$(GREEN)✓ Git hooks installed$(RESET)"
-	@echo "  - pre-push: runs tests and lint before pushing"
+
+# ============================================================================
+# Development
+# ============================================================================
 
 test:  ## Run all tests
-	@echo "$(CYAN)Running tests...$(RESET)"
 	pytest -v
 
-test-fast:  ## Run tests without coverage
-	@echo "$(CYAN)Running fast tests...$(RESET)"
+test-fast:  ## Run tests (stop on first failure)
 	pytest -v -x
 
 test-cov:  ## Run tests with coverage report
-	@echo "$(CYAN)Running tests with coverage...$(RESET)"
 	pytest --cov=src/codeindex --cov-report=term-missing --cov-report=html
 
 lint:  ## Run linter (ruff)
-	@echo "$(CYAN)Running linter...$(RESET)"
 	ruff check src/ tests/
 
 lint-fix:  ## Auto-fix linting issues
-	@echo "$(CYAN)Auto-fixing lint issues...$(RESET)"
 	ruff check --fix src/ tests/
 
 format:  ## Format code with ruff
-	@echo "$(CYAN)Formatting code...$(RESET)"
 	ruff format src/ tests/
 
 clean:  ## Clean build artifacts
-	@echo "$(CYAN)Cleaning build artifacts...$(RESET)"
-	rm -rf build/ dist/ *.egg-info .pytest_cache .coverage htmlcov/
-	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
-	find . -type f -name "*.pyc" -delete
+	@rm -rf build/ dist/ *.egg-info .pytest_cache .coverage htmlcov/
+	@find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	@find . -type f -name "*.pyc" -delete
 	@echo "$(GREEN)✓ Cleaned$(RESET)"
 
+# ============================================================================
+# Quality Checks
+# ============================================================================
+
+check-version:  ## Verify version consistency across all files
+	@python3 scripts/check_version_consistency.py || \
+		(echo "$(RED)✗ Version inconsistency found$(RESET)"; \
+		echo "Run: python3 scripts/check_version_consistency.py --fix"; exit 1)
+
+check-docs:  ## Check documentation for stale content
+	@python3 scripts/check_docs_release.py
+
+status:  ## Show git and version status
+	@echo "$(CYAN)=== codeindex Status ===$(RESET)"
+	@echo ""
+	@echo "$(GREEN)Version:$(RESET)"
+	@PYPROJECT_VERSION=$$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/'); \
+	LATEST_TAG=$$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//'); \
+	echo "  pyproject.toml: $$PYPROJECT_VERSION"; \
+	echo "  Latest Git tag: $$LATEST_TAG"
+	@echo ""
+	@echo "$(GREEN)Git:$(RESET)"
+	@git status --short --branch
+	@echo ""
+	@echo "$(GREEN)Recent commits:$(RESET)"
+	@git log --oneline --graph --decorate -5
+	@echo ""
+	@echo "$(GREEN)Recent tags:$(RESET)"
+	@git tag | tail -5
+
+# ============================================================================
+# Build & Distribution
+# ============================================================================
+
 build: clean  ## Build distribution packages
-	@echo "$(CYAN)Building distribution packages...$(RESET)"
 	python -m build
 	@echo "$(GREEN)✓ Built: dist/$(RESET)"
 	@ls -lh dist/
 
-check-dist: build  ## Check distribution with twine
-	@echo "$(CYAN)Checking distribution...$(RESET)"
+check-dist: build  ## Build and check distribution with twine
 	twine check dist/*
 	@echo "$(GREEN)✓ Distribution OK$(RESET)"
 
-# Version management (updates pyproject.toml)
-bump-version:  ## Update version in pyproject.toml (usage: make bump-version VERSION=0.13.0)
+# ============================================================================
+# Release
+# ============================================================================
+
+bump-version:  ## Update version in pyproject.toml (usage: make bump-version VERSION=X.Y.Z)
 ifndef VERSION
 	@echo "$(RED)Error: VERSION not specified$(RESET)"
-	@echo "Usage: make bump-version VERSION=0.13.0"
+	@echo "Usage: make bump-version VERSION=0.20.0"
 	@exit 1
 endif
 	@echo "$(CYAN)Updating version to $(VERSION)...$(RESET)"
@@ -91,28 +133,15 @@ endif
 	@echo "$(GREEN)✓ Updated pyproject.toml$(RESET)"
 	@git diff pyproject.toml
 
-check-docs:  ## Check documentation for stale content after release
-	@python3 scripts/check_docs_release.py
-
-check-version:  ## Verify version consistency across all files
-	@echo "$(CYAN)Checking version consistency...$(RESET)"
-	@python3 scripts/check_version_consistency.py || (echo "$(RED)✗ Version inconsistency found$(RESET)"; echo "Run: python3 scripts/check_version_consistency.py --fix"; exit 1)
-	@PYPROJECT_VERSION=$$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/'); \
-	LATEST_TAG=$$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//'); \
-	if [ "$$PYPROJECT_VERSION" != "$$LATEST_TAG" ]; then \
-		echo "$(YELLOW)⚠ pyproject.toml ($$PYPROJECT_VERSION) != latest tag ($$LATEST_TAG)$(RESET)"; \
-	fi
-
-# Release workflow
-pre-release-check:  ## Pre-release checks (tests, lint, version)
+pre-release-check:  ## Pre-release checks (tests, lint, version, docs)
 ifndef VERSION
 	@echo "$(RED)Error: VERSION not specified$(RESET)"
-	@echo "Usage: make release VERSION=0.13.0"
+	@echo "Usage: make release VERSION=0.20.0"
 	@exit 1
 endif
 	@echo "$(CYAN)=== Pre-release checks for v$(VERSION) ===$(RESET)"
 	@echo ""
-	@echo "$(CYAN)[1/5] Checking Git status...$(RESET)"
+	@echo "$(CYAN)[1/7] Checking Git status...$(RESET)"
 	@if [ -n "$$(git status --porcelain)" ]; then \
 		echo "$(RED)Error: Working directory not clean$(RESET)"; \
 		git status --short; \
@@ -120,7 +149,7 @@ endif
 	fi
 	@echo "$(GREEN)✓ Working directory clean$(RESET)"
 	@echo ""
-	@echo "$(CYAN)[2/5] Checking branch...$(RESET)"
+	@echo "$(CYAN)[2/7] Checking branch...$(RESET)"
 	@BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
 	if [ "$$BRANCH" != "master" ]; then \
 		echo "$(RED)Error: Not on master branch (current: $$BRANCH)$(RESET)"; \
@@ -128,23 +157,25 @@ endif
 	fi
 	@echo "$(GREEN)✓ On master branch$(RESET)"
 	@echo ""
-	@echo "$(CYAN)[3/5] Running tests...$(RESET)"
+	@echo "$(CYAN)[3/7] Running tests...$(RESET)"
 	@pytest -v --tb=short || (echo "$(RED)✗ Tests failed$(RESET)"; exit 1)
 	@echo "$(GREEN)✓ All tests passed$(RESET)"
 	@echo ""
-	@echo "$(CYAN)[4/5] Running linter...$(RESET)"
+	@echo "$(CYAN)[4/7] Running linter...$(RESET)"
 	@ruff check src/ tests/ || (echo "$(RED)✗ Lint errors found$(RESET)"; exit 1)
 	@echo "$(GREEN)✓ No lint errors$(RESET)"
 	@echo ""
-	@echo "$(CYAN)[5/6] Checking version files exist...$(RESET)"
+	@echo "$(CYAN)[5/7] Checking release notes...$(RESET)"
 	@if [ ! -f "RELEASE_NOTES_v$(VERSION).md" ]; then \
 		echo "$(RED)Error: RELEASE_NOTES_v$(VERSION).md not found$(RESET)"; \
 		exit 1; \
 	fi
 	@echo "$(GREEN)✓ Release notes found$(RESET)"
 	@echo ""
-	@echo "$(CYAN)[6/6] Checking version consistency...$(RESET)"
-	@python3 scripts/check_version_consistency.py || (echo "$(RED)✗ Version inconsistency found$(RESET)"; echo "Run: python3 scripts/check_version_consistency.py --fix"; exit 1)
+	@echo "$(CYAN)[6/7] Checking version consistency...$(RESET)"
+	@python3 scripts/check_version_consistency.py || \
+		(echo "$(RED)✗ Version inconsistency found$(RESET)"; \
+		echo "Run: python3 scripts/check_version_consistency.py --fix"; exit 1)
 	@echo "$(GREEN)✓ Version consistency OK$(RESET)"
 	@echo ""
 	@echo "$(CYAN)[7/7] Checking documentation consistency...$(RESET)"
@@ -152,7 +183,7 @@ endif
 	@echo ""
 	@echo "$(GREEN)=== All pre-release checks passed ===$(RESET)"
 
-release: pre-release-check bump-version  ## Full release workflow (usage: make release VERSION=0.13.0)
+release: pre-release-check bump-version  ## Full release (usage: make release VERSION=X.Y.Z)
 	@echo ""
 	@echo "$(CYAN)=== Creating release v$(VERSION) ===$(RESET)"
 	@echo ""
@@ -177,66 +208,38 @@ release: pre-release-check bump-version  ## Full release workflow (usage: make r
 	@echo "  - Create GitHub Release with assets"
 	@echo ""
 	@echo "$(GREEN)=== Release v$(VERSION) initiated! ===$(RESET)"
-	@echo "$(YELLOW)→ Monitor progress:$(RESET) https://github.com/$$(git config --get remote.origin.url | sed 's/.*github.com[:/]\(.*\)\.git/\1/')/actions"
+	@echo "$(YELLOW)→ Monitor:$(RESET) https://github.com/$$(git config --get remote.origin.url | sed 's/.*github.com[:/]\(.*\)\.git/\1/')/actions"
 
-# Development helpers
-watch-test:  ## Watch for changes and run tests
-	@echo "$(CYAN)Watching for changes...$(RESET)"
-	@while true; do \
-		inotifywait -r -e modify src/ tests/ 2>/dev/null || \
-		fswatch -1 src/ tests/ 2>/dev/null || \
-		sleep 2; \
-		clear; \
-		make test-fast; \
-	done
+# ============================================================================
+# Validation (real project testing)
+# ============================================================================
 
-status:  ## Show git and version status
-	@echo "$(CYAN)=== codeindex Status ===$(RESET)"
-	@echo ""
-	@echo "$(GREEN)Version:$(RESET)"
-	@PYPROJECT_VERSION=$$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/'); \
-	LATEST_TAG=$$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//'); \
-	echo "  pyproject.toml: $$PYPROJECT_VERSION"; \
-	echo "  Latest Git tag: $$LATEST_TAG"
-	@echo ""
-	@echo "$(GREEN)Git:$(RESET)"
-	@git status --short --branch
-	@echo ""
-	@echo "$(GREEN)Recent commits:$(RESET)"
-	@git log --oneline --graph --decorate -5
-	@echo ""
-	@echo "$(GREEN)Recent tags:$(RESET)"
-	@git tag | tail -5
-
-# Real project validation
 validate-real-projects:  ## Run all validation layers on real projects
-	@echo "$(CYAN)Running real project validation (all layers)...$(RESET)"
 	python scripts/validate_real_projects.py
 
-validate-l1:  ## Run L1 functional validation (fast, no AI)
-	@echo "$(CYAN)Running L1 functional validation...$(RESET)"
+validate-l1:  ## L1 functional validation (fast, no AI)
 	python scripts/validate_real_projects.py --layer l1
 
-validate-l2:  ## Run L2 quality validation (metrics + AI)
-	@echo "$(CYAN)Running L2 quality validation...$(RESET)"
+validate-l2:  ## L2 quality validation (metrics + AI)
 	python scripts/validate_real_projects.py --layer l2
 
-validate-l3:  ## Run L3 experience validation (AI only)
-	@echo "$(CYAN)Running L3 experience validation...$(RESET)"
+validate-l3:  ## L3 experience validation (AI only)
 	python scripts/validate_real_projects.py --layer l3
 
-validate-save-baseline:  ## Run all validations and save as baseline
-	@echo "$(CYAN)Running validation and saving baseline...$(RESET)"
+validate-save-baseline:  ## Save validation results as baseline
 	python scripts/validate_real_projects.py --save-baseline
 
-# CI helpers (used by GitHub Actions)
-ci-install:  ## Install dependencies for CI
+# ============================================================================
+# CI (used by GitHub Actions)
+# ============================================================================
+
+ci-install:  ## CI: install dependencies
 	pip install -e ".[dev,all]"
 	pip install build twine
 
-ci-test:  ## Run tests in CI mode
+ci-test:  ## CI: run tests
 	pytest -v --tb=short
 
-ci-build:  ## Build and check distribution for CI
+ci-build:  ## CI: build and check distribution
 	python -m build
 	twine check dist/*
