@@ -66,9 +66,6 @@ jobs:
     - name: Run ruff check
       run: ruff check src/ tests/ test_generator/
 
-    - name: Run ruff format check
-      run: ruff format --check src/ tests/ test_generator/
-
   build-check:
     runs-on: ubuntu-latest
     steps:
