@@ -1,7 +1,7 @@
 # codeindex Makefile
 # Automated release and development workflow
 
-.PHONY: help install install-dev install-hooks test lint clean build release bump-version check-version \
+.PHONY: help install install-dev install-hooks test lint clean build release bump-version check-version check-docs \
        validate-real-projects validate-l1 validate-l2 validate-l3 validate-save-baseline
 
 # Colors for output
@@ -91,6 +91,9 @@ endif
 	@echo "$(GREEN)✓ Updated pyproject.toml$(RESET)"
 	@git diff pyproject.toml
 
+check-docs:  ## Check documentation for stale content after release
+	@python3 scripts/check_docs_release.py
+
 check-version:  ## Verify version consistency across all files
 	@echo "$(CYAN)Checking version consistency...$(RESET)"
 	@python3 scripts/check_version_consistency.py || (echo "$(RED)✗ Version inconsistency found$(RESET)"; echo "Run: python3 scripts/check_version_consistency.py --fix"; exit 1)
@@ -144,9 +147,10 @@ endif
 	@python3 scripts/check_version_consistency.py || (echo "$(RED)✗ Version inconsistency found$(RESET)"; echo "Run: python3 scripts/check_version_consistency.py --fix"; exit 1)
 	@echo "$(GREEN)✓ Version consistency OK$(RESET)"
 	@echo ""
-	@echo "$(GREEN)=== All pre-release checks passed ===$(RESET)"
+	@echo "$(CYAN)[7/7] Checking documentation consistency...$(RESET)"
+	@python3 scripts/check_docs_release.py || true
 	@echo ""
-	@echo "$(YELLOW)📋 Reminder: Review docs/guides/ for stale content (8 files)$(RESET)"
+	@echo "$(GREEN)=== All pre-release checks passed ===$(RESET)"
 
 release: pre-release-check bump-version  ## Full release workflow (usage: make release VERSION=0.13.0)
 	@echo ""

@@ -1,6 +1,6 @@
 # Planning Index
 
-**Last Updated**: 2026-02-18
+**Last Updated**: 2026-02-20
 **Current Version**: v0.19.0
 
 ---
@@ -17,7 +17,6 @@
 
 | Epic | Version | Priority | Summary |
 |------|---------|----------|---------|
-| **Epic 20**: TypeScript/JavaScript Support | v0.19.0 | P0 | tree-sitter-typescript, JSDoc, React components |
 | **Epic 21**: Go Language Support | v0.20.0 | P1 | tree-sitter-go, GoDoc, interface implementations |
 | **Epic 23**: Framework Routes Expansion | v0.21.0 | P1 | Express, Laravel, FastAPI, Django |
 | **Epic 24**: Rust Language Support | v0.22.0 | P2 | tree-sitter-rust, RustDoc, traits |
@@ -29,6 +28,7 @@
 
 | Epic | Version | Completion Date | Summary |
 |------|---------|-----------------|---------|
+| **Epic 20: TypeScript/JavaScript Support** | v0.19.0 | 2026-02-19 | TypeScriptParser (.ts/.tsx/.js/.jsx), symbols, imports, inheritance, calls, 77 tests |
 | [v0.18.0: Enriched Overview/Navigation](completed/v0.18.0-enriched-overview/story.md) | v0.18.0 | 2026-02-18 | Recursive stats, smart descriptions, Key Components, validation framework |
 | [Epic 19: CLI UX Restructuring](completed/epic19-cli-ux-restructuring/plan.md) | v0.16.0 | 2026-02-12 | Zero-AI default, --ai opt-in, pass-through skip, Java improvements |
 | [Epic 18: Test Architecture Migration](completed/epic18-test-migration/plan.md) | v0.15.0 | 2026-02-12 | YAML+Jinja2 template test system (58 tasks, 2 days) |

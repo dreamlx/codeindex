@@ -1,6 +1,6 @@
 # codeindex Strategic Roadmap
 
-**Last Updated**: 2026-02-18
+**Last Updated**: 2026-02-20
 **Current Version**: v0.19.0
 **Vision**: Universal Code Parser - Best-in-class multi-language AST parser for AI-assisted development
 **Positioning**: Focused on code parsing and structured data extraction, not AI analysis
@@ -80,10 +80,10 @@
 **2026 Priorities** (Ranked by Impact):
 
 1. 🌐 **Multi-Language Support** (v0.18.0+)
-   - TypeScript/JavaScript, Go, Rust, C#
+   - Go, Rust, C#
    - Enterprise adoption enabler
    - Foundation: Parser modularization (Epic 13 ✅)
-   - Completed: Python (v0.1.0 ✅), PHP (v0.5.0 ✅), Java (v0.7.0-v0.8.0 ✅)
+   - Completed: Python (v0.1.0 ✅), PHP (v0.5.0 ✅), Java (v0.7.0-v0.8.0 ✅), TypeScript/JavaScript (v0.19.0 ✅)
 
 2. 🚀 **Framework Intelligence** (v0.20.0+)
    - Express, Laravel, FastAPI, Django
@@ -188,31 +188,14 @@
 - 2-level directory tree in overview, real project validation framework
 - Tests: 1066 passing
 
+#### v0.19.0 - TypeScript/JavaScript Language Support ✅ (Released: 2026-02-19)
+- TypeScriptParser: single class handles .ts/.tsx/.js/.jsx with 3 grammar variants
+- Symbol extraction: classes, functions, interfaces, enums, type aliases, arrow functions, namespaces
+- Import/export: ES modules, CommonJS require, type-only, re-exports, barrel exports
+- Inheritance + call graphs + React component detection + decorators
+- **Epic 20** | Tests: 77 new (68 unit + 9 integration), 1143 total passing
+
 </details>
-
----
-
-### v0.19.0 - TypeScript/JavaScript Language Support (Next)
-
-**Theme**: Web development ecosystem foundation
-
-**Epic**: Epic 20 - TypeScript/JavaScript Support
-
-**Key Features**:
-- TypeScript/JavaScript parser (tree-sitter-typescript)
-- JSDoc extraction (AI-powered docstring processor)
-- React component detection
-- TypeScript type annotations parsing
-- LoomGraph Integration (inheritance + import alias + calls)
-
-**Success Criteria**:
-- [ ] Parse 95%+ valid TypeScript/JavaScript code
-- [ ] Extract JSDoc comments with AI processor
-- [ ] Detect React components (@Component, hooks)
-- [ ] Generate useful README_AI.md for TS modules
-- [ ] 50+ tests passing (90%+ coverage)
-
-**Estimated Duration**: 3-4 weeks
 
 ---
 
@@ -342,7 +325,7 @@
 | ~~Java Parser~~ | v0.7.0-v0.8.0 ✅ | Enterprise adoption blocker |
 | ~~Spring Routes~~ | v0.8.0 ✅ | Most popular Java framework |
 | ~~CLI UX Restructuring~~ | v0.16.0 ✅ | Affects all new users (zero-AI default) |
-| TypeScript Parser | v0.19.0 | Web development essential |
+| ~~TypeScript Parser~~ | v0.19.0 ✅ | Web development essential |
 
 ### P1 (Should Have - High Impact)
 
@@ -381,7 +364,7 @@
 | 1 | **Python** | v0.1.0 | ✅ Complete (Parsing + LoomGraph: v0.9.0) |
 | 2 | **PHP** | v0.5.0 | ✅ Complete (Parsing + LoomGraph: v0.10.0) |
 | 3 | **Java** | v0.7.0-v0.8.0 | ✅ Complete (Parsing + Spring Routes) |
-| 4 | **TypeScript/JavaScript** | v0.19.0 | 📋 Planned (Epic 20) |
+| 4 | **TypeScript/JavaScript** | v0.19.0 | ✅ Complete (Parsing + Calls: v0.19.0) |
 | 5 | **Go** | v0.20.0 | 📋 Planned (Epic 21) |
 | 6 | **Rust** | v0.22.0 | 📋 Planned (Epic 24) |
 | 7 | **C#** | v0.23.0 | 📋 Planned (Epic 25) |
@@ -427,12 +410,12 @@
 | **Epic 16** | v0.14.0+ | Test Suite Refactoring (BDD coverage) |
 | **Epic 18** | v0.15.0 | Test Architecture Migration (YAML+Jinja2 templates) |
 | **Epic 19** | v0.16.0 | CLI UX Restructuring + Java Improvements |
+| **Epic 20** | v0.19.0 | TypeScript/JavaScript Support (77 tests) |
 
 ### Future Epics
 
 | Epic | Version | Priority | Status |
 |------|---------|----------|--------|
-| **Epic 20** | v0.19.0 | P0 | 📋 Next (TypeScript/JavaScript Support) |
 | **Epic 21** | v0.20.0 | P1 | 📋 Planned (Go Language Support) |
 | **Epic 22** | v0.21.0 | P2 | 📋 Planned (Multi-Agent Onboarding) |
 | **Epic 23** | v0.21.0 | P1 | 📋 Planned (Framework Routes Expansion) |
@@ -460,12 +443,12 @@
 
 ### Technical Metrics
 
-| Metric | Current (v0.18.0) | Next Target (v0.19.0) | v1.0.0 Target |
+| Metric | Current (v0.19.0) | Next Target (v0.20.0) | v1.0.0 Target |
 |--------|-------------------|----------------------|---------------|
-| **Languages Supported** | 3 (Python, PHP, Java) | 4 (+TypeScript/JS) | 8+ |
+| **Languages Supported** | 5 (Python, PHP, Java, TS, JS) | 6 (+Go) | 8+ |
 | **Frameworks Supported** | 2 (ThinkPHP, Spring) | 2 | 10+ |
 | **Test Coverage** | 90%+ | 90%+ | 95%+ |
-| **Tests Passing** | 1066 | 1150+ | 2000+ |
+| **Tests Passing** | 1143 | 1200+ | 2000+ |
 | **Max Project Size** | 500k LOC | 1M LOC | 5M LOC |
 | **Platforms Supported** | macOS, Linux (Windows partial) | + Windows CI | 3 (Production-ready) |
 
@@ -525,5 +508,5 @@
 **Roadmap Status**: 🎯 Active
 **Next Review**: 2026-03-31
 **Maintained By**: @dreamlx
-**Last Updated**: 2026-02-18
+**Last Updated**: 2026-02-20
 **Current Version**: v0.19.0
