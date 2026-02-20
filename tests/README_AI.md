@@ -116,6 +116,13 @@ Changed files:
 Changed files:
 - `test_smart_writer_enriched.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_typescript_integration.py`
+- `test_typescript_parser.py`
+
 ---
 
 ## Recent Changes
@@ -123,5 +130,6 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_typescript_integration.py`
-- `test_typescript_parser.py`
+- `conftest.py`
+- `test_file_classifier.py`
+- `test_tech_debt_detector.py`

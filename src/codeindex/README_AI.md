@@ -141,6 +141,12 @@ Changed files:
 - `parser.py`
 - `scanner.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `smart_writer.py`
+
 ---
 
 ## Recent Changes
@@ -148,4 +154,5 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `smart_writer.py`
+- `file_classifier.py`
+- `tech_debt.py`
