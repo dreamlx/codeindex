@@ -15,10 +15,10 @@ class FileSizeCategory(Enum):
     """File size categories for classification."""
 
     TINY = "tiny"  # <500 lines
-    SMALL = "small"  # 500-1000 lines
-    MEDIUM = "medium"  # 1000-2000 lines
-    LARGE = "large"  # 2000-5000 lines (or 40-100 symbols)
-    SUPER_LARGE = "super_large"  # >5000 lines OR >100 symbols
+    SMALL = "small"  # 500-800 lines
+    MEDIUM = "medium"  # 800-1500 lines
+    LARGE = "large"  # 1500-2500 lines (or 40-100 symbols)
+    SUPER_LARGE = "super_large"  # >2500 lines OR >100 symbols
 
 
 @dataclass
@@ -63,8 +63,10 @@ class FileSizeClassifier:
             config: Configuration containing threshold values
         """
         self.config = config
-        # Super large thresholds for tech debt detection
-        self.super_large_lines = 5000
+        # Default thresholds (compact language defaults)
+        self.super_large_lines = 2500
+        self.large_lines = 1500
+        self.medium_lines = 800
         self.super_large_symbols = 100
 
     def classify(self, parse_result: ParseResult) -> FileSizeAnalysis:
@@ -72,9 +74,9 @@ class FileSizeClassifier:
 
         Classification rules:
         - TINY: < 500 lines
-        - SMALL: 500-1000 lines
-        - MEDIUM: 1000-2000 lines
-        - LARGE: 2000-5000 lines (or 40-100 symbols)
+        - SMALL: 500-800 lines
+        - MEDIUM: 800-1500 lines
+        - LARGE: 1500-2500 lines (or 40-100 symbols)
         - SUPER_LARGE: > super_large_lines OR > super_large_symbols
 
         Args:
@@ -101,9 +103,9 @@ class FileSizeClassifier:
         # Determine category
         if exceeds_lines or exceeds_symbols:
             category = FileSizeCategory.SUPER_LARGE
-        elif file_lines > 2000 or symbol_count > 40:
+        elif file_lines > self.large_lines or symbol_count > 40:
             category = FileSizeCategory.LARGE
-        elif file_lines > 1000:
+        elif file_lines > self.medium_lines:
             category = FileSizeCategory.MEDIUM
         elif file_lines > 500:
             category = FileSizeCategory.SMALL

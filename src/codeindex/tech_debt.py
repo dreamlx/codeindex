@@ -223,14 +223,38 @@ class TechDebtDetector:
     Attributes:
         config: Configuration object
         classifier: Unified file size classifier (Epic 4 refactoring)
-        GOD_CLASS_METHODS: Threshold for God Class detection (>50 methods)
+        GOD_CLASS_METHODS_WARN: Warning threshold for God Class (>20 methods, MEDIUM)
+        GOD_CLASS_METHODS_CRITICAL: Critical threshold for God Class (>50 methods, CRITICAL)
         MASSIVE_SYMBOL_COUNT: Threshold for massive symbol count (>100)
         HIGH_NOISE_RATIO: High noise ratio threshold (>0.5)
+        LONG_METHOD_WARN: Warning threshold for long methods (>80 lines, MEDIUM)
+        LONG_METHOD_HIGH: High threshold for long methods (>150 lines, HIGH)
+        MAX_TOP_LEVEL_FUNCTIONS: Max top-level functions per file (>15, MEDIUM)
+        MAX_INTERNAL_IMPORTS: Max internal imports per file (>8, MEDIUM)
     """
 
-    GOD_CLASS_METHODS = 50  # Methods per class
+    GOD_CLASS_METHODS_WARN = 20  # MEDIUM
+    GOD_CLASS_METHODS_CRITICAL = 50  # CRITICAL
+    GOD_CLASS_METHODS = 50  # Backward compat alias
+
+    LONG_METHOD_WARN = 80  # MEDIUM
+    LONG_METHOD_HIGH = 150  # HIGH
+
+    MAX_TOP_LEVEL_FUNCTIONS = 15  # MEDIUM
+    MAX_INTERNAL_IMPORTS = 8  # MEDIUM
+
     MASSIVE_SYMBOL_COUNT = 100  # Total symbols
     HIGH_NOISE_RATIO = 0.5  # 50% filter ratio
+
+    # Language-specific file size thresholds
+    FILE_SIZE_THRESHOLDS = {
+        "compact": {"medium": 800, "large": 1500, "critical": 2500},  # py, ts, js
+        "verbose": {"medium": 1500, "large": 2500, "critical": 5000},  # php, java, go
+    }
+
+    # Extension to language profile mapping
+    _COMPACT_EXTENSIONS = {".py", ".ts", ".tsx", ".js", ".jsx"}
+    _VERBOSE_EXTENSIONS = {".php", ".java", ".go"}
 
     def __init__(self, config: Config):
         """Initialize the technical debt detector.
@@ -243,6 +267,20 @@ class TechDebtDetector:
         from codeindex.file_classifier import FileSizeClassifier
 
         self.classifier = FileSizeClassifier(config)
+
+    def _get_file_size_thresholds(self, file_path: Path) -> dict[str, int]:
+        """Get language-aware file size thresholds based on file extension.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            Dict with 'medium', 'large', 'critical' threshold values
+        """
+        ext = file_path.suffix.lower()
+        if ext in self._VERBOSE_EXTENSIONS:
+            return self.FILE_SIZE_THRESHOLDS["verbose"]
+        return self.FILE_SIZE_THRESHOLDS["compact"]
 
     def analyze_file(
         self, parse_result: ParseResult, scorer: SymbolImportanceScorer
@@ -264,6 +302,15 @@ class TechDebtDetector:
         # Detect class-level issues (God Class)
         issues.extend(self._detect_god_class(parse_result))
 
+        # Detect long methods/functions
+        issues.extend(self._detect_long_methods(parse_result))
+
+        # Detect too many top-level functions
+        issues.extend(self._detect_too_many_functions(parse_result))
+
+        # Detect high import coupling
+        issues.extend(self._detect_high_coupling(parse_result))
+
         # Calculate quality score based on issues
         quality_score = self._calculate_quality_score(parse_result, issues)
 
@@ -276,9 +323,7 @@ class TechDebtDetector:
         )
 
     def _detect_file_size_issues(self, parse_result: ParseResult) -> list[DebtIssue]:
-        """Detect file size related technical debt.
-
-        Uses unified FileSizeClassifier for consistent detection (Epic 4 refactoring).
+        """Detect file size related technical debt using language-aware 3-tier thresholds.
 
         Args:
             parse_result: The parsed file to analyze
@@ -286,48 +331,58 @@ class TechDebtDetector:
         Returns:
             List of DebtIssue for file size problems
         """
-        from codeindex.file_classifier import FileSizeCategory
-
         issues = []
-        analysis = self.classifier.classify(parse_result)
         lines = parse_result.file_lines
+        thresholds = self._get_file_size_thresholds(parse_result.path)
 
-        if analysis.category == FileSizeCategory.SUPER_LARGE:
-            # Use classifier thresholds
-            threshold = self.classifier.super_large_lines
+        if lines > thresholds["critical"]:
             issues.append(
                 DebtIssue(
                     severity=DebtSeverity.CRITICAL,
                     category="super_large_file",
                     file_path=parse_result.path,
                     metric_value=lines,
-                    threshold=threshold,
-                    description=f"File has {lines} lines (threshold: {threshold})",
+                    threshold=thresholds["critical"],
+                    description=f"File has {lines} lines (threshold: {thresholds['critical']})",
                     suggestion="Split into 3-5 smaller files by responsibility",
                 )
             )
-        elif analysis.category == FileSizeCategory.LARGE:
-            # Large file threshold (2000 lines from classifier)
-            threshold = 2000
+        elif lines > thresholds["large"]:
             issues.append(
                 DebtIssue(
                     severity=DebtSeverity.HIGH,
                     category="large_file",
                     file_path=parse_result.path,
                     metric_value=lines,
-                    threshold=threshold,
-                    description=f"File has {lines} lines (threshold: {threshold})",
+                    threshold=thresholds["large"],
+                    description=f"File has {lines} lines (threshold: {thresholds['large']})",
                     suggestion="Consider splitting into 2-3 smaller modules",
+                )
+            )
+        elif lines > thresholds["medium"]:
+            issues.append(
+                DebtIssue(
+                    severity=DebtSeverity.MEDIUM,
+                    category="medium_file",
+                    file_path=parse_result.path,
+                    metric_value=lines,
+                    threshold=thresholds["medium"],
+                    description=f"File has {lines} lines (threshold: {thresholds['medium']})",
+                    suggestion="Consider refactoring to reduce file size",
                 )
             )
 
         return issues
 
     def _detect_god_class(self, parse_result: ParseResult) -> list[DebtIssue]:
-        """Detect God Class anti-pattern.
+        """Detect God Class anti-pattern with 2-tier thresholds.
 
         A God Class is a class with too many responsibilities, indicated by
         having an excessive number of methods.
+
+        Tiers:
+        - >50 methods: CRITICAL (god_class)
+        - >20 methods: MEDIUM (god_class_warning)
 
         Args:
             parse_result: The parsed file to analyze
@@ -355,7 +410,7 @@ class TechDebtDetector:
         # Check each class for too many methods
         for class_name, methods in class_methods.items():
             method_count = len(methods)
-            if method_count > self.GOD_CLASS_METHODS:
+            if method_count > self.GOD_CLASS_METHODS_CRITICAL:
                 suggested_split_count = max(3, method_count // 20)
                 issues.append(
                     DebtIssue(
@@ -363,15 +418,137 @@ class TechDebtDetector:
                         category="god_class",
                         file_path=parse_result.path,
                         metric_value=method_count,
-                        threshold=self.GOD_CLASS_METHODS,
+                        threshold=self.GOD_CLASS_METHODS_CRITICAL,
                         description=f"Class '{class_name}' has {method_count} methods "
-                        f"(threshold: {self.GOD_CLASS_METHODS})",
+                        f"(threshold: {self.GOD_CLASS_METHODS_CRITICAL})",
                         suggestion=f"Extract {suggested_split_count} smaller classes by "
                         f"responsibility",
                     )
                 )
+            elif method_count > self.GOD_CLASS_METHODS_WARN:
+                issues.append(
+                    DebtIssue(
+                        severity=DebtSeverity.MEDIUM,
+                        category="god_class_warning",
+                        file_path=parse_result.path,
+                        metric_value=method_count,
+                        threshold=self.GOD_CLASS_METHODS_WARN,
+                        description=f"Class '{class_name}' has {method_count} methods "
+                        f"(threshold: {self.GOD_CLASS_METHODS_WARN})",
+                        suggestion="Consider splitting responsibilities into smaller classes",
+                    )
+                )
 
         return issues
+
+    def _detect_long_methods(self, parse_result: ParseResult) -> list[DebtIssue]:
+        """Detect long methods/functions.
+
+        Tiers:
+        - >150 lines: HIGH
+        - >80 lines: MEDIUM
+
+        Args:
+            parse_result: The parsed file to analyze
+
+        Returns:
+            List of DebtIssue for long method problems
+        """
+        issues = []
+
+        for symbol in parse_result.symbols:
+            if symbol.kind not in ("function", "method"):
+                continue
+
+            length = symbol.line_end - symbol.line_start + 1
+
+            if length > self.LONG_METHOD_HIGH:
+                issues.append(
+                    DebtIssue(
+                        severity=DebtSeverity.HIGH,
+                        category="long_method",
+                        file_path=parse_result.path,
+                        metric_value=length,
+                        threshold=self.LONG_METHOD_HIGH,
+                        description=f"'{symbol.name}' has {length} lines "
+                        f"(threshold: {self.LONG_METHOD_HIGH})",
+                        suggestion="Extract helper methods to reduce complexity",
+                    )
+                )
+            elif length > self.LONG_METHOD_WARN:
+                issues.append(
+                    DebtIssue(
+                        severity=DebtSeverity.MEDIUM,
+                        category="long_method",
+                        file_path=parse_result.path,
+                        metric_value=length,
+                        threshold=self.LONG_METHOD_WARN,
+                        description=f"'{symbol.name}' has {length} lines "
+                        f"(threshold: {self.LONG_METHOD_WARN})",
+                        suggestion="Consider breaking into smaller functions",
+                    )
+                )
+
+        return issues
+
+    def _detect_too_many_functions(self, parse_result: ParseResult) -> list[DebtIssue]:
+        """Detect files with too many top-level functions.
+
+        Only counts symbols with kind == "function" (not methods).
+
+        Args:
+            parse_result: The parsed file to analyze
+
+        Returns:
+            List of DebtIssue for too many functions
+        """
+        func_count = sum(1 for s in parse_result.symbols if s.kind == "function")
+
+        if func_count > self.MAX_TOP_LEVEL_FUNCTIONS:
+            return [
+                DebtIssue(
+                    severity=DebtSeverity.MEDIUM,
+                    category="too_many_functions",
+                    file_path=parse_result.path,
+                    metric_value=func_count,
+                    threshold=self.MAX_TOP_LEVEL_FUNCTIONS,
+                    description=f"File has {func_count} top-level functions "
+                    f"(threshold: {self.MAX_TOP_LEVEL_FUNCTIONS})",
+                    suggestion="Group related functions into classes or separate modules",
+                )
+            ]
+        return []
+
+    def _detect_high_coupling(self, parse_result: ParseResult) -> list[DebtIssue]:
+        """Detect high import coupling (too many internal/relative imports).
+
+        Counts imports with is_from=True and module starting with '.'.
+
+        Args:
+            parse_result: The parsed file to analyze
+
+        Returns:
+            List of DebtIssue for high coupling
+        """
+        internal_count = sum(
+            1 for imp in parse_result.imports
+            if imp.is_from and imp.module.startswith(".")
+        )
+
+        if internal_count > self.MAX_INTERNAL_IMPORTS:
+            return [
+                DebtIssue(
+                    severity=DebtSeverity.MEDIUM,
+                    category="high_coupling",
+                    file_path=parse_result.path,
+                    metric_value=internal_count,
+                    threshold=self.MAX_INTERNAL_IMPORTS,
+                    description=f"File has {internal_count} internal imports "
+                    f"(threshold: {self.MAX_INTERNAL_IMPORTS})",
+                    suggestion="Reduce coupling by introducing facades or reorganizing modules",
+                )
+            ]
+        return []
 
     def _calculate_quality_score(
         self, parse_result: ParseResult, issues: list[DebtIssue]

@@ -33,7 +33,7 @@ def test_classify_tiny_file():
 
 
 def test_classify_small_file():
-    """Test classification of small file."""
+    """Test classification of small file (500-800 lines)."""
     from codeindex.file_classifier import FileSizeCategory, FileSizeClassifier
 
     config = Config.load()
@@ -41,7 +41,7 @@ def test_classify_small_file():
 
     parse_result = ParseResult(
         path=Path("small.py"),
-        file_lines=800,
+        file_lines=600,
         symbols=[Symbol(f"func{i}", "function", "", "", i, i) for i in range(15)],
     )
 
@@ -51,7 +51,7 @@ def test_classify_small_file():
 
 
 def test_classify_medium_file():
-    """Test classification of medium file."""
+    """Test classification of medium file (800-1500 lines)."""
     from codeindex.file_classifier import FileSizeCategory, FileSizeClassifier
 
     config = Config.load()
@@ -59,7 +59,7 @@ def test_classify_medium_file():
 
     parse_result = ParseResult(
         path=Path("medium.py"),
-        file_lines=1500,
+        file_lines=1000,
         symbols=[Symbol(f"func{i}", "function", "", "", i, i) for i in range(25)],
     )
 
@@ -69,7 +69,7 @@ def test_classify_medium_file():
 
 
 def test_classify_large_file():
-    """Test classification of large file."""
+    """Test classification of large file (1500-2500 lines)."""
     from codeindex.file_classifier import FileSizeCategory, FileSizeClassifier
 
     config = Config.load()
@@ -77,14 +77,14 @@ def test_classify_large_file():
 
     parse_result = ParseResult(
         path=Path("large.php"),
-        file_lines=3000,
+        file_lines=2000,
         symbols=[Symbol(f"func{i}", "function", "", "", i, i) for i in range(45)],
     )
 
     analysis = classifier.classify(parse_result)
 
     assert analysis.category == FileSizeCategory.LARGE
-    assert not analysis.exceeds_line_threshold  # 3000 < 5000
+    assert not analysis.exceeds_line_threshold  # 2000 < 2500
     assert not analysis.exceeds_symbol_threshold  # 45 < 100
 
 
@@ -118,7 +118,7 @@ def test_classify_super_large_by_symbols():
 
     parse_result = ParseResult(
         path=Path("super_large.py"),
-        file_lines=3000,
+        file_lines=2000,
         symbols=[Symbol(f"func{i}", "function", "", "", i, i) for i in range(120)],
     )
 
@@ -193,7 +193,7 @@ def test_is_large_convenience_method():
     # Large file
     pr_large = ParseResult(
         path=Path("large.py"),
-        file_lines=3000,
+        file_lines=2000,
         symbols=[Symbol(f"func{i}", "function", "", "", i, i) for i in range(40)],
     )
     assert classifier.is_large(pr_large) is True
@@ -201,7 +201,7 @@ def test_is_large_convenience_method():
     # Medium file is not large
     pr_medium = ParseResult(
         path=Path("medium.py"),
-        file_lines=1500,
+        file_lines=1000,
         symbols=[Symbol(f"func{i}", "function", "", "", i, i) for i in range(25)],
     )
     assert classifier.is_large(pr_medium) is False
@@ -216,10 +216,10 @@ def test_edge_case_exactly_at_threshold():
     config = Config.load()
     classifier = FileSizeClassifier(config)
 
-    # Exactly 5000 lines (threshold is > 5000)
+    # Exactly 2500 lines (threshold is > 2500)
     parse_result = ParseResult(
         path=Path("edge.py"),
-        file_lines=5000,
+        file_lines=2500,
         symbols=[Symbol(f"func{i}", "function", "", "", i, i) for i in range(100)],
     )
 
@@ -237,10 +237,10 @@ def test_edge_case_just_over_threshold():
     config = Config.load()
     classifier = FileSizeClassifier(config)
 
-    # 5001 lines (threshold is > 5000)
+    # 2501 lines (threshold is > 2500)
     parse_result = ParseResult(
         path=Path("edge.py"),
-        file_lines=5001,
+        file_lines=2501,
         symbols=[Symbol(f"func{i}", "function", "", "", i, i) for i in range(101)],
     )
 

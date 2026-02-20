@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from codeindex.config import Config
-from codeindex.parser import ParseResult, Symbol
+from codeindex.parser import Import, ParseResult, Symbol
 from codeindex.symbol_scorer import SymbolImportanceScorer
 
 
@@ -46,6 +46,9 @@ def create_mock_parse_result(
     symbol_count: int = 15,
     class_name: str | None = None,
     methods_per_class: int = 0,
+    imports: list[Import] | None = None,
+    functions_count: int | None = None,
+    method_lines: int = 15,
 ) -> ParseResult:
     """Create a mock ParseResult for testing.
 
@@ -55,20 +58,13 @@ def create_mock_parse_result(
         symbol_count: Number of symbols to create (if not creating a class)
         class_name: Optional class name (for God Class testing)
         methods_per_class: Number of methods in the class
+        imports: Optional list of Import objects (for coupling tests)
+        functions_count: If set, create this many top-level functions
+            (overrides symbol_count for function generation)
+        method_lines: Lines per method/function for line_start/line_end calculation
 
     Returns:
         A ParseResult instance
-
-    Examples:
-        >>> # Normal file
-        >>> result = create_mock_parse_result(file_lines=300, symbol_count=15)
-
-        >>> # God Class file
-        >>> result = create_mock_parse_result(
-        ...     file_lines=2000,
-        ...     class_name="OperateGoods",
-        ...     methods_per_class=57
-        ... )
     """
     symbols = []
 
@@ -81,21 +77,36 @@ def create_mock_parse_result(
                     kind="method",
                     signature=f"public function method{i}()",
                     docstring="",
-                    line_start=i * 10,
-                    line_end=i * 10 + 5,
+                    line_start=i * (method_lines + 5),
+                    line_end=i * (method_lines + 5) + method_lines - 1,
+                )
+            )
+    elif functions_count is not None:
+        # Create specific number of top-level functions
+        for i in range(functions_count):
+            start = i * (method_lines + 5)
+            symbols.append(
+                Symbol(
+                    name=f"function{i}",
+                    kind="function",
+                    signature=f"def function{i}():",
+                    docstring="A function",
+                    line_start=start,
+                    line_end=start + method_lines - 1,
                 )
             )
     else:
         # Create normal symbols (functions)
         for i in range(symbol_count):
+            start = i * (method_lines + 5)
             symbols.append(
                 Symbol(
                     name=f"function{i}",
                     kind="function",
                     signature=f"function function{i}()",
                     docstring="A normal function",
-                    line_start=i * 20,
-                    line_end=i * 20 + 15,
+                    line_start=start,
+                    line_end=start + method_lines - 1,
                 )
             )
 
@@ -103,7 +114,7 @@ def create_mock_parse_result(
         path=Path(file_path),
         file_lines=file_lines,
         symbols=symbols,
-        imports=[],
+        imports=imports or [],
         module_docstring="",
     )
 

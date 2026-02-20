@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from codeindex.parser import Import, ParseResult, Symbol
 from codeindex.tech_debt import (
     DebtAnalysisResult,
     DebtIssue,
@@ -107,15 +108,24 @@ class TestTechDebtDetector:
         assert detector.config == mock_config
 
     def test_detector_has_thresholds(self, mock_config):
-        """Detector should use FileSizeClassifier for file size detection (Epic 4)."""
+        """Detector should have all detection thresholds configured."""
         detector = TechDebtDetector(mock_config)
-        # After Epic 4 refactoring: uses FileSizeClassifier instead of hard-coded constants
         assert hasattr(detector, "classifier")
-        assert hasattr(detector, "GOD_CLASS_METHODS")
-        assert detector.GOD_CLASS_METHODS == 50
-        # Verify classifier is configured with correct thresholds
-        assert detector.classifier.super_large_lines == 5000
-        assert detector.classifier.super_large_symbols == 100
+        # God Class thresholds
+        assert detector.GOD_CLASS_METHODS_WARN == 20
+        assert detector.GOD_CLASS_METHODS_CRITICAL == 50
+        assert detector.GOD_CLASS_METHODS == 50  # backward compat
+        # Long method thresholds
+        assert detector.LONG_METHOD_WARN == 80
+        assert detector.LONG_METHOD_HIGH == 150
+        # Function/coupling thresholds
+        assert detector.MAX_TOP_LEVEL_FUNCTIONS == 15
+        assert detector.MAX_INTERNAL_IMPORTS == 8
+        # Language-aware file size thresholds
+        assert "compact" in detector.FILE_SIZE_THRESHOLDS
+        assert "verbose" in detector.FILE_SIZE_THRESHOLDS
+        assert detector.FILE_SIZE_THRESHOLDS["compact"]["medium"] == 800
+        assert detector.FILE_SIZE_THRESHOLDS["verbose"]["medium"] == 1500
 
 
 class TestFileSizeDetection:
@@ -205,18 +215,18 @@ class TestFileSizeDetection:
         assert len(size_issues) == 0
 
     def test_file_just_over_large_threshold(self, mock_config, symbol_scorer):
-        """File with 2001 lines should be flagged as large_file."""
-        # Arrange
+        """File with 2001 lines (PHP/verbose) should be flagged as medium_file (>1500)."""
+        # Arrange - default file_path=test.php uses verbose thresholds (medium=1500)
         parse_result = create_mock_parse_result(file_lines=2001)
         detector = TechDebtDetector(mock_config)
 
         # Act
         result = detector.analyze_file(parse_result, symbol_scorer)
 
-        # Assert
-        large_issues = [i for i in result.issues if i.category == "large_file"]
-        assert len(large_issues) == 1
-        assert large_issues[0].severity == DebtSeverity.HIGH
+        # Assert - 2001 > 1500 (verbose medium) but < 2500 (verbose large)
+        medium_issues = [i for i in result.issues if i.category == "medium_file"]
+        assert len(medium_issues) == 1
+        assert medium_issues[0].severity == DebtSeverity.MEDIUM
 
     def test_file_at_super_large_threshold_boundary(self, mock_config, symbol_scorer):
         """File with exactly 5000 lines should NOT be flagged as super large."""
@@ -558,5 +568,447 @@ class TestQualityScoreCalculation:
         assert result_normal.quality_score > result_large.quality_score
         assert result_large.quality_score > result_super_large.quality_score
         assert result_normal.quality_score == 100.0
-        assert result_large.quality_score == 85.0
-        assert result_super_large.quality_score == 70.0
+        # large: 3000 lines (large_file HIGH -15) + 30 functions (too_many_functions MEDIUM -5) = 80
+        assert result_large.quality_score == 80.0
+        # super_large: 8891 lines (super_large_file CRITICAL -30) + 57 functions (too_many_functions MEDIUM -5) = 65
+        assert result_super_large.quality_score == 65.0
+
+
+class TestLongMethodDetection:
+    """Test long method/function detection."""
+
+    def test_short_method_no_issue(self, mock_config, symbol_scorer):
+        """Methods <=80 lines should not be flagged."""
+        parse_result = create_mock_parse_result(
+            file_lines=200, functions_count=3, method_lines=10
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        long_method_issues = [i for i in result.issues if i.category == "long_method"]
+        assert len(long_method_issues) == 0
+
+    def test_medium_long_method(self, mock_config, symbol_scorer):
+        """Methods >80 lines should be flagged as MEDIUM."""
+        symbols = [
+            Symbol(
+                name="big_function",
+                kind="function",
+                signature="def big_function():",
+                docstring="",
+                line_start=1,
+                line_end=91,  # 91 lines (>80)
+            ),
+        ]
+        parse_result = ParseResult(
+            path=Path("test.py"), file_lines=200, symbols=symbols
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        long_method_issues = [i for i in result.issues if i.category == "long_method"]
+        assert len(long_method_issues) == 1
+        assert long_method_issues[0].severity == DebtSeverity.MEDIUM
+        assert long_method_issues[0].metric_value == 91
+
+    def test_very_long_method(self, mock_config, symbol_scorer):
+        """Methods >150 lines should be flagged as HIGH."""
+        symbols = [
+            Symbol(
+                name="huge_function",
+                kind="function",
+                signature="def huge_function():",
+                docstring="",
+                line_start=1,
+                line_end=180,  # 180 lines (>150)
+            ),
+        ]
+        parse_result = ParseResult(
+            path=Path("test.py"), file_lines=300, symbols=symbols
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        long_method_issues = [i for i in result.issues if i.category == "long_method"]
+        assert len(long_method_issues) == 1
+        assert long_method_issues[0].severity == DebtSeverity.HIGH
+        assert long_method_issues[0].metric_value == 180
+
+    def test_method_at_80_boundary(self, mock_config, symbol_scorer):
+        """Method with exactly 80 lines should NOT be flagged."""
+        symbols = [
+            Symbol(
+                name="boundary_func",
+                kind="function",
+                signature="def boundary_func():",
+                docstring="",
+                line_start=1,
+                line_end=80,  # exactly 80 lines
+            ),
+        ]
+        parse_result = ParseResult(
+            path=Path("test.py"), file_lines=200, symbols=symbols
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        long_method_issues = [i for i in result.issues if i.category == "long_method"]
+        assert len(long_method_issues) == 0
+
+    def test_method_at_81_boundary(self, mock_config, symbol_scorer):
+        """Method with 81 lines should be flagged as MEDIUM."""
+        symbols = [
+            Symbol(
+                name="boundary_func",
+                kind="function",
+                signature="def boundary_func():",
+                docstring="",
+                line_start=1,
+                line_end=81,  # 81 lines (>80)
+            ),
+        ]
+        parse_result = ParseResult(
+            path=Path("test.py"), file_lines=200, symbols=symbols
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        long_method_issues = [i for i in result.issues if i.category == "long_method"]
+        assert len(long_method_issues) == 1
+        assert long_method_issues[0].severity == DebtSeverity.MEDIUM
+
+    def test_multiple_long_methods(self, mock_config, symbol_scorer):
+        """Should detect multiple long methods in same file."""
+        symbols = [
+            Symbol(
+                name="func_a",
+                kind="function",
+                signature="def func_a():",
+                docstring="",
+                line_start=1,
+                line_end=90,
+            ),
+            Symbol(
+                name="func_b",
+                kind="function",
+                signature="def func_b():",
+                docstring="",
+                line_start=100,
+                line_end=260,  # 161 lines (HIGH)
+            ),
+        ]
+        parse_result = ParseResult(
+            path=Path("test.py"), file_lines=400, symbols=symbols
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        long_method_issues = [i for i in result.issues if i.category == "long_method"]
+        assert len(long_method_issues) == 2
+        severities = {i.severity for i in long_method_issues}
+        assert DebtSeverity.MEDIUM in severities
+        assert DebtSeverity.HIGH in severities
+
+
+class TestTooManyFunctionsDetection:
+    """Test too-many-functions detection."""
+
+    def test_few_functions_no_issue(self, mock_config, symbol_scorer):
+        """<=15 top-level functions should not be flagged."""
+        parse_result = create_mock_parse_result(
+            file_lines=500, functions_count=10
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        func_issues = [i for i in result.issues if i.category == "too_many_functions"]
+        assert len(func_issues) == 0
+
+    def test_too_many_functions(self, mock_config, symbol_scorer):
+        """More than 15 top-level functions should be flagged as MEDIUM."""
+        parse_result = create_mock_parse_result(
+            file_lines=500, functions_count=16
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        func_issues = [i for i in result.issues if i.category == "too_many_functions"]
+        assert len(func_issues) == 1
+        assert func_issues[0].severity == DebtSeverity.MEDIUM
+        assert func_issues[0].metric_value == 16
+        assert func_issues[0].threshold == 15
+
+    def test_exactly_15_functions_no_issue(self, mock_config, symbol_scorer):
+        """Exactly 15 functions should NOT be flagged."""
+        parse_result = create_mock_parse_result(
+            file_lines=500, functions_count=15
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        func_issues = [i for i in result.issues if i.category == "too_many_functions"]
+        assert len(func_issues) == 0
+
+    def test_methods_not_counted_as_functions(self, mock_config, symbol_scorer):
+        """Class methods should not be counted as top-level functions."""
+        parse_result = create_mock_parse_result(
+            file_lines=500, class_name="MyClass", methods_per_class=20
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        func_issues = [i for i in result.issues if i.category == "too_many_functions"]
+        assert len(func_issues) == 0
+
+
+class TestHighCouplingDetection:
+    """Test high import coupling detection."""
+
+    def test_few_imports_no_issue(self, mock_config, symbol_scorer):
+        """<=8 internal imports should not be flagged."""
+        imports = [
+            Import(module=".utils", names=["helper"], is_from=True),
+            Import(module=".config", names=["Config"], is_from=True),
+            Import(module=".parser", names=["ParseResult"], is_from=True),
+        ]
+        parse_result = create_mock_parse_result(
+            file_path="test.py", file_lines=200, imports=imports
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        coupling_issues = [i for i in result.issues if i.category == "high_coupling"]
+        assert len(coupling_issues) == 0
+
+    def test_high_internal_imports(self, mock_config, symbol_scorer):
+        """More than 8 internal imports should be flagged as MEDIUM."""
+        imports = [
+            Import(module=f".module{i}", names=[f"Class{i}"], is_from=True)
+            for i in range(9)
+        ]
+        parse_result = create_mock_parse_result(
+            file_path="test.py", file_lines=200, imports=imports
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        coupling_issues = [i for i in result.issues if i.category == "high_coupling"]
+        assert len(coupling_issues) == 1
+        assert coupling_issues[0].severity == DebtSeverity.MEDIUM
+        assert coupling_issues[0].metric_value == 9
+        assert coupling_issues[0].threshold == 8
+
+    def test_external_imports_not_counted(self, mock_config, symbol_scorer):
+        """External (non-relative) imports should NOT be counted."""
+        imports = [
+            Import(module="os", names=["path"], is_from=True),
+            Import(module="sys", names=[], is_from=False),
+            Import(module="pathlib", names=["Path"], is_from=True),
+            Import(module="typing", names=["Dict"], is_from=True),
+            Import(module="json", names=[], is_from=False),
+            Import(module="dataclasses", names=["dataclass"], is_from=True),
+            Import(module="collections", names=["defaultdict"], is_from=True),
+            Import(module="enum", names=["Enum"], is_from=True),
+            Import(module="functools", names=["lru_cache"], is_from=True),
+            Import(module="re", names=[], is_from=False),
+        ]
+        parse_result = create_mock_parse_result(
+            file_path="test.py", file_lines=200, imports=imports
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        coupling_issues = [i for i in result.issues if i.category == "high_coupling"]
+        assert len(coupling_issues) == 0
+
+    def test_exactly_8_internal_imports_no_issue(self, mock_config, symbol_scorer):
+        """Exactly 8 internal imports should NOT be flagged."""
+        imports = [
+            Import(module=f".module{i}", names=[f"Class{i}"], is_from=True)
+            for i in range(8)
+        ]
+        parse_result = create_mock_parse_result(
+            file_path="test.py", file_lines=200, imports=imports
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        coupling_issues = [i for i in result.issues if i.category == "high_coupling"]
+        assert len(coupling_issues) == 0
+
+
+class TestLanguageAwareThresholds:
+    """Test language-aware file size thresholds."""
+
+    def test_python_file_medium_threshold(self, mock_config, symbol_scorer):
+        """Python file at 900 lines should be flagged as medium_file (>800)."""
+        parse_result = create_mock_parse_result(
+            file_path="test.py", file_lines=900, symbol_count=10
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        medium_issues = [i for i in result.issues if i.category == "medium_file"]
+        assert len(medium_issues) == 1
+        assert medium_issues[0].severity == DebtSeverity.MEDIUM
+
+    def test_java_file_at_900_no_issue(self, mock_config, symbol_scorer):
+        """Java file at 900 lines should NOT be flagged (verbose lang, medium=1500)."""
+        parse_result = create_mock_parse_result(
+            file_path="Test.java", file_lines=900, symbol_count=10
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        size_issues = [
+            i for i in result.issues
+            if i.category in ("medium_file", "large_file", "super_large_file")
+        ]
+        assert len(size_issues) == 0
+
+    def test_php_file_uses_verbose_thresholds(self, mock_config, symbol_scorer):
+        """PHP file at 1600 lines should be flagged as medium_file (verbose: >1500 medium)."""
+        parse_result = create_mock_parse_result(
+            file_path="test.php", file_lines=1600, symbol_count=10
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        medium_issues = [i for i in result.issues if i.category == "medium_file"]
+        assert len(medium_issues) == 1
+        assert medium_issues[0].severity == DebtSeverity.MEDIUM
+
+    def test_typescript_uses_compact_thresholds(self, mock_config, symbol_scorer):
+        """TypeScript file at 900 lines should be flagged as medium_file (compact: >800)."""
+        parse_result = create_mock_parse_result(
+            file_path="app.ts", file_lines=900, symbol_count=10
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        medium_issues = [i for i in result.issues if i.category == "medium_file"]
+        assert len(medium_issues) == 1
+
+    def test_python_large_threshold(self, mock_config, symbol_scorer):
+        """Python file at 1600 lines should be flagged as large_file (compact: >1500)."""
+        parse_result = create_mock_parse_result(
+            file_path="big.py", file_lines=1600, symbol_count=10
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        large_issues = [i for i in result.issues if i.category == "large_file"]
+        assert len(large_issues) == 1
+        assert large_issues[0].severity == DebtSeverity.HIGH
+
+    def test_python_critical_threshold(self, mock_config, symbol_scorer):
+        """Python file at 2600 lines should be flagged as super_large_file (compact: >2500)."""
+        parse_result = create_mock_parse_result(
+            file_path="huge.py", file_lines=2600, symbol_count=10
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        critical_issues = [i for i in result.issues if i.category == "super_large_file"]
+        assert len(critical_issues) == 1
+        assert critical_issues[0].severity == DebtSeverity.CRITICAL
+
+    def test_java_critical_threshold(self, mock_config, symbol_scorer):
+        """Java file at 5100 lines should be flagged as super_large_file (verbose: >5000)."""
+        parse_result = create_mock_parse_result(
+            file_path="Huge.java", file_lines=5100, symbol_count=10
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        critical_issues = [i for i in result.issues if i.category == "super_large_file"]
+        assert len(critical_issues) == 1
+        assert critical_issues[0].severity == DebtSeverity.CRITICAL
+
+    def test_go_uses_verbose_thresholds(self, mock_config, symbol_scorer):
+        """Go file should use verbose thresholds."""
+        parse_result = create_mock_parse_result(
+            file_path="main.go", file_lines=900, symbol_count=10
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        size_issues = [
+            i for i in result.issues
+            if i.category in ("medium_file", "large_file", "super_large_file")
+        ]
+        assert len(size_issues) == 0
+
+
+class TestGodClassWarningTier:
+    """Test the new MEDIUM warning tier for God Class (>20 methods)."""
+
+    def test_class_with_25_methods_medium_warning(self, mock_config, symbol_scorer):
+        """Class with >20 but <=50 methods should be MEDIUM god_class_warning."""
+        parse_result = create_mock_parse_result(
+            file_lines=500, class_name="MediumClass", methods_per_class=25
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        god_issues = [
+            i for i in result.issues
+            if i.category in ("god_class", "god_class_warning")
+        ]
+        assert len(god_issues) == 1
+        assert god_issues[0].severity == DebtSeverity.MEDIUM
+
+    def test_class_with_20_methods_no_warning(self, mock_config, symbol_scorer):
+        """Class with exactly 20 methods should NOT be flagged."""
+        parse_result = create_mock_parse_result(
+            file_lines=500, class_name="OkClass", methods_per_class=20
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        god_issues = [
+            i for i in result.issues
+            if i.category in ("god_class", "god_class_warning")
+        ]
+        assert len(god_issues) == 0
+
+    def test_class_with_51_methods_critical(self, mock_config, symbol_scorer):
+        """Class with >50 methods should still be CRITICAL god_class (not double-reported)."""
+        parse_result = create_mock_parse_result(
+            file_lines=1000, class_name="HugeClass", methods_per_class=51
+        )
+        detector = TechDebtDetector(mock_config)
+
+        result = detector.analyze_file(parse_result, symbol_scorer)
+
+        god_issues = [
+            i for i in result.issues
+            if i.category in ("god_class", "god_class_warning")
+        ]
+        assert len(god_issues) == 1
+        assert god_issues[0].severity == DebtSeverity.CRITICAL
+        assert god_issues[0].category == "god_class"
