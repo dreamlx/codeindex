@@ -8,6 +8,7 @@ from .base import BaseLanguageParser
 from .java_parser import JavaParser
 from .php_parser import PhpParser
 from .python_parser import PythonParser
+from .typescript_parser import TypeScriptParser
 from .utils import count_arguments, get_node_text
 
 __all__ = [
@@ -15,6 +16,7 @@ __all__ = [
     "PythonParser",
     "PhpParser",
     "JavaParser",
+    "TypeScriptParser",
     "get_node_text",
     "count_arguments",
 ]
