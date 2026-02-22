@@ -60,6 +60,7 @@ class ChangeAnalysis:
             "additions": self.total_additions,
             "deletions": self.total_deletions,
             "files_changed": len(self.files),
+            "affected_files": [str(f) for f in sorted(self.files)],  # For LoomGraph integration
             "affected_dirs": [str(d) for d in sorted(self.affected_dirs)],
             "level": self.level.value,
             "message": self.message,
