@@ -40,6 +40,9 @@ LANGUAGE_EXTENSIONS = {
     "python": [".py"],
     "php": [".php", ".phtml"],
     "java": [".java"],
+    "typescript": [".ts", ".tsx"],
+    "tsx": [".tsx"],
+    "javascript": [".js", ".jsx"],
 }
 
 
