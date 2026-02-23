@@ -5,9 +5,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://github.com/dreamlx/codeindex/workflows/Tests/badge.svg)](https://github.com/dreamlx/codeindex/actions)
 
-**Universal Code Parser — Best-in-class multi-language AST parser for AI-assisted development.**
+**Enterprise-grade Code Intelligence Platform — Multi-language AST parser for AI-assisted development, code quality analysis, and knowledge graph integration.**
 
-codeindex extracts symbols, inheritance relationships, call graphs, and imports from Python, PHP, Java, TypeScript, and JavaScript using tree-sitter. Perfect for feeding structured code data to AI tools, knowledge graphs, and code intelligence platforms.
+codeindex extracts symbols, inheritance relationships, call graphs, and imports from Python, PHP, Java, TypeScript, and JavaScript using tree-sitter. Designed for **enterprise environments** with intranet isolation, providing structured code data for AI tools, knowledge graphs, and code intelligence platforms.
+
+**🏢 Enterprise Ready**: ✅ Intranet compatible ✅ Self-contained ✅ Version stable ✅ Data sovereignty
 
 ---
 
@@ -30,6 +32,71 @@ codeindex extracts symbols, inheritance relationships, call graphs, and imports 
 - **CLAUDE.md injection** — `codeindex init` auto-configures Claude Code integration (v0.17.0)
 - **Template-based test generation** — YAML + Jinja2 for rapid language support (88–91% time savings)
 - **Parallel scanning** — Concurrent directory processing with configurable workers
+
+---
+
+## Use Cases
+
+### 🏢 Enterprise Intranet (Core Scenario)
+
+**Without external tools**: When Serena MCP or other cloud-based code intelligence tools are unavailable due to network isolation or security policies, codeindex becomes the **primary code understanding tool**.
+
+```bash
+# Enterprise developer workflow
+git clone <internal-repo>
+codeindex scan-all --fallback       # Generate complete index
+# Read README_AI.md for architecture understanding
+# Check PROJECT_SYMBOLS.md for symbol lookup
+codeindex tech-debt src/ --output review.md  # Code quality analysis
+```
+
+**Why enterprises choose codeindex**:
+- ✅ **Intranet compatible** — no external dependencies, fully offline
+- ✅ **Self-contained** — no upstream MCP servers required
+- ✅ **Version stable** — enterprise-controlled release cycle
+- ✅ **Data sovereignty** — code never leaves internal network
+- ✅ **Customizable** — extensible for internal languages/frameworks
+
+---
+
+### 🕸️ Knowledge Graph Integration (LoomGraph)
+
+**For enterprise teams**: codeindex serves as the **core data source** for [LoomGraph](https://github.com/dreamlx/LoomGraph) knowledge graphs, enabling semantic code search across the organization.
+
+```bash
+# Data pipeline
+codeindex scan --output json > parse_results.json
+loomgraph inject parse_results.json  # Build knowledge graph
+# Team can now search code using natural language
+```
+
+**Three-repo architecture**:
+```
+codeindex (Parse)  →  LoomGraph (Orchestrate)  →  LightRAG (Store)
+   ↓ ParseResult         ↓ Embeddings              ↓ Semantic Search
+   AST extraction        Knowledge Graph           Vector + Graph DB
+```
+
+Without codeindex, LoomGraph cannot function. See [LoomGraph Integration Guide](docs/guides/loomgraph-integration.md).
+
+---
+
+### 👤 Personal Developers (Complementary)
+
+**With Serena MCP**: For individual developers using Claude Code + Serena MCP, codeindex provides **complementary value**:
+
+- **Serena** (real-time): Precise symbol navigation (`find_symbol`, `find_referencing_symbols`)
+- **codeindex** (build-time): Architecture overview (README_AI.md) + quality analysis (tech-debt)
+
+```bash
+# Personal developer workflow
+codeindex init                    # Setup CLAUDE.md integration
+codeindex scan-all --fallback     # Generate architecture docs
+# Claude Code reads README_AI.md first, then uses Serena for precise navigation
+codeindex tech-debt src/          # Detect technical debt
+```
+
+**Relationship**: codeindex and Serena are **not competitors** but **complementary tools** — codeindex provides the "map," Serena provides the "GPS navigation."
 
 ---
 
@@ -137,7 +204,9 @@ codeindex affected --since HEAD~5
 
 ---
 
-## Claude Code Integration
+## Claude Code Integration (Personal Developers)
+
+**For personal developers using Claude Code + Serena MCP**:
 
 **v0.17.0**: `codeindex init` automatically injects instructions into your project's `CLAUDE.md`, so Claude Code reads `README_AI.md` files first — no manual setup required.
 
@@ -146,10 +215,12 @@ codeindex affected --since HEAD~5
 codeindex init
 
 # Claude Code will now:
-# ✅ Read README_AI.md before searching source files
-# ✅ Use structured indexes for architecture understanding
-# ✅ Navigate code via Serena MCP tools (find_symbol, etc.)
+# ✅ Read README_AI.md for architecture understanding
+# ✅ Use Serena MCP tools for precise navigation (find_symbol, etc.)
+# ✅ Apply tech-debt analysis for code quality checks
 ```
+
+**For enterprise users without Serena**: README_AI.md and PROJECT_SYMBOLS.md become your **primary code navigation tools**.
 
 For manual setup, MCP skills (`/mo:arch`, `/mo:index`), and Git hooks integration, see the [Claude Code Integration Guide](docs/guides/claude-code-integration.md).
 
@@ -184,6 +255,8 @@ For manual setup, MCP skills (`/mo:arch`, `/mo:index`), and Git hooks integratio
 
 ## How It Works
 
+### Standalone Mode
+
 ```
 Directory → Scanner → Parser (tree-sitter) → Smart Writer → README_AI.md
 ```
@@ -192,6 +265,38 @@ Directory → Scanner → Parser (tree-sitter) → Smart Writer → README_AI.md
 2. **Parser** — extracts symbols (classes, functions, imports, calls, inheritance) via tree-sitter
 3. **Smart Writer** — generates tiered documentation with size limits (≤50KB)
 4. **Output** — `README_AI.md` optimized for AI consumption, or JSON for tool integration
+
+### Three-Repo Architecture (Enterprise Knowledge Graph)
+
+```
+┌────────────────────────────────────────────────────┐
+│            Enterprise Intranet Environment          │
+├────────────────────────────────────────────────────┤
+│                                                    │
+│  📦 Code Repository (Git)                          │
+│       ↓                                            │
+│  🔍 codeindex (Parse Layer)                        │
+│       ├── scan --output json → ParseResult         │
+│       ├── README_AI.md → architecture docs         │
+│       └── tech-debt → quality analysis             │
+│       ↓                                            │
+│  🕸️ LoomGraph (Orchestration Layer)                │
+│       ├── inject ParseResult                       │
+│       ├── generate embeddings                      │
+│       └── build knowledge graph                    │
+│       ↓                                            │
+│  💾 LightRAG (Storage Layer)                       │
+│       ├── PostgreSQL (graph data)                  │
+│       ├── Vector DB (embeddings)                   │
+│       └── Query API (semantic search)              │
+│       ↓                                            │
+│  💬 AI Agents (Claude Code, Internal Chat)         │
+│       └── Natural language code search             │
+│                                                    │
+└────────────────────────────────────────────────────┘
+```
+
+**codeindex role**: Bottom layer (data collection & parsing) — the entire system depends on codeindex providing structured ParseResult data.
 
 ---
 
