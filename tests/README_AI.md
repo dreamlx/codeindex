@@ -123,9 +123,6 @@ Changed files:
 - `test_typescript_integration.py`
 - `test_typescript_parser.py`
 
----
-
-## Recent Changes
 
 **Commit ``**: 
 
@@ -133,3 +130,12 @@ Changed files:
 - `conftest.py`
 - `test_file_classifier.py`
 - `test_tech_debt_detector.py`
+
+---
+
+## Recent Changes
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_swift_poc.py`
