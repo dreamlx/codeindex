@@ -173,6 +173,12 @@ Changed files:
 Changed files:
 - `test_parser_swift_integration.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_swift_generics.py`
+
 ---
 
 ## Recent Changes
@@ -180,4 +186,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_parser_swift_generics.py`
+- `test_parser_swift_property_wrappers.py`
