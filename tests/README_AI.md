@@ -137,6 +137,12 @@ Changed files:
 Changed files:
 - `test_parser_swift_poc.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_swift_properties.py`
+
 ---
 
 ## Recent Changes
@@ -144,4 +150,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_parser_swift_properties.py`
+- `test_parser_swift_protocols.py`
