@@ -202,11 +202,14 @@ class SwiftParser(BaseLanguageParser):
         # Extract generic parameters (Story 1.5)
         generics = self._extract_generic_parameters(node)
 
+        # Extract access modifier (Story 1.5)
+        access_modifier = self._extract_access_modifier(node)
+
         # Create class symbol with docstring (Story 1.4)
         class_symbol = Symbol(
             name=class_name,
             kind="class",
-            signature=f"class {class_name}{generics}",
+            signature=f"{access_modifier}class {class_name}{generics}",
             docstring=docstring,
             line_start=node.start_point[0] + 1,
             line_end=node.end_point[0] + 1,
@@ -253,11 +256,14 @@ class SwiftParser(BaseLanguageParser):
         # Extract generic parameters (Story 1.5)
         generics = self._extract_generic_parameters(node)
 
+        # Extract access modifier (Story 1.5)
+        access_modifier = self._extract_access_modifier(node)
+
         # Treat struct as class kind, with docstring (Story 1.4)
         struct_symbol = Symbol(
             name=struct_name,
             kind="class",
-            signature=f"struct {struct_name}{generics}",
+            signature=f"{access_modifier}struct {struct_name}{generics}",
             docstring=docstring,
             line_start=node.start_point[0] + 1,
             line_end=node.end_point[0] + 1,
@@ -298,10 +304,13 @@ class SwiftParser(BaseLanguageParser):
         # Extract generic parameters (Story 1.5)
         generics = self._extract_generic_parameters(node)
 
+        # Extract access modifier (Story 1.5)
+        access_modifier = self._extract_access_modifier(node)
+
         enum_symbol = Symbol(
             name=enum_name,
             kind="class",  # Treat enum as class kind
-            signature=f"enum {enum_name}{generics}",
+            signature=f"{access_modifier}enum {enum_name}{generics}",
             docstring=docstring,
             line_start=node.start_point[0] + 1,
             line_end=node.end_point[0] + 1,
@@ -516,11 +525,14 @@ class SwiftParser(BaseLanguageParser):
         if not protocol_name:
             return symbols
 
+        # Extract access modifier (Story 1.5)
+        access_modifier = self._extract_access_modifier(node)
+
         # Create protocol symbol with docstring (Story 1.4)
         protocol_symbol = Symbol(
             name=protocol_name,
             kind="class",
-            signature=f"protocol {protocol_name}",
+            signature=f"{access_modifier}protocol {protocol_name}",
             docstring=docstring,
             line_start=node.start_point[0] + 1,
             line_end=node.end_point[0] + 1,
@@ -687,5 +699,23 @@ class SwiftParser(BaseLanguageParser):
                 # Extract the full generic parameter text
                 generic_text = child.text.decode("utf-8", errors="replace")
                 return generic_text
+
+        return ""
+
+    def _extract_access_modifier(self, node) -> str:
+        """Extract access modifier from a node (Story 1.5).
+
+        Args:
+            node: AST node that may have modifiers
+
+        Returns:
+            Access modifier string (e.g., "public", "private", "internal", "fileprivate")
+            or empty string if no access modifier
+        """
+        for child in node.children:
+            if child.type == "modifiers":
+                # Extract all modifiers
+                modifier_text = child.text.decode("utf-8", errors="replace")
+                return modifier_text + " "
 
         return ""
