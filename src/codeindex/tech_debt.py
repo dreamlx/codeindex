@@ -231,6 +231,8 @@ class TechDebtDetector:
         LONG_METHOD_HIGH: High threshold for long methods (>150 lines, HIGH)
         MAX_TOP_LEVEL_FUNCTIONS: Max top-level functions per file (>15, MEDIUM)
         MAX_INTERNAL_IMPORTS: Max internal imports per file (>8, MEDIUM)
+        MASSIVE_VIEW_CONTROLLER_LINES: iOS ViewController line threshold (>500, CRITICAL)
+        MASSIVE_VIEW_CONTROLLER_METHODS: iOS ViewController method threshold (>20, CRITICAL)
     """
 
     GOD_CLASS_METHODS_WARN = 20  # MEDIUM
@@ -243,6 +245,10 @@ class TechDebtDetector:
     MAX_TOP_LEVEL_FUNCTIONS = 15  # MEDIUM
     MAX_INTERNAL_IMPORTS = 8  # MEDIUM
 
+    # iOS-specific thresholds (Story 2.4)
+    MASSIVE_VIEW_CONTROLLER_LINES = 500  # CRITICAL
+    MASSIVE_VIEW_CONTROLLER_METHODS = 20  # CRITICAL
+
     MASSIVE_SYMBOL_COUNT = 100  # Total symbols
     HIGH_NOISE_RATIO = 0.5  # 50% filter ratio
 
@@ -253,7 +259,7 @@ class TechDebtDetector:
     }
 
     # Extension to language profile mapping
-    _COMPACT_EXTENSIONS = {".py", ".ts", ".tsx", ".js", ".jsx"}
+    _COMPACT_EXTENSIONS = {".py", ".ts", ".tsx", ".js", ".jsx", ".swift"}
     _VERBOSE_EXTENSIONS = {".php", ".java", ".go"}
 
     def __init__(self, config: Config):
@@ -310,6 +316,9 @@ class TechDebtDetector:
 
         # Detect high import coupling
         issues.extend(self._detect_high_coupling(parse_result))
+
+        # iOS-specific: Detect Massive View Controller (Story 2.4)
+        issues.extend(self._detect_massive_view_controller(parse_result))
 
         # Calculate quality score based on issues
         quality_score = self._calculate_quality_score(parse_result, issues)
@@ -549,6 +558,78 @@ class TechDebtDetector:
                 )
             ]
         return []
+
+    def _detect_massive_view_controller(
+        self, parse_result: ParseResult
+    ) -> list[DebtIssue]:
+        """Detect Massive View Controller anti-pattern (iOS-specific).
+
+        A Massive View Controller is detected when a class whose name contains
+        "ViewController" (UIViewController or NSViewController subclass) violates
+        either of these conditions:
+        - >500 lines of code (class line_end - line_start + 1)
+        - >20 methods
+
+        Only applies to Swift files (.swift extension).
+
+        Args:
+            parse_result: The parsed file to analyze
+
+        Returns:
+            List of DebtIssue for Massive View Controller problems
+        """
+        issues = []
+
+        # Only check Swift files
+        if parse_result.path.suffix.lower() != ".swift":
+            return []
+
+        # Find all classes with "ViewController" in name
+        view_controller_classes = [
+            s for s in parse_result.symbols
+            if s.kind == "class" and "ViewController" in s.name
+        ]
+
+        for vc_class in view_controller_classes:
+            # Check line count
+            class_lines = vc_class.line_end - vc_class.line_start + 1
+            if class_lines > self.MASSIVE_VIEW_CONTROLLER_LINES:
+                issues.append(
+                    DebtIssue(
+                        severity=DebtSeverity.CRITICAL,
+                        category="massive_view_controller",
+                        file_path=parse_result.path,
+                        metric_value=class_lines,
+                        threshold=self.MASSIVE_VIEW_CONTROLLER_LINES,
+                        description=f"ViewController '{vc_class.name}' has {class_lines} lines "
+                        f"(threshold: {self.MASSIVE_VIEW_CONTROLLER_LINES})",
+                        suggestion="Extract child view controllers, separate data sources, "
+                        "or split into coordinator pattern with multiple view controllers",
+                    )
+                )
+
+            # Count methods in this ViewController
+            method_count = sum(
+                1 for s in parse_result.symbols
+                if s.kind == "method" and s.name.startswith(f"{vc_class.name}.")
+            )
+
+            if method_count > self.MASSIVE_VIEW_CONTROLLER_METHODS:
+                issues.append(
+                    DebtIssue(
+                        severity=DebtSeverity.CRITICAL,
+                        category="massive_view_controller",
+                        file_path=parse_result.path,
+                        metric_value=method_count,
+                        threshold=self.MASSIVE_VIEW_CONTROLLER_METHODS,
+                        description=f"ViewController '{vc_class.name}' has {method_count} methods "
+                        f"(threshold: {self.MASSIVE_VIEW_CONTROLLER_METHODS})",
+                        suggestion="Extract helper classes, apply MVVM pattern, "
+                        "or use child view controllers to reduce complexity",
+                    )
+                )
+
+        return issues
 
     def _calculate_quality_score(
         self, parse_result: ParseResult, issues: list[DebtIssue]
