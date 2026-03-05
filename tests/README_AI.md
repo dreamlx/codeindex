@@ -161,6 +161,12 @@ Changed files:
 Changed files:
 - `test_parser_swift_docstrings.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_swift_signatures.py`
+
 ---
 
 ## Recent Changes
@@ -168,4 +174,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_parser_swift_signatures.py`
+- `test_parser_swift_integration.py`
