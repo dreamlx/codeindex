@@ -179,6 +179,12 @@ Changed files:
 Changed files:
 - `test_parser_swift_generics.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_swift_property_wrappers.py`
+
 ---
 
 ## Recent Changes
@@ -186,4 +192,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_parser_swift_property_wrappers.py`
+- `test_tech_debt_ios.py`
