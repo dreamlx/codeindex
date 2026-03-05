@@ -131,6 +131,12 @@ Changed files:
 - `test_file_classifier.py`
 - `test_tech_debt_detector.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_swift_poc.py`
+
 ---
 
 ## Recent Changes
@@ -138,4 +144,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_parser_swift_poc.py`
+- `test_parser_swift_properties.py`
