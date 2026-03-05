@@ -155,6 +155,12 @@ Changed files:
 Changed files:
 - `test_parser_swift_inheritance.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_swift_docstrings.py`
+
 ---
 
 ## Recent Changes
@@ -162,4 +168,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_parser_swift_docstrings.py`
+- `test_parser_swift_signatures.py`
