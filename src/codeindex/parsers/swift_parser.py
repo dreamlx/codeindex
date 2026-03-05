@@ -79,6 +79,10 @@ class SwiftParser(BaseLanguageParser):
             elif child.type == "enum_declaration":
                 symbols.extend(self._extract_enum(child, source_bytes))
 
+            # Protocols (Story 1.2)
+            elif child.type == "protocol_declaration":
+                symbols.extend(self._extract_protocol(child, source_bytes))
+
             # Top-level functions
             elif child.type == "function_declaration":
                 symbol = self._extract_function(child, source_bytes)
@@ -134,19 +138,35 @@ class SwiftParser(BaseLanguageParser):
         return []
 
     def extract_inheritances(self, tree: Tree, source_bytes: bytes) -> list:
-        """Extract inheritance relationships from Swift source code.
+        """Extract inheritance relationships from Swift source code (Story 1.2).
 
-        TODO: Phase 3 implementation.
+        Extracts:
+        - Class inheritance relationships
+        - Protocol inheritance relationships
+        - Class/struct conformance to protocols
 
         Args:
             tree: Tree-sitter parse tree
             source_bytes: Source code as bytes
 
         Returns:
-            Empty list (not implemented in POC)
+            List of Inheritance objects
         """
-        # Phase 3: Implement inheritance extraction
-        return []
+        from ..parser import Inheritance
+
+        inheritances: list[Inheritance] = []
+        root = tree.root_node
+
+        # Process all top-level declarations
+        for child in root.children:
+            if child.type in [
+                "class_declaration",
+                "struct_declaration",
+                "protocol_declaration",
+            ]:
+                inheritances.extend(self._extract_type_inheritances(child, source_bytes))
+
+        return inheritances
 
     # ==================== Private Helper Methods ====================
 
@@ -437,3 +457,115 @@ class SwiftParser(BaseLanguageParser):
                     return subchild.text.decode("utf-8", errors="replace")
 
         return None
+
+    def _extract_protocol(self, node, source_bytes: bytes) -> list[Symbol]:
+        """Extract protocol declaration and its members (Story 1.2).
+
+        Args:
+            node: protocol_declaration node
+            source_bytes: Source code bytes
+
+        Returns:
+            List of symbols (protocol + methods + properties)
+        """
+        symbols: list[Symbol] = []
+
+        # Get protocol name from type_identifier child
+        protocol_name = None
+        for child in node.children:
+            if child.type == "type_identifier":
+                protocol_name = child.text.decode("utf-8", errors="replace")
+                break
+
+        if not protocol_name:
+            return symbols
+
+        # Create protocol symbol (treat as class kind)
+        protocol_symbol = Symbol(
+            name=protocol_name,
+            kind="class",
+            signature=f"protocol {protocol_name}",
+            docstring="",
+            line_start=node.start_point[0] + 1,
+            line_end=node.end_point[0] + 1,
+        )
+        symbols.append(protocol_symbol)
+
+        # Extract methods and properties from protocol body
+        body_node = None
+        for child in node.children:
+            if child.type == "protocol_body":
+                body_node = child
+                break
+
+        if body_node:
+            symbols.extend(
+                self._extract_class_methods(protocol_name, body_node, source_bytes)
+            )
+
+        return symbols
+
+    def _extract_type_inheritances(self, node, source_bytes: bytes) -> list:
+        """Extract inheritance relationships from class/struct/protocol node (Story 1.2).
+
+        Args:
+            node: class_declaration/struct_declaration/protocol_declaration node
+            source_bytes: Source code bytes
+
+        Returns:
+            List of Inheritance objects
+        """
+        from ..parser import Inheritance
+
+        inheritances: list[Inheritance] = []
+
+        # Get type name
+        type_name = None
+        for child in node.children:
+            if child.type == "type_identifier":
+                type_name = child.text.decode("utf-8", errors="replace")
+                break
+
+        if not type_name:
+            return inheritances
+
+        # Find type_inheritance_clause (e.g., ": ParentClass, Protocol1, Protocol2")
+        for child in node.children:
+            if child.type == "type_inheritance_clause":
+                # Extract all parent types
+                parent_types = self._extract_parent_types(child, source_bytes)
+                for parent_type in parent_types:
+                    inheritance = Inheritance(
+                        child_name=type_name,
+                        parent_name=parent_type,
+                        inheritance_type="implementation",  # Swift uses inheritance for both
+                    )
+                    inheritances.append(inheritance)
+
+        return inheritances
+
+    def _extract_parent_types(self, node, source_bytes: bytes) -> list[str]:
+        """Extract parent type names from type_inheritance_clause node.
+
+        Args:
+            node: type_inheritance_clause node
+            source_bytes: Source code bytes
+
+        Returns:
+            List of parent type names
+        """
+        parent_types: list[str] = []
+
+        # Look for type_identifier nodes in inheritance clause
+        for child in node.children:
+            if child.type == "type_identifier":
+                parent_name = child.text.decode("utf-8", errors="replace")
+                parent_types.append(parent_name)
+            # Handle nested structures (e.g., user_type contains type_identifier)
+            elif child.type == "user_type":
+                for subchild in child.children:
+                    if subchild.type == "type_identifier":
+                        parent_name = subchild.text.decode("utf-8", errors="replace")
+                        parent_types.append(parent_name)
+
+        return parent_types
