@@ -71,9 +71,18 @@ class SwiftParser(BaseLanguageParser):
             # Get docstring for this node if exists
             docstring = docstring_map.get(i, "")
 
-            # Classes
+            # Classes (but check if it's actually an extension)
             if child.type == "class_declaration":
-                symbols.extend(self._extract_class(child, source_bytes, docstring))
+                # Swift tree-sitter uses class_declaration for both classes and extensions
+                # Check the text to distinguish (may have access modifiers)
+                node_text = child.text.decode('utf-8', errors='replace').strip()
+                # Check for 'extension' keyword (with or without access modifier)
+                if ' extension ' in node_text or node_text.startswith('extension '):
+                    # This is actually an extension
+                    symbols.extend(self._extract_extension(child, source_bytes, docstring))
+                else:
+                    # This is a real class
+                    symbols.extend(self._extract_class(child, source_bytes, docstring))
 
             # Structs (treat as classes for now)
             elif child.type == "struct_declaration":
@@ -167,13 +176,18 @@ class SwiftParser(BaseLanguageParser):
 
         # Process all top-level declarations
         for child in root.children:
-            if child.type in [
-                "class_declaration",
-                "struct_declaration",
-                "protocol_declaration",
-            ]:
+            if child.type == "class_declaration":
+                # Check if it's actually an extension (may have access modifier)
+                node_text = child.text.decode('utf-8', errors='replace').strip()
+                if ' extension ' in node_text or node_text.startswith('extension '):
+                    # This is an extension
+                    inheritances.extend(self._extract_extension_inheritances(child, source_bytes))
+                else:
+                    # Regular class
+                    inheritances.extend(self._extract_type_inheritances(child, source_bytes))
+            elif child.type in ["struct_declaration", "protocol_declaration"]:
                 inheritances.extend(self._extract_type_inheritances(child, source_bytes))
-            # Extensions can add protocol conformance (Story 2.1)
+            # Fallback for actual extension_declaration nodes (if they exist)
             elif child.type == "extension_declaration":
                 inheritances.extend(self._extract_extension_inheritances(child, source_bytes))
 
@@ -744,7 +758,7 @@ class SwiftParser(BaseLanguageParser):
         # Get extended type name
         extended_type = None
         for child in node.children:
-            if child.type == "type_identifier" or child.type == "simple_identifier":
+            if child.type in ("type_identifier", "simple_identifier", "user_type"):
                 extended_type = child.text.decode("utf-8", errors="replace")
                 break
 
@@ -755,11 +769,15 @@ class SwiftParser(BaseLanguageParser):
         access_modifier = self._extract_access_modifier(node)
 
         # Check for protocol conformance in extension
-        # Look for type_inheritance_clause (protocol conformance)
+        # Look for inheritance_specifier (protocol conformance)
         protocols = []
         for child in node.children:
-            if child.type == "type_inheritance_clause":
-                # Extract protocol names
+            if child.type == "inheritance_specifier":
+                # Direct inheritance_specifier node (tree-sitter-swift structure)
+                protocol_name = child.text.decode("utf-8", errors="replace")
+                protocols.append(protocol_name)
+            elif child.type == "type_inheritance_clause":
+                # Fallback: nested structure
                 protocols.extend(self._extract_parent_types(child, source_bytes))
 
         # Build extension signature
@@ -783,7 +801,8 @@ class SwiftParser(BaseLanguageParser):
         # Extract methods and properties from extension body
         body_node = None
         for child in node.children:
-            if child.type == "extension_body":
+            # Extension uses class_body, not extension_body
+            if child.type == "class_body":
                 body_node = child
                 break
 
@@ -834,7 +853,7 @@ class SwiftParser(BaseLanguageParser):
         # Get extended type name
         extended_type = None
         for child in node.children:
-            if child.type == "type_identifier" or child.type == "simple_identifier":
+            if child.type in ("type_identifier", "simple_identifier", "user_type"):
                 extended_type = child.text.decode("utf-8", errors="replace")
                 break
 
@@ -843,8 +862,13 @@ class SwiftParser(BaseLanguageParser):
 
         # Check for protocol conformance
         for child in node.children:
-            if child.type == "type_inheritance_clause":
-                # Extract protocol names
+            if child.type == "inheritance_specifier":
+                # Direct inheritance_specifier node
+                protocol_name = child.text.decode("utf-8", errors="replace")
+                inheritance = Inheritance(child=extended_type, parent=protocol_name)
+                inheritances.append(inheritance)
+            elif child.type == "type_inheritance_clause":
+                # Fallback: nested structure
                 parent_types = self._extract_parent_types(child, source_bytes)
 
                 # Create Inheritance objects for each protocol
