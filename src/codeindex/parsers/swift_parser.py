@@ -199,11 +199,14 @@ class SwiftParser(BaseLanguageParser):
         if not class_name:
             return symbols
 
+        # Extract generic parameters (Story 1.5)
+        generics = self._extract_generic_parameters(node)
+
         # Create class symbol with docstring (Story 1.4)
         class_symbol = Symbol(
             name=class_name,
             kind="class",
-            signature=f"class {class_name}",
+            signature=f"class {class_name}{generics}",
             docstring=docstring,
             line_start=node.start_point[0] + 1,
             line_end=node.end_point[0] + 1,
@@ -247,11 +250,14 @@ class SwiftParser(BaseLanguageParser):
         if not struct_name:
             return symbols
 
+        # Extract generic parameters (Story 1.5)
+        generics = self._extract_generic_parameters(node)
+
         # Treat struct as class kind, with docstring (Story 1.4)
         struct_symbol = Symbol(
             name=struct_name,
             kind="class",
-            signature=f"struct {struct_name}",
+            signature=f"struct {struct_name}{generics}",
             docstring=docstring,
             line_start=node.start_point[0] + 1,
             line_end=node.end_point[0] + 1,
@@ -289,10 +295,13 @@ class SwiftParser(BaseLanguageParser):
 
         enum_name = name_node.text.decode("utf-8", errors="replace")
 
+        # Extract generic parameters (Story 1.5)
+        generics = self._extract_generic_parameters(node)
+
         enum_symbol = Symbol(
             name=enum_name,
             kind="class",  # Treat enum as class kind
-            signature=f"enum {enum_name}",
+            signature=f"enum {enum_name}{generics}",
             docstring=docstring,
             line_start=node.start_point[0] + 1,
             line_end=node.end_point[0] + 1,
@@ -662,3 +671,21 @@ class SwiftParser(BaseLanguageParser):
         # Join and clean up
         result = " ".join(cleaned_lines).strip()
         return result
+
+    def _extract_generic_parameters(self, node) -> str:
+        """Extract generic type parameters from a node (Story 1.5).
+
+        Args:
+            node: AST node that may contain type_parameters
+
+        Returns:
+            Generic parameters string (e.g., "<T>", "<K, V>", "<T: Comparable>")
+            or empty string if no generics
+        """
+        for child in node.children:
+            if child.type == "type_parameters":
+                # Extract the full generic parameter text
+                generic_text = child.text.decode("utf-8", errors="replace")
+                return generic_text
+
+        return ""
