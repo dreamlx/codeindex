@@ -51,9 +51,7 @@ class SwiftParser(BaseLanguageParser):
         super().__init__(parser)
 
     def extract_symbols(self, tree: Tree, source_bytes: bytes) -> list:
-        """Extract symbols from Swift source code.
-
-        POC implementation - extracts basic symbols only.
+        """Extract symbols from Swift source code (Story 1.4: with docstrings).
 
         Args:
             tree: Tree-sitter parse tree
@@ -65,27 +63,33 @@ class SwiftParser(BaseLanguageParser):
         symbols: list[Symbol] = []
         root = tree.root_node
 
+        # Build docstring map: node index -> docstring text (Story 1.4)
+        docstring_map = self._build_docstring_map(root, source_bytes)
+
         # Extract top-level declarations
-        for child in root.children:
+        for i, child in enumerate(root.children):
+            # Get docstring for this node if exists
+            docstring = docstring_map.get(i, "")
+
             # Classes
             if child.type == "class_declaration":
-                symbols.extend(self._extract_class(child, source_bytes))
+                symbols.extend(self._extract_class(child, source_bytes, docstring))
 
             # Structs (treat as classes for now)
             elif child.type == "struct_declaration":
-                symbols.extend(self._extract_struct(child, source_bytes))
+                symbols.extend(self._extract_struct(child, source_bytes, docstring))
 
             # Enums (treat as classes for now)
             elif child.type == "enum_declaration":
-                symbols.extend(self._extract_enum(child, source_bytes))
+                symbols.extend(self._extract_enum(child, source_bytes, docstring))
 
             # Protocols (Story 1.2)
             elif child.type == "protocol_declaration":
-                symbols.extend(self._extract_protocol(child, source_bytes))
+                symbols.extend(self._extract_protocol(child, source_bytes, docstring))
 
             # Top-level functions
             elif child.type == "function_declaration":
-                symbol = self._extract_function(child, source_bytes)
+                symbol = self._extract_function(child, source_bytes, docstring)
                 if symbol:
                     symbols.append(symbol)
 
@@ -170,12 +174,15 @@ class SwiftParser(BaseLanguageParser):
 
     # ==================== Private Helper Methods ====================
 
-    def _extract_class(self, node, source_bytes: bytes) -> list[Symbol]:
+    def _extract_class(
+        self, node, source_bytes: bytes, docstring: str = ""
+    ) -> list[Symbol]:
         """Extract class declaration and its members.
 
         Args:
             node: class_declaration node
             source_bytes: Source code bytes
+            docstring: Docstring for this class (Story 1.4)
 
         Returns:
             List of symbols (class + properties + methods)
@@ -192,12 +199,12 @@ class SwiftParser(BaseLanguageParser):
         if not class_name:
             return symbols
 
-        # Create class symbol (simplified signature)
+        # Create class symbol with docstring (Story 1.4)
         class_symbol = Symbol(
             name=class_name,
             kind="class",
             signature=f"class {class_name}",
-            docstring="",  # TODO: Extract docstrings in Phase 1
+            docstring=docstring,
             line_start=node.start_point[0] + 1,
             line_end=node.end_point[0] + 1,
         )
@@ -215,12 +222,15 @@ class SwiftParser(BaseLanguageParser):
 
         return symbols
 
-    def _extract_struct(self, node, source_bytes: bytes) -> list[Symbol]:
+    def _extract_struct(
+        self, node, source_bytes: bytes, docstring: str = ""
+    ) -> list[Symbol]:
         """Extract struct declaration and its members.
 
         Args:
             node: struct_declaration node
             source_bytes: Source code bytes
+            docstring: Docstring for this struct (Story 1.4)
 
         Returns:
             List of symbols (struct + properties + methods)
@@ -237,12 +247,12 @@ class SwiftParser(BaseLanguageParser):
         if not struct_name:
             return symbols
 
-        # Treat struct as class kind
+        # Treat struct as class kind, with docstring (Story 1.4)
         struct_symbol = Symbol(
             name=struct_name,
             kind="class",
             signature=f"struct {struct_name}",
-            docstring="",
+            docstring=docstring,
             line_start=node.start_point[0] + 1,
             line_end=node.end_point[0] + 1,
         )
@@ -260,12 +270,15 @@ class SwiftParser(BaseLanguageParser):
 
         return symbols
 
-    def _extract_enum(self, node, source_bytes: bytes) -> list[Symbol]:
+    def _extract_enum(
+        self, node, source_bytes: bytes, docstring: str = ""
+    ) -> list[Symbol]:
         """Extract enum declaration.
 
         Args:
             node: enum_declaration node
             source_bytes: Source code bytes
+            docstring: Docstring for this enum (Story 1.4)
 
         Returns:
             List with single enum symbol
@@ -280,18 +293,21 @@ class SwiftParser(BaseLanguageParser):
             name=enum_name,
             kind="class",  # Treat enum as class kind
             signature=f"enum {enum_name}",
-            docstring="",
+            docstring=docstring,
             line_start=node.start_point[0] + 1,
             line_end=node.end_point[0] + 1,
         )
         return [enum_symbol]
 
-    def _extract_function(self, node, source_bytes: bytes) -> Symbol | None:
+    def _extract_function(
+        self, node, source_bytes: bytes, docstring: str = ""
+    ) -> Symbol | None:
         """Extract top-level function declaration.
 
         Args:
             node: function_declaration node
             source_bytes: Source code bytes
+            docstring: Docstring for this function (Story 1.4)
 
         Returns:
             Function symbol or None
@@ -310,7 +326,7 @@ class SwiftParser(BaseLanguageParser):
             name=func_name,
             kind="function",
             signature=first_line,
-            docstring="",
+            docstring=docstring,
             line_start=node.start_point[0] + 1,
             line_end=node.end_point[0] + 1,
         )
@@ -466,12 +482,15 @@ class SwiftParser(BaseLanguageParser):
 
         return None
 
-    def _extract_protocol(self, node, source_bytes: bytes) -> list[Symbol]:
+    def _extract_protocol(
+        self, node, source_bytes: bytes, docstring: str = ""
+    ) -> list[Symbol]:
         """Extract protocol declaration and its members (Story 1.2).
 
         Args:
             node: protocol_declaration node
             source_bytes: Source code bytes
+            docstring: Docstring for this protocol (Story 1.4)
 
         Returns:
             List of symbols (protocol + methods + properties)
@@ -488,12 +507,12 @@ class SwiftParser(BaseLanguageParser):
         if not protocol_name:
             return symbols
 
-        # Create protocol symbol (treat as class kind)
+        # Create protocol symbol with docstring (Story 1.4)
         protocol_symbol = Symbol(
             name=protocol_name,
             kind="class",
             signature=f"protocol {protocol_name}",
-            docstring="",
+            docstring=docstring,
             line_start=node.start_point[0] + 1,
             line_end=node.end_point[0] + 1,
         )
@@ -576,3 +595,70 @@ class SwiftParser(BaseLanguageParser):
                 return child.text.decode("utf-8", errors="replace")
 
         return None
+
+    def _build_docstring_map(self, node, source_bytes: bytes) -> dict[int, str]:
+        """Build map of node indices to their preceding docstrings (Story 1.4).
+
+        Args:
+            node: Parent node to search (usually root)
+            source_bytes: Source code bytes
+
+        Returns:
+            Dictionary mapping child index to docstring text
+        """
+        docstring_map: dict[int, str] = {}
+        prev_comment = None
+
+        for i, child in enumerate(node.children):
+            # Check for both comment types (/// and /** */)
+            if child.type in ["comment", "multiline_comment"]:
+                # Check if it's a doc comment
+                comment_text = child.text.decode("utf-8", errors="replace")
+                if self._is_doc_comment(comment_text):
+                    prev_comment = self._clean_docstring(comment_text)
+            else:
+                # Non-comment node - associate prev_comment if exists
+                if prev_comment:
+                    docstring_map[i] = prev_comment
+                    prev_comment = None
+
+        return docstring_map
+
+    def _is_doc_comment(self, comment_text: str) -> bool:
+        """Check if comment is a documentation comment (Story 1.4).
+
+        Args:
+            comment_text: Raw comment text
+
+        Returns:
+            True if it's a doc comment (/// or /** */)
+        """
+        stripped = comment_text.strip()
+        return stripped.startswith("///") or stripped.startswith("/**")
+
+    def _clean_docstring(self, comment_text: str) -> str:
+        """Clean and format docstring text (Story 1.4).
+
+        Args:
+            comment_text: Raw comment text
+
+        Returns:
+            Cleaned docstring
+        """
+        lines = comment_text.split("\n")
+        cleaned_lines = []
+
+        for line in lines:
+            # Remove /// prefix
+            if "///" in line:
+                line = line.split("///", 1)[1]
+            # Remove /** and */ delimiters
+            line = line.replace("/**", "").replace("*/", "")
+            # Remove leading * in multi-line comments
+            line = line.lstrip(" *")
+
+            cleaned_lines.append(line.strip())
+
+        # Join and clean up
+        result = " ".join(cleaned_lines).strip()
+        return result
