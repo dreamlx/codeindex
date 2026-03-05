@@ -158,16 +158,19 @@ class SwiftParser(BaseLanguageParser):
             source_bytes: Source code bytes
 
         Returns:
-            List of symbols (class + methods)
+            List of symbols (class + properties + methods)
         """
         symbols: list[Symbol] = []
 
-        # Get class name
-        name_node = node.child_by_field_name("name")
-        if not name_node:
-            return symbols
+        # Get class name from type_identifier child
+        class_name = None
+        for child in node.children:
+            if child.type == "type_identifier":
+                class_name = child.text.decode("utf-8", errors="replace")
+                break
 
-        class_name = name_node.text.decode("utf-8", errors="replace")
+        if not class_name:
+            return symbols
 
         # Create class symbol (simplified signature)
         class_symbol = Symbol(
@@ -180,8 +183,13 @@ class SwiftParser(BaseLanguageParser):
         )
         symbols.append(class_symbol)
 
-        # Extract methods from class body
-        body_node = node.child_by_field_name("body")
+        # Extract methods and properties from class body
+        body_node = None
+        for child in node.children:
+            if child.type == "class_body":
+                body_node = child
+                break
+
         if body_node:
             symbols.extend(self._extract_class_methods(class_name, body_node, source_bytes))
 
@@ -195,15 +203,19 @@ class SwiftParser(BaseLanguageParser):
             source_bytes: Source code bytes
 
         Returns:
-            List of symbols (struct + methods)
+            List of symbols (struct + properties + methods)
         """
         symbols: list[Symbol] = []
 
-        name_node = node.child_by_field_name("name")
-        if not name_node:
-            return symbols
+        # Get struct name from type_identifier child
+        struct_name = None
+        for child in node.children:
+            if child.type == "type_identifier":
+                struct_name = child.text.decode("utf-8", errors="replace")
+                break
 
-        struct_name = name_node.text.decode("utf-8", errors="replace")
+        if not struct_name:
+            return symbols
 
         # Treat struct as class kind
         struct_symbol = Symbol(
@@ -216,8 +228,13 @@ class SwiftParser(BaseLanguageParser):
         )
         symbols.append(struct_symbol)
 
-        # Extract methods
-        body_node = node.child_by_field_name("body")
+        # Extract methods and properties from struct body
+        body_node = None
+        for child in node.children:
+            if child.type == "class_body":  # Swift uses class_body for struct too
+                body_node = child
+                break
+
         if body_node:
             symbols.extend(self._extract_class_methods(struct_name, body_node, source_bytes))
 
@@ -281,19 +298,20 @@ class SwiftParser(BaseLanguageParser):
     def _extract_class_methods(
         self, class_name: str, body_node, source_bytes: bytes
     ) -> list[Symbol]:
-        """Extract methods from class/struct body.
+        """Extract methods and properties from class/struct body.
 
         Args:
             class_name: Name of containing class/struct
-            body_node: Body node containing method declarations
+            body_node: Body node containing method and property declarations
             source_bytes: Source code bytes
 
         Returns:
-            List of method symbols
+            List of method and property symbols
         """
-        methods: list[Symbol] = []
+        symbols: list[Symbol] = []
 
         for child in body_node.children:
+            # Extract methods
             if child.type == "function_declaration":
                 name_node = child.child_by_field_name("name")
                 if not name_node:
@@ -313,6 +331,109 @@ class SwiftParser(BaseLanguageParser):
                     line_start=child.start_point[0] + 1,
                     line_end=child.end_point[0] + 1,
                 )
-                methods.append(method_symbol)
+                symbols.append(method_symbol)
 
-        return methods
+            # Extract properties (Story 1.1)
+            elif child.type == "property_declaration":
+                prop = self._extract_property(class_name, child, source_bytes)
+                if prop:
+                    symbols.append(prop)
+
+        return symbols
+
+    def _extract_property(
+        self, class_name: str, node, source_bytes: bytes
+    ) -> Symbol | None:
+        """Extract a single property declaration.
+
+        Handles:
+        - Stored properties (var/let)
+        - Computed properties (get/set)
+        - Property wrappers (@Published, @State, etc.)
+        - Lazy properties
+        - Static/class properties
+        - Visibility modifiers (private, public, etc.)
+
+        Args:
+            class_name: Name of containing class/struct
+            node: property_declaration node
+            source_bytes: Source code bytes
+
+        Returns:
+            Property symbol or None
+        """
+        # Extract property name from pattern binding
+        # Swift structure: property_declaration -> pattern_binding -> pattern -> identifier
+        prop_name = self._find_property_name(node)
+        if not prop_name:
+            return None
+
+        # Build signature from full property text
+        prop_text = node.text.decode("utf-8", errors="replace")
+        first_line = prop_text.split("\n")[0].strip()
+
+        # Extract attributes (@Published, @State, etc.)
+        attributes = []
+        for child in node.children:
+            if child.type == "attribute":
+                attr_text = child.text.decode("utf-8", errors="replace")
+                attributes.append(attr_text)
+
+        # Extract modifiers (static, lazy, private, etc.)
+        modifiers = []
+        for child in node.children:
+            if child.type == "modifiers":
+                for mod_child in child.children:
+                    if mod_child.type in [
+                        "property_modifier",
+                        "member_modifier",
+                        "visibility_modifier",
+                    ]:
+                        mod_text = mod_child.text.decode("utf-8", errors="replace")
+                        modifiers.append(mod_text)
+
+        # Build complete signature
+        signature_parts = []
+        if attributes:
+            signature_parts.extend(attributes)
+        if modifiers:
+            signature_parts.extend(modifiers)
+        signature_parts.append(first_line)
+
+        signature = " ".join(signature_parts)
+
+        return Symbol(
+            name=f"{class_name}.{prop_name}",
+            kind="property",
+            signature=signature,
+            docstring="",
+            line_start=node.start_point[0] + 1,
+            line_end=node.end_point[0] + 1,
+        )
+
+    def _find_property_name(self, node) -> str | None:
+        """Find property name from property_declaration node.
+
+        Swift AST structure:
+        property_declaration -> pattern -> simple_identifier
+
+        Args:
+            node: property_declaration node
+
+        Returns:
+            Property name or None
+        """
+        # Look for pattern -> simple_identifier (direct children)
+        for child in node.children:
+            if child.type == "pattern":
+                for identifier in child.children:
+                    if identifier.type == "simple_identifier":
+                        return identifier.text.decode("utf-8", errors="replace")
+
+        # Fallback: search recursively for any simple_identifier
+        for child in node.children:
+            for subchild in child.children:
+                if subchild.type == "simple_identifier":
+                    return subchild.text.decode("utf-8", errors="replace")
+
+        return None
