@@ -343,14 +343,13 @@ class SwiftParser(BaseLanguageParser):
 
         func_name = name_node.text.decode("utf-8", errors="replace")
 
-        # Simple signature extraction (first line of function)
-        func_text = node.text.decode("utf-8", errors="replace")
-        first_line = func_text.split("\n")[0].strip()
+        # Enhanced signature extraction (Story 2.2: include where clauses)
+        signature = self._extract_function_signature(node, source_bytes)
 
         return Symbol(
             name=func_name,
             kind="function",
-            signature=first_line,
+            signature=signature,
             docstring=docstring,
             line_start=node.start_point[0] + 1,
             line_end=node.end_point[0] + 1,
@@ -854,3 +853,27 @@ class SwiftParser(BaseLanguageParser):
                     inheritances.append(inheritance)
 
         return inheritances
+
+    def _extract_function_signature(self, node, source_bytes: bytes) -> str:
+        """Extract complete function signature including where clauses (Story 2.2).
+
+        Args:
+            node: function_declaration node
+            source_bytes: Source code bytes
+
+        Returns:
+            Complete function signature string
+        """
+        # Start with basic signature (function declaration up to body)
+        func_text = node.text.decode("utf-8", errors="replace")
+
+        # Find the opening brace of function body
+        brace_index = func_text.find("{")
+        if brace_index != -1:
+            # Extract signature up to the opening brace
+            signature = func_text[:brace_index].strip()
+        else:
+            # No body (e.g., protocol method), use first line
+            signature = func_text.split("\n")[0].strip()
+
+        return signature
