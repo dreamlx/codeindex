@@ -150,8 +150,8 @@ class TestSwiftProtocolInheritance:
         # Should track inheritance relationship
         assert len(result.inheritances) >= 1
         inheritance = result.inheritances[0]
-        assert "FastDrivable" in inheritance.child_name
-        assert "Drivable" in inheritance.parent_name
+        assert "FastDrivable" in inheritance.child
+        assert "Drivable" in inheritance.parent
 
     def test_protocol_multiple_inheritance(self, tmp_path):
         """Should handle protocol inheriting multiple protocols."""
@@ -206,9 +206,9 @@ class TestSwiftClassProtocolConformance:
 
         # Should track conformance
         assert len(result.inheritances) >= 1
-        conformance = [i for i in result.inheritances if "Car" in i.child_name]
+        conformance = [i for i in result.inheritances if "Car" in i.child]
         assert len(conformance) >= 1
-        assert "Drivable" in conformance[0].parent_name
+        assert "Drivable" in conformance[0].parent
 
     def test_struct_conforms_to_protocol(self, tmp_path):
         """Should track struct conforming to protocol."""
@@ -233,7 +233,7 @@ class TestSwiftClassProtocolConformance:
         assert result.error is None
 
         # Should track conformance
-        conformances = [i for i in result.inheritances if "User" in i.child_name]
+        conformances = [i for i in result.inheritances if "User" in i.child]
         assert len(conformances) >= 1
 
     def test_class_multiple_protocol_conformance(self, tmp_path):
@@ -256,7 +256,7 @@ class TestSwiftClassProtocolConformance:
         assert result.error is None
 
         # Should track multiple conformances
-        conformances = [i for i in result.inheritances if "MyClass" in i.child_name]
+        conformances = [i for i in result.inheritances if "MyClass" in i.child]
         assert len(conformances) >= 2
 
     def test_class_inheritance_and_protocol(self, tmp_path):
@@ -279,12 +279,12 @@ class TestSwiftClassProtocolConformance:
         assert result.error is None
 
         # Should track both relationships
-        bird_inherits = [i for i in result.inheritances if "Bird" in i.child_name]
+        bird_inherits = [i for i in result.inheritances if "Bird" in i.child]
         assert len(bird_inherits) >= 2
 
-        parent_names = {i.parent_name for i in bird_inherits}
-        assert "Animal" in parent_names
-        assert "Flyable" in parent_names
+        parents = {i.parent for i in bird_inherits}
+        assert "Animal" in parents
+        assert "Flyable" in parents
 
 
 class TestSwiftProtocolEdgeCases:

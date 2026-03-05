@@ -331,9 +331,17 @@ class SwiftParser(BaseLanguageParser):
         symbols: list[Symbol] = []
 
         for child in body_node.children:
-            # Extract methods
-            if child.type == "function_declaration":
+            # Extract methods (both regular and protocol methods)
+            if child.type in ["function_declaration", "protocol_function_declaration"]:
+                # Try field-based extraction first
                 name_node = child.child_by_field_name("name")
+                if not name_node:
+                    # Fallback: find simple_identifier for protocol methods
+                    for subchild in child.children:
+                        if subchild.type == "simple_identifier":
+                            name_node = subchild
+                            break
+
                 if not name_node:
                     continue
 
@@ -353,7 +361,7 @@ class SwiftParser(BaseLanguageParser):
                 )
                 symbols.append(method_symbol)
 
-            # Extract properties (Story 1.1)
+            # Extract properties (Story 1.1, also works for protocols)
             elif child.type == "property_declaration":
                 prop = self._extract_property(class_name, child, source_bytes)
                 if prop:
@@ -529,43 +537,42 @@ class SwiftParser(BaseLanguageParser):
         if not type_name:
             return inheritances
 
-        # Find type_inheritance_clause (e.g., ": ParentClass, Protocol1, Protocol2")
+        # Find inheritance_specifier nodes (Swift AST uses this, not type_inheritance_clause)
         for child in node.children:
-            if child.type == "type_inheritance_clause":
-                # Extract all parent types
-                parent_types = self._extract_parent_types(child, source_bytes)
-                for parent_type in parent_types:
+            if child.type == "inheritance_specifier":
+                # Extract parent type from this specifier
+                parent_type = self._extract_parent_type_from_specifier(
+                    child, source_bytes
+                )
+                if parent_type:
                     inheritance = Inheritance(
-                        child_name=type_name,
-                        parent_name=parent_type,
-                        inheritance_type="implementation",  # Swift uses inheritance for both
+                        child=type_name,
+                        parent=parent_type,
                     )
                     inheritances.append(inheritance)
 
         return inheritances
 
-    def _extract_parent_types(self, node, source_bytes: bytes) -> list[str]:
-        """Extract parent type names from type_inheritance_clause node.
+    def _extract_parent_type_from_specifier(
+        self, node, source_bytes: bytes
+    ) -> str | None:
+        """Extract parent type name from inheritance_specifier node.
 
         Args:
-            node: type_inheritance_clause node
+            node: inheritance_specifier node
             source_bytes: Source code bytes
 
         Returns:
-            List of parent type names
+            Parent type name or None
         """
-        parent_types: list[str] = []
-
-        # Look for type_identifier nodes in inheritance clause
+        # Look for type_identifier in user_type structure
         for child in node.children:
-            if child.type == "type_identifier":
-                parent_name = child.text.decode("utf-8", errors="replace")
-                parent_types.append(parent_name)
-            # Handle nested structures (e.g., user_type contains type_identifier)
-            elif child.type == "user_type":
+            if child.type == "user_type":
                 for subchild in child.children:
                     if subchild.type == "type_identifier":
-                        parent_name = subchild.text.decode("utf-8", errors="replace")
-                        parent_types.append(parent_name)
+                        return subchild.text.decode("utf-8", errors="replace")
+            # Direct type_identifier
+            elif child.type == "type_identifier":
+                return child.text.decode("utf-8", errors="replace")
 
-        return parent_types
+        return None
