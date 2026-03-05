@@ -93,6 +93,10 @@ class SwiftParser(BaseLanguageParser):
                 if symbol:
                     symbols.append(symbol)
 
+            # Extensions (Story 2.1)
+            elif child.type == "extension_declaration":
+                symbols.extend(self._extract_extension(child, source_bytes, docstring))
+
         return symbols
 
     def extract_imports(self, tree: Tree, source_bytes: bytes) -> list:
@@ -169,6 +173,9 @@ class SwiftParser(BaseLanguageParser):
                 "protocol_declaration",
             ]:
                 inheritances.extend(self._extract_type_inheritances(child, source_bytes))
+            # Extensions can add protocol conformance (Story 2.1)
+            elif child.type == "extension_declaration":
+                inheritances.extend(self._extract_extension_inheritances(child, source_bytes))
 
         return inheritances
 
@@ -719,3 +726,131 @@ class SwiftParser(BaseLanguageParser):
                 return modifier_text + " "
 
         return ""
+
+    def _extract_extension(
+        self, node, source_bytes: bytes, docstring: str = ""
+    ) -> list[Symbol]:
+        """Extract extension declaration and its members (Story 2.1).
+
+        Args:
+            node: extension_declaration node
+            source_bytes: Source code bytes
+            docstring: Docstring for this extension
+
+        Returns:
+            List of symbols (extension + methods + properties)
+        """
+        symbols: list[Symbol] = []
+
+        # Get extended type name
+        extended_type = None
+        for child in node.children:
+            if child.type == "type_identifier" or child.type == "simple_identifier":
+                extended_type = child.text.decode("utf-8", errors="replace")
+                break
+
+        if not extended_type:
+            return symbols
+
+        # Extract access modifier
+        access_modifier = self._extract_access_modifier(node)
+
+        # Check for protocol conformance in extension
+        # Look for type_inheritance_clause (protocol conformance)
+        protocols = []
+        for child in node.children:
+            if child.type == "type_inheritance_clause":
+                # Extract protocol names
+                protocols.extend(self._extract_parent_types(child, source_bytes))
+
+        # Build extension signature
+        if protocols:
+            protocol_list = ", ".join(protocols)
+            signature = f"{access_modifier}extension {extended_type}: {protocol_list}"
+        else:
+            signature = f"{access_modifier}extension {extended_type}"
+
+        # Create extension symbol
+        extension_symbol = Symbol(
+            name=f"{extended_type}+Extension",
+            kind="class",  # Treat extension as class kind
+            signature=signature,
+            docstring=docstring,
+            line_start=node.start_point[0] + 1,
+            line_end=node.end_point[0] + 1,
+        )
+        symbols.append(extension_symbol)
+
+        # Extract methods and properties from extension body
+        body_node = None
+        for child in node.children:
+            if child.type == "extension_body":
+                body_node = child
+                break
+
+        if body_node:
+            # Use existing method to extract members
+            # Extensions are like classes, use same extraction logic
+            symbols.extend(
+                self._extract_class_methods(extended_type, body_node, source_bytes)
+            )
+
+        return symbols
+
+    def _extract_parent_types(self, node, source_bytes: bytes) -> list[str]:
+        """Extract parent type names from type_inheritance_clause.
+
+        Args:
+            node: type_inheritance_clause node
+            source_bytes: Source code bytes
+
+        Returns:
+            List of parent type names
+        """
+        parent_types = []
+
+        for child in node.children:
+            if child.type == "type_identifier":
+                parent_type = child.text.decode("utf-8", errors="replace")
+                parent_types.append(parent_type)
+
+        return parent_types
+
+    def _extract_extension_inheritances(self, node, source_bytes: bytes) -> list:
+        """Extract inheritance relationships from extension declarations (Story 2.1).
+
+        Extensions can add protocol conformance to existing types.
+
+        Args:
+            node: extension_declaration node
+            source_bytes: Source code bytes
+
+        Returns:
+            List of Inheritance objects
+        """
+        from ..parser import Inheritance
+
+        inheritances: list[Inheritance] = []
+
+        # Get extended type name
+        extended_type = None
+        for child in node.children:
+            if child.type == "type_identifier" or child.type == "simple_identifier":
+                extended_type = child.text.decode("utf-8", errors="replace")
+                break
+
+        if not extended_type:
+            return inheritances
+
+        # Check for protocol conformance
+        for child in node.children:
+            if child.type == "type_inheritance_clause":
+                # Extract protocol names
+                parent_types = self._extract_parent_types(child, source_bytes)
+
+                # Create Inheritance objects for each protocol
+                for parent_type in parent_types:
+                    inheritance = Inheritance(child=extended_type, parent=parent_type)
+                    inheritances.append(inheritance)
+
+        return inheritances
