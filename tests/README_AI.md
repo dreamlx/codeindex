@@ -228,6 +228,13 @@ Changed files:
 Changed files:
 - `test_parser_swift_protocols.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_cli_debt_scan.py`
+- `test_test_smells.py`
+
 ---
 
 ## Recent Changes
@@ -236,4 +243,3 @@ Changed files:
 
 Changed files:
 - `test_cli_debt_scan.py`
-- `test_test_smells.py`

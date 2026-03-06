@@ -190,9 +190,6 @@ Changed files:
 Changed files:
 - `tech_debt.py`
 
----
-
-## Recent Changes
 
 **Commit ``**: 
 
@@ -201,3 +198,13 @@ Changed files:
 - `cli_tech_debt.py`
 - `tech_debt_formatters.py`
 - `test_smells.py`
+
+---
+
+## Recent Changes
+
+**Commit ``**: 
+
+Changed files:
+- `cli_tech_debt.py`
+- `tech_debt_formatters.py`
