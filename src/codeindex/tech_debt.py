@@ -250,7 +250,20 @@ class TechDebtDetector:
     MASSIVE_VIEW_CONTROLLER_METHODS = 20  # CRITICAL
 
     MASSIVE_SYMBOL_COUNT = 100  # Total symbols
-    HIGH_NOISE_RATIO = 0.5  # 50% filter ratio
+    HIGH_NOISE_RATIO = 0.5  # 50% filter ratio (default)
+
+    # Language-specific noise ratio thresholds
+    # Objective-C categories often have simple utility methods, need higher threshold
+    NOISE_RATIO_THRESHOLDS = {
+        "python": 0.5,      # 50% - standard threshold
+        "php": 0.5,         # 50% - standard threshold
+        "javascript": 0.5,  # 50% - standard threshold
+        "typescript": 0.5,  # 50% - standard threshold
+        "java": 0.5,        # 50% - standard threshold
+        "swift": 0.6,       # 60% - Swift extensions are similar to categories
+        "objc": 0.7,        # 70% - Objective-C categories are intentionally simple
+        "default": 0.5,     # 50% - fallback for unknown languages
+    }
 
     # Language-specific file size thresholds
     FILE_SIZE_THRESHOLDS = {
@@ -287,6 +300,41 @@ class TechDebtDetector:
         if ext in self._VERBOSE_EXTENSIONS:
             return self.FILE_SIZE_THRESHOLDS["verbose"]
         return self.FILE_SIZE_THRESHOLDS["compact"]
+
+    def _get_noise_ratio_threshold(self, file_path: Path, file_type: str | None = None) -> float:
+        """Get language-aware noise ratio threshold.
+
+        Objective-C categories and Swift extensions often contain simple utility
+        methods that would be flagged as "noise" under strict thresholds. This
+        method returns language-specific thresholds to reduce false positives.
+
+        Args:
+            file_path: Path to the file being analyzed
+            file_type: Optional file type override (e.g., 'objc', 'swift')
+
+        Returns:
+            Noise ratio threshold (0.0-1.0)
+        """
+        # Use provided file_type or infer from extension
+        if file_type:
+            return self.NOISE_RATIO_THRESHOLDS.get(file_type, self.NOISE_RATIO_THRESHOLDS["default"])
+
+        # Infer from file extension
+        ext = file_path.suffix.lower()
+        ext_to_type = {
+            ".py": "python",
+            ".php": "php",
+            ".js": "javascript",
+            ".ts": "typescript",
+            ".tsx": "typescript",
+            ".java": "java",
+            ".swift": "swift",
+            ".h": "objc",
+            ".m": "objc",
+        }
+
+        file_type = ext_to_type.get(ext, "default")
+        return self.NOISE_RATIO_THRESHOLDS.get(file_type, self.NOISE_RATIO_THRESHOLDS["default"])
 
     def analyze_file(
         self, parse_result: ParseResult, scorer: SymbolImportanceScorer
@@ -719,8 +767,11 @@ class TechDebtDetector:
             parse_result.symbols, filtered_symbols, file_type=file_type
         )
 
-        # Detect high noise ratio
-        if filter_ratio > self.HIGH_NOISE_RATIO:
+        # Get language-specific noise ratio threshold
+        noise_threshold = self._get_noise_ratio_threshold(parse_result.path, file_type)
+
+        # Detect high noise ratio (using language-specific threshold)
+        if filter_ratio > noise_threshold:
             noise_description = self._format_noise_description(noise_breakdown)
             issues.append(
                 DebtIssue(
@@ -728,7 +779,7 @@ class TechDebtDetector:
                     category="low_quality_symbols",
                     file_path=parse_result.path,
                     metric_value=filter_ratio,
-                    threshold=self.HIGH_NOISE_RATIO,
+                    threshold=noise_threshold,  # Use dynamic threshold
                     description=f"High symbol noise ratio: {filter_ratio*100:.1f}% "
                     f"({total_symbols - filtered_count}/{total_symbols} symbols filtered). "
                     f"{noise_description}",
