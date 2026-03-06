@@ -204,6 +204,12 @@ Changed files:
 - `test_objc_association_utils.py`
 - `test_parser_objc_association.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_objc_categories.py`
+
 ---
 
 ## Recent Changes
@@ -211,4 +217,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_parser_objc_categories.py`
+- `test_parser_objc_bridging.py`
