@@ -58,6 +58,10 @@ class ObjCParser(BaseLanguageParser):
             elif child.type == "class_implementation":
                 symbols.extend(self._extract_implementation(child, source_bytes))
 
+            # @protocol declarations (Story 3.3)
+            elif child.type == "protocol_declaration":
+                symbols.extend(self._extract_protocol(child, source_bytes))
+
         return symbols
 
     def _extract_interface(self, node, source_bytes: bytes) -> list[Symbol]:
@@ -434,6 +438,8 @@ class ObjCParser(BaseLanguageParser):
         for child in root.children:
             if child.type == "class_interface":
                 inheritances.extend(self._extract_interface_inheritance(child, source_bytes))
+            elif child.type == "protocol_declaration":
+                inheritances.extend(self._extract_protocol_inheritance(child, source_bytes))
 
         return inheritances
 
@@ -484,6 +490,112 @@ class ObjCParser(BaseLanguageParser):
                                     Inheritance(child=class_name, parent=protocol)
                                 )
                                 break
+
+        return inheritances
+
+    def _extract_protocol(self, node, source_bytes: bytes) -> list[Symbol]:
+        """Extract symbols from @protocol declaration (Story 3.3).
+
+        Args:
+            node: protocol_declaration node
+            source_bytes: Source code bytes
+
+        Returns:
+            List of symbols (protocol + methods + properties)
+        """
+        symbols = []
+
+        # Get protocol name
+        protocol_name = None
+        for child in node.children:
+            if child.type == "identifier":
+                protocol_name = get_node_text(child, source_bytes)
+                break
+
+        if not protocol_name:
+            return symbols
+
+        # Check for protocol inheritance (protocol_reference_list)
+        parent_protocols = []
+        for child in node.children:
+            if child.type == "protocol_reference_list":
+                for subchild in child.children:
+                    if subchild.type == "identifier":
+                        parent_protocols.append(get_node_text(subchild, source_bytes))
+
+        # Build protocol signature
+        signature = f"@protocol {protocol_name}"
+        if parent_protocols:
+            signature += " <" + ", ".join(parent_protocols) + ">"
+
+        # Add protocol symbol (using "interface" kind for compatibility)
+        symbols.append(
+            Symbol(
+                name=protocol_name,
+                kind="interface",  # Protocols are like interfaces
+                signature=signature,
+                docstring="",
+                line_start=node.start_point[0] + 1,
+                line_end=node.end_point[0] + 1,
+            )
+        )
+
+        # Extract methods and properties from protocol
+        for child in node.children:
+            if child.type == "method_declaration":
+                method_sym = self._extract_method(child, source_bytes, protocol_name)
+                if method_sym:
+                    symbols.append(method_sym)
+            elif child.type == "property_declaration":
+                prop_sym = self._extract_property(child, source_bytes, protocol_name)
+                if prop_sym:
+                    symbols.append(prop_sym)
+            elif child.type == "qualified_protocol_interface_declaration":
+                # Handle @required/@optional sections
+                for subchild in child.children:
+                    if subchild.type == "method_declaration":
+                        method_sym = self._extract_method(subchild, source_bytes, protocol_name)
+                        if method_sym:
+                            symbols.append(method_sym)
+                    elif subchild.type == "property_declaration":
+                        prop_sym = self._extract_property(subchild, source_bytes, protocol_name)
+                        if prop_sym:
+                            symbols.append(prop_sym)
+
+        return symbols
+
+    def _extract_protocol_inheritance(self, node, source_bytes: bytes) -> list[Inheritance]:
+        """Extract inheritance from @protocol (Story 3.3).
+
+        Args:
+            node: protocol_declaration node
+            source_bytes: Source code bytes
+
+        Returns:
+            List of Inheritance objects
+        """
+        inheritances = []
+
+        # Get protocol name (first identifier)
+        protocol_name = None
+        for child in node.children:
+            if child.type == "identifier":
+                protocol_name = get_node_text(child, source_bytes)
+                break
+
+        if not protocol_name:
+            return inheritances
+
+        # Extract parent protocols from protocol_reference_list
+        for child in node.children:
+            if child.type == "protocol_reference_list":
+                # Extract all identifiers in the list
+                for subchild in child.children:
+                    if subchild.type == "identifier":
+                        parent_protocol = get_node_text(subchild, source_bytes)
+                        inheritances.append(
+                            Inheritance(child=protocol_name, parent=parent_protocol)
+                        )
 
         return inheritances
 
