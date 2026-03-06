@@ -70,16 +70,24 @@ def _analyze_files(
     detector: TechDebtDetector,
     reporter: TechDebtReporter,
     show_progress: bool,
-) -> None:
-    """Analyze files and add results to reporter.
+) -> list[dict]:
+    """Analyze files for technical debt and test smells.
 
     Args:
         files: List of source files to analyze
         detector: Technical debt detector instance
         reporter: Reporter to collect results
         show_progress: Whether to show progress messages
+
+    Returns:
+        List of test smell dictionaries
     """
     from .parser import parse_file
+    from .test_smells import TestSmellDetector
+
+    # Initialize test smell detector
+    test_smell_detector = TestSmellDetector()
+    test_smells_data = []
 
     for file_path in files:
         try:
@@ -136,10 +144,30 @@ def _analyze_files(
                 symbol_analysis=symbol_analysis,
             )
 
+            # Detect test smells (new in v0.22.0)
+            test_smells = test_smell_detector.analyze_test_file(file_path, parse_result)
+            if test_smells:
+                for smell in test_smells:
+                    # Use absolute path if relative_to fails
+                    try:
+                        rel_path = smell.file_path.relative_to(Path.cwd())
+                    except ValueError:
+                        rel_path = smell.file_path
+
+                    test_smells_data.append({
+                        "path": str(rel_path),
+                        "type": smell.type.value,
+                        "details": smell.details,
+                        "line_number": smell.line_number,
+                        "metric_value": smell.metric_value,
+                    })
+
         except Exception as e:
             if show_progress:
                 console.print(f"[red]✗ Error analyzing {file_path.name}: {e}[/red]")
             continue
+
+    return test_smells_data
 
 
 def _format_and_output(
@@ -147,6 +175,7 @@ def _format_and_output(
     format: str,
     output: Path | None,
     quiet: bool,
+    test_smells: list[dict] | None = None,
 ) -> None:
     """Format and output the technical debt report.
 
@@ -155,6 +184,7 @@ def _format_and_output(
         format: Output format (console, markdown, or json)
         output: Optional output file path
         quiet: Whether to suppress status messages
+        test_smells: Optional list of test smell dictionaries (new in v0.22.0)
     """
     # Select formatter
     if format == "console":
@@ -164,7 +194,11 @@ def _format_and_output(
     else:  # json
         formatter = JSONFormatter()
 
-    formatted_output = formatter.format(report)
+    # Pass test_smells to formatter (backward compatible)
+    if format == "json" and test_smells is not None:
+        formatted_output = formatter.format(report, test_smells=test_smells)
+    else:
+        formatted_output = formatter.format(report)
 
     # Write output
     if output:
@@ -203,7 +237,7 @@ def _format_and_output(
     help="Minimal output",
 )
 def tech_debt(path: Path, format: str, output: Path | None, recursive: bool, quiet: bool):
-    """Analyze technical debt in a directory.
+    """Analyze technical debt and code quality in a directory.
 
     Scans source files for technical debt issues including:
     - Super large files (>5000 lines)
@@ -211,6 +245,7 @@ def tech_debt(path: Path, format: str, output: Path | None, recursive: bool, qui
     - God Classes (>50 methods)
     - Massive symbol count (>100 symbols)
     - High noise ratio (>50% low-quality symbols)
+    - Test smells (skipped tests, giant test files) [v0.22.0+]
 
     Results can be output in console, markdown, or JSON format.
     """
@@ -233,7 +268,7 @@ def tech_debt(path: Path, format: str, output: Path | None, recursive: bool, qui
         # Handle empty directory
         if not files_to_analyze:
             report = reporter.generate_report()
-            _format_and_output(report, format, output, quiet)
+            _format_and_output(report, format, output, quiet, test_smells=[])
             return
 
         # Only show progress if not JSON to stdout (JSON needs clean output)
@@ -242,12 +277,12 @@ def tech_debt(path: Path, format: str, output: Path | None, recursive: bool, qui
         if show_progress:
             console.print(f"[dim]Analyzing {len(files_to_analyze)} source files...[/dim]")
 
-        # Parse and analyze each file
-        _analyze_files(files_to_analyze, detector, reporter, show_progress)
+        # Parse and analyze each file (now returns test_smells)
+        test_smells = _analyze_files(files_to_analyze, detector, reporter, show_progress)
 
         # Generate and output report
         report = reporter.generate_report()
-        _format_and_output(report, format, output, quiet)
+        _format_and_output(report, format, output, quiet, test_smells=test_smells)
 
     except Exception as e:
         console.print(f"[red]✗ Error: {e}[/red]")

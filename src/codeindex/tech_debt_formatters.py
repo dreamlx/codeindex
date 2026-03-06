@@ -191,16 +191,69 @@ class MarkdownFormatter(ReportFormatter):
 class JSONFormatter(ReportFormatter):
     """Formatter for JSON output."""
 
-    def format(self, report: TechDebtReport) -> str:
+    def format(self, report: TechDebtReport, test_smells: list[dict] | None = None) -> str:
         """Format report as JSON.
 
         Args:
             report: TechDebtReport to format
+            test_smells: Optional list of test smell dictionaries (v0.22.0+)
 
         Returns:
             Formatted JSON string
         """
+        from datetime import datetime
+        from pathlib import Path
+
+        # Extract giant files and functions for LoomGraph compatibility
+        giant_files = []
+        giant_functions = []
+        maintainability_scores = []
+
+        for fr in report.file_reports:
+            for issue in fr.debt_analysis.issues:
+                # Use absolute path if relative_to fails
+                try:
+                    rel_path = issue.file_path.relative_to(Path.cwd())
+                except ValueError:
+                    rel_path = issue.file_path
+
+                if issue.category in ("super_large_file", "large_file"):
+                    giant_files.append({
+                        "path": str(rel_path),
+                        "lines": int(issue.metric_value),
+                        "severity": "critical" if issue.category == "super_large_file" else "high",
+                    })
+                elif issue.category == "long_method":
+                    # Extract function name from description
+                    try:
+                        function_name = issue.description.split("'")[1]
+                    except IndexError:
+                        function_name = "unknown"
+
+                    giant_functions.append({
+                        "path": str(rel_path),
+                        "function_name": function_name,
+                        "lines": int(issue.metric_value),
+                    })
+
+            # Collect maintainability scores for files with issues
+            score = fr.debt_analysis.quality_score / 10
+            if score < 10:
+                try:
+                    rel_path = fr.file_path.relative_to(Path.cwd())
+                except ValueError:
+                    rel_path = fr.file_path
+
+                maintainability_scores.append({
+                    "path": str(rel_path),
+                    "score": round(score, 1),
+                    "breakdown": {
+                        "quality_score_based": round(score, 1),
+                    },
+                })
+
         data = {
+            # Backward compatible fields (existing integrations)
             "total_files": report.total_files,
             "total_issues": report.total_issues,
             "critical_issues": report.critical_issues,
@@ -208,6 +261,21 @@ class JSONFormatter(ReportFormatter):
             "medium_issues": report.medium_issues,
             "low_issues": report.low_issues,
             "average_quality_score": report.average_quality_score,
+
+            # Enhanced fields (v0.22.0+, LoomGraph integration)
+            "timestamp": datetime.now().isoformat() + "Z",
+            "summary": {
+                "total_files": report.total_files,
+                "giant_files": len(giant_files),
+                "giant_functions": len(giant_functions),
+                "test_smells": len(test_smells) if test_smells else 0,
+                "avg_maintainability": round(report.average_quality_score / 10, 1),
+            },
+            "giant_files": giant_files,
+            "giant_functions": giant_functions,
+            "maintainability_scores": maintainability_scores,
+
+            # Detailed file reports (existing format)
             "file_reports": [
                 {
                     "file_path": str(file_report.file_path),
@@ -229,6 +297,9 @@ class JSONFormatter(ReportFormatter):
                 }
                 for file_report in report.file_reports
             ],
+
+            # Test smells (v0.22.0+)
+            "test_smells": test_smells or [],
         }
 
         return json.dumps(data, indent=2)
