@@ -210,6 +210,12 @@ Changed files:
 Changed files:
 - `test_parser_objc_categories.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_objc_bridging.py`
+
 ---
 
 ## Recent Changes
@@ -217,4 +223,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_parser_objc_bridging.py`
+- `test_integration_swift_objc.py`
