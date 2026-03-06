@@ -216,6 +216,12 @@ Changed files:
 Changed files:
 - `test_parser_objc_bridging.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_integration_swift_objc.py`
+
 ---
 
 ## Recent Changes
@@ -223,4 +229,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_integration_swift_objc.py`
+- `test_parser_swift_protocols.py`
