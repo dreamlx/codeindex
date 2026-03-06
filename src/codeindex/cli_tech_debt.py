@@ -34,22 +34,29 @@ def _find_source_files(
         languages = config.languages
 
     # Map languages to file extensions
+    # Some languages have multiple extensions (e.g., objc: .h and .m)
     extensions = {
-        'python': '*.py',
-        'php': '*.php',
-        'javascript': '*.js',
-        'typescript': '*.ts',
-        'java': '*.java',
-        'go': '*.go',
-        'rust': '*.rs',
-        'cpp': '*.cpp',
-        'c': '*.c',
+        'python': ['*.py'],
+        'php': ['*.php'],
+        'javascript': ['*.js'],
+        'typescript': ['*.ts'],
+        'java': ['*.java'],
+        'go': ['*.go'],
+        'rust': ['*.rs'],
+        'cpp': ['*.cpp'],
+        'c': ['*.c'],
+        'swift': ['*.swift'],
+        'objc': ['*.h', '*.m'],  # Objective-C has header and implementation files
     }
 
     files = []
     for lang in languages:
-        ext = extensions.get(lang)
-        if ext:
+        ext_patterns = extensions.get(lang, [])
+        # Handle both single pattern (old format) and list of patterns
+        if isinstance(ext_patterns, str):
+            ext_patterns = [ext_patterns]
+
+        for ext in ext_patterns:
             if recursive:
                 files.extend([f for f in path.rglob(ext) if f.is_file()])
             else:
@@ -96,6 +103,10 @@ def _analyze_files(
                 file_type = 'javascript'
             elif file_ext == '.ts':
                 file_type = 'typescript'
+            elif file_ext in ('.h', '.m'):
+                file_type = 'objc'
+            elif file_ext == '.swift':
+                file_type = 'swift'
             else:
                 file_type = file_ext[1:] if file_ext else 'unknown'
 
