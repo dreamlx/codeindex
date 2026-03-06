@@ -5,12 +5,12 @@ Each language has its own parser module that implements the BaseLanguageParser i
 """
 
 from .base import BaseLanguageParser
-from .java_parser import JavaParser
-from .objc_parser import ObjCParser
-from .php_parser import PhpParser
-from .python_parser import PythonParser
-from .swift_parser import SwiftParser
-from .typescript_parser import TypeScriptParser
+from .java import JavaParser
+from .objc import ObjCParser
+from .php import PhpParser
+from .python import PythonParser
+from .swift import SwiftParser
+from .typescript import TypeScriptParser
 from .utils import count_arguments, get_node_text
 
 __all__ = [
