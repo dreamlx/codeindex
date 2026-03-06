@@ -176,6 +176,7 @@ def _format_and_output(
     output: Path | None,
     quiet: bool,
     test_smells: list[dict] | None = None,
+    target_path: Path | None = None,
 ) -> None:
     """Format and output the technical debt report.
 
@@ -185,6 +186,7 @@ def _format_and_output(
         output: Optional output file path
         quiet: Whether to suppress status messages
         test_smells: Optional list of test smell dictionaries (new in v0.22.0)
+        target_path: Target path that was analyzed (new in v0.22.1)
     """
     # Select formatter
     if format == "console":
@@ -194,9 +196,13 @@ def _format_and_output(
     else:  # json
         formatter = JSONFormatter()
 
-    # Pass test_smells to formatter (backward compatible)
-    if format == "json" and test_smells is not None:
-        formatted_output = formatter.format(report, test_smells=test_smells)
+    # Pass test_smells and target_path to formatter (backward compatible)
+    if format == "json":
+        formatted_output = formatter.format(
+            report,
+            test_smells=test_smells,
+            target_path=str(target_path.absolute()) if target_path else None,
+        )
     else:
         formatted_output = formatter.format(report)
 
@@ -268,7 +274,7 @@ def tech_debt(path: Path, format: str, output: Path | None, recursive: bool, qui
         # Handle empty directory
         if not files_to_analyze:
             report = reporter.generate_report()
-            _format_and_output(report, format, output, quiet, test_smells=[])
+            _format_and_output(report, format, output, quiet, test_smells=[], target_path=path)
             return
 
         # Only show progress if not JSON to stdout (JSON needs clean output)
@@ -282,7 +288,9 @@ def tech_debt(path: Path, format: str, output: Path | None, recursive: bool, qui
 
         # Generate and output report
         report = reporter.generate_report()
-        _format_and_output(report, format, output, quiet, test_smells=test_smells)
+        _format_and_output(
+            report, format, output, quiet, test_smells=test_smells, target_path=path
+        )
 
     except Exception as e:
         console.print(f"[red]✗ Error: {e}[/red]")

@@ -191,12 +191,18 @@ class MarkdownFormatter(ReportFormatter):
 class JSONFormatter(ReportFormatter):
     """Formatter for JSON output."""
 
-    def format(self, report: TechDebtReport, test_smells: list[dict] | None = None) -> str:
+    def format(
+        self,
+        report: TechDebtReport,
+        test_smells: list[dict] | None = None,
+        target_path: str | None = None,
+    ) -> str:
         """Format report as JSON.
 
         Args:
             report: TechDebtReport to format
             test_smells: Optional list of test smell dictionaries (v0.22.0+)
+            target_path: Optional target path that was analyzed (v0.22.1+)
 
         Returns:
             Formatted JSON string
@@ -253,6 +259,10 @@ class JSONFormatter(ReportFormatter):
                 })
 
         data = {
+            # Metadata (v0.22.1+)
+            "target_path": target_path if target_path else ".",
+            "timestamp": datetime.now().isoformat() + "Z",
+
             # Backward compatible fields (existing integrations)
             "total_files": report.total_files,
             "total_issues": report.total_issues,
@@ -263,7 +273,6 @@ class JSONFormatter(ReportFormatter):
             "average_quality_score": report.average_quality_score,
 
             # Enhanced fields (v0.22.0+, LoomGraph integration)
-            "timestamp": datetime.now().isoformat() + "Z",
             "summary": {
                 "total_files": report.total_files,
                 "giant_files": len(giant_files),

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.1] - 2026-03-06
+
+### Added
+
+- **tech-debt JSON output enhancement**: Added `target_path` field to record analyzed directory path.
+  - **Use case**: LoomGraph integration and logging/tracing
+  - **Format**: Absolute path (e.g., `/Users/username/project/src`)
+  - **Default**: "." if not provided (backward compatible)
+  - **Cost**: Minimal (1 field addition, <5 minutes implementation)
+
+### Changed
+
+- **JSONFormatter**: Now accepts optional `target_path` parameter (v0.22.1+)
+- **tech-debt command**: Automatically passes target path to JSON output
+
 ## [0.22.0] - 2026-03-06
 
 ### Added

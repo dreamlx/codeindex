@@ -45,6 +45,7 @@ def test_working():
         output = json.loads(result.output)
 
         # Verify structure (v0.22.0+ unified format)
+        assert "target_path" in output  # v0.22.1+
         assert "timestamp" in output
         assert "summary" in output
         assert "giant_files" in output
@@ -55,6 +56,9 @@ def test_working():
         # Backward compatible fields
         assert "total_files" in output
         assert "average_quality_score" in output
+
+        # Verify target_path is set
+        assert output["target_path"] != ""
 
         # Verify summary
         assert output["summary"]["total_files"] == 1
