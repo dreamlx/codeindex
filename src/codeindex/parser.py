@@ -250,6 +250,9 @@ FILE_EXTENSIONS: Dict[str, str] = {
     ".tsx": "tsx",
     ".js": "javascript",
     ".jsx": "javascript",
+    ".swift": "swift",  # Added in v0.21.0 (Epic #23)
+    ".h": "objc",  # Objective-C header (Epic #23)
+    ".m": "objc",  # Objective-C implementation (Epic #23)
 }
 
 # Parser cache for lazy loading (avoids re-initialization)
@@ -305,6 +308,14 @@ def _get_parser(language: str) -> Parser | None:
             import tree_sitter_javascript as ts_js
 
             lang = Language(ts_js.language())
+        elif language == "swift":
+            import tree_sitter_swift as ts_swift
+
+            lang = Language(ts_swift.language())
+        elif language == "objc":
+            import tree_sitter_objc as ts_objc
+
+            lang = Language(ts_objc.language())
         else:
             return None
 
@@ -365,7 +376,7 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
         return ParseResult(path=path, error=f"Unsupported language: {language}", file_lines=0)
 
     # Delegate to language-specific parser (Epic 13 refactoring)
-    from .parsers import JavaParser, PhpParser, PythonParser, TypeScriptParser
+    from .parsers import JavaParser, ObjCParser, PhpParser, PythonParser, SwiftParser, TypeScriptParser
 
     if language == "python":
         lang_parser = PythonParser(parser)
@@ -375,6 +386,10 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
         lang_parser = JavaParser(parser)
     elif language in ("typescript", "tsx", "javascript"):
         lang_parser = TypeScriptParser(parser, grammar_name=language)
+    elif language == "swift":
+        lang_parser = SwiftParser(parser)
+    elif language == "objc":
+        lang_parser = ObjCParser(parser)
     else:
         return ParseResult(path=path, error=f"Unsupported language: {language}", file_lines=0)
 

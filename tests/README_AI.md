@@ -123,9 +123,6 @@ Changed files:
 - `test_typescript_integration.py`
 - `test_typescript_parser.py`
 
----
-
-## Recent Changes
 
 **Commit ``**: 
 
@@ -133,3 +130,103 @@ Changed files:
 - `conftest.py`
 - `test_file_classifier.py`
 - `test_tech_debt_detector.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_swift_poc.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_swift_properties.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_swift_protocols.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_swift_inheritance.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_swift_docstrings.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_swift_signatures.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_swift_integration.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_swift_generics.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_swift_property_wrappers.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_tech_debt_ios.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_objc_basic.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_objc_association_utils.py`
+- `test_parser_objc_association.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_objc_categories.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_objc_bridging.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_integration_swift_objc.py`
+
+---
+
+## Recent Changes
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_swift_protocols.py`

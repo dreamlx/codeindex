@@ -147,6 +147,43 @@ Changed files:
 Changed files:
 - `smart_writer.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `file_classifier.py`
+- `tech_debt.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `parser.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `tech_debt.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `parser.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `objc_association.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `cli_tech_debt.py`
+
 ---
 
 ## Recent Changes
@@ -154,5 +191,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `file_classifier.py`
 - `tech_debt.py`
