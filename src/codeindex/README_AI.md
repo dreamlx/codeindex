@@ -184,6 +184,12 @@ Changed files:
 Changed files:
 - `cli_tech_debt.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `tech_debt.py`
+
 ---
 
 ## Recent Changes
@@ -191,4 +197,7 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `tech_debt.py`
+- `cli.py`
+- `cli_tech_debt.py`
+- `tech_debt_formatters.py`
+- `test_smells.py`
