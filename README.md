@@ -357,7 +357,7 @@ See [Release Automation Guide](docs/development/QUICK_START_RELEASE.md) for deta
 
 ## Roadmap
 
-**Current version**: v0.20.0
+**Current version**: v0.21.0
 
 **Recent milestones**:
 - v0.17.0 — CLAUDE.md injection via `codeindex init`

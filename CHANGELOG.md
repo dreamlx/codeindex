@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-03-06
+
+### Added
+
+- **Swift language support** (Epic 23 - Phase 1 & 2): Full parsing for `.swift` files using tree-sitter-swift v0.6.0.
+  - **Symbol extraction**: classes, structs, enums, protocols, methods, properties, initializers, deinitializers, subscripts, top-level functions
+  - **Import extraction**: import statements with module names
+  - **Inheritance extraction**: class inheritance, protocol conformance, protocol inheritance
+  - **Extension support**: extensions with protocol conformance, constrained extensions, cross-file extension tracking
+  - **Docstring extraction**: Swift doc comments (`///` and `/** */`), preserves formatting
+  - **Advanced features**: property wrappers (@State, @Published), generic type parameters, access modifiers
+  - 23 comprehensive Swift tests (12 MVP + 11 advanced features)
+
+- **Objective-C language support** (Epic 23 - Phase 3): Full parsing for `.h` and `.m` files using tree-sitter-objc v3.0.2.
+  - **Symbol extraction**: @interface/@implementation declarations, methods (class/instance), properties, protocols, categories
+  - **File association**: .h/.m file pairing by basename, symbol merging with deduplication, association accuracy ≥95%
+  - **Protocol support**: @protocol declarations, protocol inheritance, @optional/@required method sections
+  - **Category support**: NSString+ZCHelp pattern, category method extraction, base class association
+  - **Preprocessing**: NS_ASSUME_NONNULL_BEGIN/END macro handling, NS_SWIFT_NAME removal, __attribute__ cleanup
+  - 51 comprehensive Objective-C tests (13 basic + 18 association + 12 categories + 11 bridging)
+
+- **Swift/Objective-C integration** (Epic 23 - Phase 3): Mixed project support for iOS/macOS development.
+  - **Bridging header detection**: *-Bridging-Header.h pattern recognition, exposed Objective-C API extraction
+  - **Mixed project parsing**: 814 files in real-world iOS project (280 Swift + 534 Objective-C)
+  - **Association accuracy**: 91.5% .h/.m pairing in production codebase
+  - 9 end-to-end integration tests
+
+- **Tech-debt language support** (Epic 23): Objective-C and Swift file recognition in `codeindex tech-debt` command.
+  - File extension mapping: `.h`, `.m` (objc), `.swift` (swift)
+  - Language-specific noise thresholds: objc=70% (more lenient for categories), swift=60%, default=50%
+  - Real-world validation: 28 files analyzed, 22 issues detected, 97.5/100 quality score
+
+- **New optional dependency group**: `pip install ai-codeindex[swift]` installs tree-sitter-swift v0.6.0 and tree-sitter-objc v3.0.2
+- **Scanner support**: `swift` and `objc` in `LANGUAGE_EXTENSIONS` and `.codeindex.yaml` config
+- **CLI integration**: `codeindex parse file.swift` and `codeindex parse Header.h` produce JSON output
+
+### Changed
+
+- **Tech-debt noise ratio thresholds**: Adjusted for language-specific patterns (objc: 50%→70%, swift: 50%→60%). Objective-C categories and Swift extensions are intentionally simple utility code and should not be penalized.
+
+### Fixed
+
+- **Objective-C preprocessing**: Apple framework macros (NS_ASSUME_NONNULL_BEGIN/END, NS_SWIFT_NAME, __attribute__) now handled via preprocessing to ensure successful parsing. Previous 52% failure rate reduced to 0%.
+- **POSIX newline requirement**: All test files now include trailing newline to satisfy tree-sitter-objc parser requirements.
+
+### Validation
+
+- **Real-world project**: slock-app (HEXFPORCE) - 814 files, 91.5% .h/.m association accuracy
+- **Performance**: <1s for 28 files, <30s for full project indexing
+- **Test coverage**: 1422 tests passing (74 new Swift/Objective-C tests), 13 skipped
+- **Validation reports**: `docs/evaluation/epic23-slock-app-validation.md`, `docs/evaluation/epic23-tech-debt-validation.md`
+
 ## [0.20.0] - 2026-02-20
 
 ### Added

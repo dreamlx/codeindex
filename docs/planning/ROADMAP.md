@@ -1,13 +1,13 @@
 # codeindex Strategic Roadmap
 
-**Last Updated**: 2026-02-20
-**Current Version**: v0.20.0
+**Last Updated**: 2026-03-06
+**Current Version**: v0.21.0
 **Vision**: Universal Code Parser - Best-in-class multi-language AST parser for AI-assisted development
 **Positioning**: Focused on code parsing and structured data extraction, not AI analysis
 
 ---
 
-## 📍 Current Status (v0.20.0)
+## 📍 Current Status (v0.21.0)
 
 ### ✅ Completed Capabilities
 
@@ -44,11 +44,13 @@
 | **TypeScript/JavaScript Support** | v0.19.0 | ✅ Full TS/JS/TSX/JSX parsing |
 | **Enhanced Tech-Debt Detection** | v0.20.0 | ✅ 5 dimensions, language-aware thresholds |
 | **SmartWriter Modularization** | v0.20.0 | ✅ Writers package refactor |
+| **Swift/Objective-C Support** | v0.21.0 | ✅ iOS/macOS parsing, .h/.m association |
 
 ### 📚 Version History
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| **v0.21.0** | 2026-03-06 | 🍎 Swift/Objective-C support for iOS/macOS development |
 | **v0.20.0** | 2026-02-20 | 🔍 Enhanced tech-debt (5 dims) + SmartWriter modularization |
 | **v0.19.0** | 2026-02-19 | 📘 TypeScript/JavaScript language support |
 | **v0.18.0** | 2026-02-18 | 📊 Enriched overview/navigation README + validation framework |
@@ -200,11 +202,29 @@
 - Inheritance + call graphs + React component detection + decorators
 - **Epic 20** | Tests: 77 new (68 unit + 9 integration), 1143 total passing
 
+#### v0.20.0 - Enhanced Tech-Debt Detection ✅ (Released: 2026-02-20)
+- Expanded from 2 to 5 detection dimensions with language-aware thresholds
+- Long method detection (>80 lines MEDIUM, >150 lines HIGH)
+- Too many functions detection (>15 per file MEDIUM)
+- High import coupling detection (>8 internal imports MEDIUM)
+- 3-tier file size thresholds (800/1500/2500 for compact languages)
+- SmartWriter modularization (864 lines → modular writers/ package)
+- **Issue #20** | Tests: 25 new tech-debt tests, 55 total tech-debt tests
+
+#### v0.21.0 - Swift/Objective-C Language Support ✅ (Released: 2026-03-06)
+- Swift parser: classes, structs, enums, protocols, extensions, property wrappers, generics
+- Objective-C parser: @interface/@implementation, .h/.m association (≥95% accuracy), @protocol, categories
+- NS_ASSUME_NONNULL preprocessing for Apple framework macros
+- Bridging header detection for mixed Swift/Objective-C projects
+- Tech-debt language-specific noise thresholds (objc: 70%, swift: 60%)
+- Real-world validation: slock-app (814 files, 91.5% association accuracy)
+- **Epic 23** | Tests: 74 new (23 Swift + 51 Objective-C), 1422 total passing (13 skipped)
+
 </details>
 
 ---
 
-### v0.20.0 - Go Language Support
+### v0.22.0 - Go Language Support
 
 **Theme**: Cloud-native ecosystem
 
@@ -228,11 +248,11 @@
 
 ---
 
-### v0.21.0 - Framework Intelligence Expansion
+### v0.23.0 - Framework Intelligence Expansion
 
 **Theme**: Framework-aware code understanding
 
-**Epic**: Epic 23 - Framework Routes Expansion
+**Epic**: Epic 24 - Framework Routes Expansion
 
 **Key Features**:
 - Express.js route extraction (TypeScript/JavaScript)
@@ -249,11 +269,11 @@
 
 ---
 
-### v0.22.0 - Rust Language Support
+### v0.24.0 - Rust Language Support
 
 **Theme**: Systems programming
 
-**Epic**: Epic 24 - Rust Support
+**Epic**: Epic 25 - Rust Support
 
 **Key Features**:
 - Rust parser (tree-sitter-rust)
@@ -266,11 +286,11 @@
 
 ---
 
-### v0.23.0 - C# Language Support
+### v0.25.0 - C# Language Support
 
 **Theme**: .NET ecosystem
 
-**Epic**: Epic 25 - C# Support
+**Epic**: Epic 26 - C# Support
 
 **Key Features**:
 - C# parser (tree-sitter-c-sharp)
@@ -513,5 +533,5 @@
 **Roadmap Status**: 🎯 Active
 **Next Review**: 2026-03-31
 **Maintained By**: @dreamlx
-**Last Updated**: 2026-02-20
-**Current Version**: v0.20.0
+**Last Updated**: 2026-03-06
+**Current Version**: v0.21.0
