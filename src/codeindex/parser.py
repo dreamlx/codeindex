@@ -5,12 +5,16 @@ This module serves as the unified entry point for all language parsers.
 Language-specific logic has been extracted to modular parser classes.
 """
 
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Dict, Optional
 
 from tree_sitter import Language, Parser
+
+# Configure logger for parser debugging
+logger = logging.getLogger(__name__)
 
 
 class CallType(Enum):
@@ -338,6 +342,9 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
     Epic 13, Phase 3: Simplified entry point that delegates to language parsers.
     Supports Python, PHP, Java, TypeScript, and JavaScript.
 
+    This function implements defensive programming with comprehensive error handling
+    to ensure stability when called from 700+ locations across the codebase.
+
     Args:
         path: Path to the source file
         language: Optional language override ("python", "php", "java",
@@ -345,7 +352,9 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
                   If None, language is detected from file extension.
 
     Returns:
-        ParseResult containing symbols, imports, calls, inheritances, and docstrings
+        ParseResult containing symbols, imports, calls, inheritances, and docstrings.
+        Always returns a valid ParseResult, never raises exceptions.
+        On error, returns ParseResult with error field populated.
     """
     # Determine language from file extension if not specified
     if language is None:
@@ -357,6 +366,7 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
             file_lines = path.read_bytes().count(b"\n") + 1
         except Exception:
             file_lines = 0
+        logger.debug(f"Unsupported file type: {path.suffix} ({path})")
         return ParseResult(
             path=path, error=f"Unsupported file type: {path.suffix}", file_lines=file_lines
         )
@@ -370,31 +380,116 @@ def parse_file(path: Path, language: str | None = None) -> ParseResult:
             file_lines = path.read_bytes().count(b"\n") + 1
         except Exception:
             file_lines = 0
+        logger.error(f"Parser library not installed for {language}: {e} ({path})")
         return ParseResult(path=path, error=str(e), file_lines=file_lines)
+    except Exception as e:
+        # Catch any other parser initialization errors
+        logger.error(f"Failed to initialize {language} parser: {e} ({path})")
+        return ParseResult(
+            path=path, error=f"Parser initialization failed: {e}", file_lines=0
+        )
 
     if not parser:
+        logger.error(f"Unsupported language: {language} ({path})")
         return ParseResult(path=path, error=f"Unsupported language: {language}", file_lines=0)
 
     # Delegate to language-specific parser (Epic 13 refactoring)
     from .parsers import JavaParser, ObjCParser, PhpParser, PythonParser, SwiftParser, TypeScriptParser
 
-    if language == "python":
-        lang_parser = PythonParser(parser)
-    elif language == "php":
-        lang_parser = PhpParser(parser)
-    elif language == "java":
-        lang_parser = JavaParser(parser)
-    elif language in ("typescript", "tsx", "javascript"):
-        lang_parser = TypeScriptParser(parser, grammar_name=language)
-    elif language == "swift":
-        lang_parser = SwiftParser(parser)
-    elif language == "objc":
-        lang_parser = ObjCParser(parser)
-    else:
-        return ParseResult(path=path, error=f"Unsupported language: {language}", file_lines=0)
+    try:
+        if language == "python":
+            lang_parser = PythonParser(parser)
+        elif language == "php":
+            lang_parser = PhpParser(parser)
+        elif language == "java":
+            lang_parser = JavaParser(parser)
+        elif language in ("typescript", "tsx", "javascript"):
+            lang_parser = TypeScriptParser(parser, grammar_name=language)
+        elif language == "swift":
+            lang_parser = SwiftParser(parser)
+        elif language == "objc":
+            lang_parser = ObjCParser(parser)
+        else:
+            logger.error(f"Unsupported language: {language} ({path})")
+            return ParseResult(path=path, error=f"Unsupported language: {language}", file_lines=0)
 
-    # Use language parser's parse method
-    return lang_parser.parse(path)
+        # CRITICAL: Defensive parsing - catch all exceptions from language parsers
+        # This ensures parse_file() never crashes, even with malformed files
+        result = lang_parser.parse(path)
+
+        # Log parsing success (debug level to avoid noise)
+        if result.error:
+            logger.warning(f"Parse completed with error: {result.error} ({path})")
+        else:
+            logger.debug(
+                f"Parse success: {len(result.symbols)} symbols, "
+                f"{len(result.imports)} imports ({path})"
+            )
+
+        return result
+
+    except FileNotFoundError as e:
+        logger.error(f"File not found: {path} - {e}")
+        return ParseResult(path=path, error=f"File not found: {e}", file_lines=0)
+
+    except PermissionError as e:
+        logger.error(f"Permission denied: {path} - {e}")
+        return ParseResult(path=path, error=f"Permission denied: {e}", file_lines=0)
+
+    except UnicodeDecodeError as e:
+        # Handle files with encoding issues
+        logger.error(f"Encoding error: {path} - {e}")
+        try:
+            file_lines = path.read_bytes().count(b"\n") + 1
+        except Exception:
+            file_lines = 0
+        return ParseResult(
+            path=path, error=f"Encoding error: {e}", file_lines=file_lines
+        )
+
+    except OSError as e:
+        # Catch file system errors (disk full, network issues, etc.)
+        logger.error(f"OS error reading file: {path} - {e}")
+        return ParseResult(path=path, error=f"OS error: {e}", file_lines=0)
+
+    except MemoryError as e:
+        # Handle extremely large files that exhaust memory
+        logger.critical(f"Memory exhausted parsing: {path} - {e}")
+        try:
+            file_lines = path.read_bytes().count(b"\n") + 1
+        except Exception:
+            file_lines = 0
+        return ParseResult(
+            path=path, error=f"File too large (memory exhausted): {e}", file_lines=file_lines
+        )
+
+    except RecursionError as e:
+        # Handle deeply nested code that exceeds recursion limit
+        logger.error(f"Recursion limit exceeded: {path} - {e}")
+        try:
+            file_lines = path.read_bytes().count(b"\n") + 1
+        except Exception:
+            file_lines = 0
+        return ParseResult(
+            path=path, error=f"Code too deeply nested: {e}", file_lines=file_lines
+        )
+
+    except Exception as e:
+        # Catch-all for any unexpected errors (tree-sitter crashes, bugs, etc.)
+        # This is the last line of defense to prevent parse_file() from crashing
+        logger.critical(
+            f"Unexpected error parsing {language} file: {path} - {type(e).__name__}: {e}",
+            exc_info=True  # Include stack trace for debugging
+        )
+        try:
+            file_lines = path.read_bytes().count(b"\n") + 1
+        except Exception:
+            file_lines = 0
+        return ParseResult(
+            path=path,
+            error=f"Unexpected parse error ({type(e).__name__}): {e}",
+            file_lines=file_lines
+        )
 
 
 def parse_directory(paths: list[Path]) -> list[ParseResult]:
