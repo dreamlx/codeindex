@@ -220,6 +220,17 @@ codeindex scan-all --output json > parse_results.json
 codeindex scan ./src --output json                    # Single directory
 codeindex scan ./src --output json | jq .             # View formatted JSON
 
+# 🔍 Technical Debt & Test Smells Analysis (v0.22.0+)
+codeindex tech-debt ./src                             # Comprehensive quality analysis
+codeindex tech-debt ./src --format json               # LoomGraph-compatible JSON
+codeindex tech-debt ./src --format markdown           # Detailed report
+codeindex debt-scan ./src                             # Alias (backward compatible)
+
+# Detects:
+# - Code quality issues (giant files, god classes, symbol overload)
+# - Test smells (skipped tests, giant test files)
+# - High coupling, long methods, too many functions
+
 # Git Hooks management
 codeindex hooks status
 codeindex hooks install --all
@@ -519,7 +530,7 @@ include:        # Directories to scan
   - src/
 exclude:        # Patterns to skip
   - "**/__pycache__/**"
-languages:      # Supported: python, php, java, typescript, javascript
+languages:      # Supported: python, php, java, typescript, javascript, swift, objc
   - python
 output_file: README_AI.md
 
@@ -744,8 +755,8 @@ All versions 100% backward compatible (v0.1.0 → v0.5.0)
 
 ---
 
-**Last Updated**: 2026-02-04
-**codeindex Version**: v0.6.0
+**Last Updated**: 2026-03-08
+**codeindex Version**: v0.21.0
 **For**: Claude Code and contributors
 
 ---
