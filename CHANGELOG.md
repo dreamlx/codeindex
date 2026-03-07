@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.2] - 2026-03-08
+
+### Added
+
+- **Post-install hook for automatic CLAUDE.md updates** (Epic #25, Story #26): Automatically updates `~/.claude/CLAUDE.md` after `pip install --upgrade ai-codeindex`.
+  - **Marker-based injection**: Idempotent updates using `<!-- CODEINDEX_GUIDE_START vX.X.X -->` markers
+  - **Version detection**: Automatically extracts and updates version numbers
+  - **Backup creation**: Creates timestamped backups before modification (`CLAUDE.md.backup.YYYYMMDD_HHMMSS`)
+  - **CI environment detection**: Skips updates in GitHub Actions, GitLab CI, Jenkins, CircleCI, and generic CI environments
+  - **Silent failure handling**: Gracefully handles permission errors and missing directories
+  - **Content preservation**: Preserves user customizations before/after guide section
+  - **Template system**: Uses `src/codeindex/templates/claude_md_core.md` for guide content
+
+- **Core guide template** (`src/codeindex/templates/claude_md_core.md`): Comprehensive codeindex usage guide for Claude Code users.
+  - **Complete command reference**: All core commands (scan, tech-debt, symbols, index, status)
+  - **Language support table**: 9 languages with version information
+  - **Best practices**: AI Code integration workflow and tips
+  - **Auto-updated on install**: Version number dynamically replaced from package metadata
+
+### Technical Details
+
+- **Implementation**: `src/codeindex/hooks.py` with 4 core functions:
+  - `_is_ci_environment()`: CI/CD detection (6 environment variables)
+  - `_extract_version_from_file()`: Regex-based version extraction
+  - `_inject_core_guide()`: Marker-based content replacement
+  - `post_install_update_guide()`: Main hook orchestration
+- **Test coverage**: 87% (21 tests: 18 unit + 3 integration)
+- **Documentation**: ADR 004 (`docs/architecture/adr/004-automatic-claude-md-update.md`)
+
 ## [0.22.1] - 2026-03-06
 
 ### Added

@@ -30,6 +30,7 @@ codeindex extracts symbols, inheritance relationships, call graphs, and imports 
 - **Smart indexing** — Tiered documentation (overview → navigation → detailed) optimized for AI agents
 - **Adaptive symbol extraction** — Dynamic 5–150 symbols per file based on size
 - **CLAUDE.md injection** — `codeindex init` auto-configures Claude Code integration (v0.17.0)
+- **Auto-update guide** — Post-install hook automatically updates `~/.claude/CLAUDE.md` after `pip upgrade` (v0.22.2)
 - **Template-based test generation** — YAML + Jinja2 for rapid language support (88–91% time savings)
 - **Parallel scanning** — Concurrent directory processing with configurable workers
 
