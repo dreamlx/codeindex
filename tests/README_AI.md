@@ -241,6 +241,13 @@ Changed files:
 Changed files:
 - `test_cli_debt_scan.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_hooks.py`
+- `test_hooks_integration.py`
+
 ---
 
 ## Recent Changes
@@ -248,5 +255,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_hooks.py`
 - `test_hooks_integration.py`
