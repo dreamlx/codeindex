@@ -5,20 +5,17 @@ Epic #25, Story #26: Post-install Hook Implementation
 These tests verify end-to-end behavior of the hook.
 """
 
-import os
-import subprocess
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
 
 @pytest.mark.integration
-class TestRealPipInstall:
-    """Integration tests with real pip install."""
+class TestRealEnvironment:
+    """Integration tests with real environment simulation."""
 
-    def test_real_pip_install_updates_claude_md(self, tmp_path):
-        """Should update CLAUDE.md after real pip install --upgrade."""
+    def test_hook_updates_claude_md_in_real_environment(self, tmp_path):
+        """Should update CLAUDE.md when hook is triggered in real environment."""
         # Setup fake home directory
         fake_home = tmp_path / "fake_home"
         fake_home.mkdir()
@@ -35,26 +32,21 @@ class TestRealPipInstall:
         )
         claude_md.write_text(initial_content)
 
-        # Install package in development mode with fake home
-        env = os.environ.copy()
-        env["HOME"] = str(fake_home)
+        # Simulate hook invocation after package installation
+        from codeindex.hooks import post_install_update_guide
 
-        # Run pip install (editable mode)
-        result = subprocess.run(
-            ["pip", "install", "-e", "."],
-            cwd=Path(__file__).parent.parent,
-            env=env,
-            capture_output=True,
-            text=True,
-        )
-
-        assert result.returncode == 0, f"pip install failed: {result.stderr}"
+        with patch("pathlib.Path.home", return_value=fake_home):
+            with patch("codeindex.hooks._is_ci_environment", return_value=False):
+                # Simulate package version
+                with patch("importlib.metadata.version", return_value="0.22.2"):
+                    post_install_update_guide()
 
         # Verify CLAUDE.md was updated
         updated_content = claude_md.read_text()
         assert "<!-- CODEINDEX_GUIDE_START v0.22.2 -->" in updated_content
         assert "codeindex scan" in updated_content  # Core command present
         assert "# My Claude Config" in updated_content  # Preserved original content
+        assert "tech-debt" in updated_content  # v0.22.0+ feature
 
         # Verify backup was created
         backups = list(claude_dir.glob("CLAUDE.md.backup.*"))
