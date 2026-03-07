@@ -206,6 +206,12 @@ Changed files:
 - `cli_tech_debt.py`
 - `tech_debt_formatters.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `cli_scan.py`
+
 ---
 
 ## Recent Changes
