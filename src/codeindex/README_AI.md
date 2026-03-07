@@ -212,6 +212,12 @@ Changed files:
 Changed files:
 - `cli_scan.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `cli_scan.py`
+
 ---
 
 ## Recent Changes
@@ -219,4 +225,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `cli_scan.py`
+- `parser.py`
