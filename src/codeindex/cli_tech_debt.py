@@ -85,89 +85,127 @@ def _analyze_files(
     from .parser import parse_file
     from .test_smells import TestSmellDetector
 
-    # Initialize test smell detector
     test_smell_detector = TestSmellDetector()
     test_smells_data = []
 
     for file_path in files:
         try:
-            # Parse file
             parse_result = parse_file(file_path)
 
             if parse_result.error:
-                if show_progress:
-                    console.print(
-                        f"[yellow]⚠ Skipping {file_path.name}: {parse_result.error}[/yellow]"
-                    )
+                _handle_parse_error(file_path, parse_result.error, show_progress)
                 continue
 
-            # Determine file type based on extension
-            file_ext = file_path.suffix.lower()
-            if file_ext == '.py':
-                file_type = 'python'
-            elif file_ext == '.php':
-                file_type = 'php'
-            elif file_ext == '.js':
-                file_type = 'javascript'
-            elif file_ext == '.ts':
-                file_type = 'typescript'
-            elif file_ext in ('.h', '.m'):
-                file_type = 'objc'
-            elif file_ext == '.swift':
-                file_type = 'swift'
-            else:
-                file_type = file_ext[1:] if file_ext else 'unknown'
-
-            # Create scorer context
-            scoring_context = ScoringContext(
-                framework=None,
-                file_type=file_type,
-                total_symbols=len(parse_result.symbols),
+            # Analyze single file and collect test smells
+            file_test_smells = _analyze_single_file(
+                file_path, parse_result, detector, reporter, test_smell_detector
             )
-            scorer = SymbolImportanceScorer(scoring_context)
-
-            # Detect technical debt
-            debt_analysis = detector.analyze_file(parse_result, scorer)
-
-            # Analyze symbol overload
-            symbol_issues, symbol_analysis = detector.analyze_symbol_overload(
-                parse_result, scorer
-            )
-
-            # Merge symbol overload issues into debt analysis
-            debt_analysis.issues.extend(symbol_issues)
-
-            # Add to reporter
-            reporter.add_file_result(
-                file_path=file_path,
-                debt_analysis=debt_analysis,
-                symbol_analysis=symbol_analysis,
-            )
-
-            # Detect test smells (new in v0.22.0)
-            test_smells = test_smell_detector.analyze_test_file(file_path, parse_result)
-            if test_smells:
-                for smell in test_smells:
-                    # Use absolute path if relative_to fails
-                    try:
-                        rel_path = smell.file_path.relative_to(Path.cwd())
-                    except ValueError:
-                        rel_path = smell.file_path
-
-                    test_smells_data.append({
-                        "path": str(rel_path),
-                        "type": smell.type.value,
-                        "details": smell.details,
-                        "line_number": smell.line_number,
-                        "metric_value": smell.metric_value,
-                    })
+            test_smells_data.extend(file_test_smells)
 
         except Exception as e:
-            if show_progress:
-                console.print(f"[red]✗ Error analyzing {file_path.name}: {e}[/red]")
+            _handle_analysis_error(file_path, e, show_progress)
             continue
 
     return test_smells_data
+
+
+def _get_file_type(file_path: Path) -> str:
+    """Determine file type from extension."""
+    file_ext = file_path.suffix.lower()
+    if file_ext == '.py':
+        return 'python'
+    elif file_ext == '.php':
+        return 'php'
+    elif file_ext == '.js':
+        return 'javascript'
+    elif file_ext == '.ts':
+        return 'typescript'
+    elif file_ext in ('.h', '.m'):
+        return 'objc'
+    elif file_ext == '.swift':
+        return 'swift'
+    else:
+        return file_ext[1:] if file_ext else 'unknown'
+
+
+def _create_scorer(parse_result, file_type: str) -> SymbolImportanceScorer:
+    """Create symbol importance scorer for file."""
+    scoring_context = ScoringContext(
+        framework=None,
+        file_type=file_type,
+        total_symbols=len(parse_result.symbols),
+    )
+    return SymbolImportanceScorer(scoring_context)
+
+
+def _analyze_single_file(
+    file_path: Path,
+    parse_result,
+    detector: TechDebtDetector,
+    reporter: TechDebtReporter,
+    test_smell_detector,
+) -> list[dict]:
+    """Analyze single file for technical debt and test smells."""
+    # Get file type and create scorer
+    file_type = _get_file_type(file_path)
+    scorer = _create_scorer(parse_result, file_type)
+
+    # Detect technical debt
+    debt_analysis = detector.analyze_file(parse_result, scorer)
+
+    # Analyze symbol overload
+    symbol_issues, symbol_analysis = detector.analyze_symbol_overload(
+        parse_result, scorer
+    )
+    debt_analysis.issues.extend(symbol_issues)
+
+    # Add to reporter
+    reporter.add_file_result(
+        file_path=file_path,
+        debt_analysis=debt_analysis,
+        symbol_analysis=symbol_analysis,
+    )
+
+    # Detect and format test smells
+    return _collect_test_smells(file_path, parse_result, test_smell_detector)
+
+
+def _collect_test_smells(file_path: Path, parse_result, test_smell_detector) -> list[dict]:
+    """Detect and format test smells for a file."""
+    test_smells = test_smell_detector.analyze_test_file(file_path, parse_result)
+    test_smells_data = []
+
+    if test_smells:
+        for smell in test_smells:
+            # Use absolute path if relative_to fails
+            try:
+                rel_path = smell.file_path.relative_to(Path.cwd())
+            except ValueError:
+                rel_path = smell.file_path
+
+            test_smells_data.append({
+                "path": str(rel_path),
+                "type": smell.type.value,
+                "details": smell.details,
+                "line_number": smell.line_number,
+                "metric_value": smell.metric_value,
+            })
+
+    return test_smells_data
+
+
+def _handle_parse_error(file_path: Path, error: str, show_progress: bool):
+    """Handle parse errors during file analysis."""
+    if show_progress:
+        console.print(
+            f"[yellow]⚠ Skipping {file_path.name}: {error}[/yellow]"
+        )
+
+
+def _handle_analysis_error(file_path: Path, error: Exception, show_progress: bool):
+    """Handle analysis errors during file processing."""
+    if show_progress:
+        console.print(f"[red]✗ Error analyzing {file_path.name}: {error}[/red]")
 
 
 def _format_and_output(

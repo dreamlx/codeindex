@@ -228,56 +228,92 @@ def scan_directories_hierarchical(
     """
     global dir_info
 
-    # Step 1: Find all directories
+    # Find all directories
     directories = find_all_directories(root, config)
-
     if not directories:
-        if not quiet:
-            console.print("[yellow]No directories to process[/yellow]")
+        _handle_no_directories(quiet)
         return True
 
-    # Step 2: Scan files to determine which directories need processing
+    # Build and populate directory hierarchy
+    dir_info, _ = _build_and_populate_hierarchy(directories, config, quiet)
+
+    # Create processing batches
+    batches, total_dirs = _create_and_report_batches(dir_info, max_workers, quiet)
+
+    # Process all batches
+    global_processed = _process_all_batches(
+        batches, dir_info, config, use_fallback, quiet, timeout, root
+    )
+
+    if not quiet:
+        console.print(f"\n[green]✓ Processed {global_processed}/{total_dirs} directories[/green]")
+
+    return global_processed > 0
+
+
+def _handle_no_directories(quiet: bool):
+    """Handle case when no directories to process."""
+    if not quiet:
+        console.print("[yellow]No directories to process[/yellow]")
+
+
+def _build_and_populate_hierarchy(directories: List[Path], config: Config, quiet: bool):
+    """Build directory hierarchy and populate with scan results."""
     if not quiet:
         console.print("[bold]🔍 Building directory hierarchy...[/bold]")
 
+    # Scan files to determine which directories need processing
     for dir_path in directories:
         scan_result = scan_directory(dir_path, config)
         _ = bool(scan_result.files)  # Check if directory has files
 
-        # Update dir_info after it's built
-        # (This would need restructuring in real implementation)
-        pass
-
-    # Step 3: Build hierarchy
-    dir_info, roots = build_directory_hierarchy(directories)
+    # Build hierarchy
+    dir_info_local, roots = build_directory_hierarchy(directories)
 
     # Mark directories that have files
     for dir_path in directories:
         scan_result = scan_directory(dir_path, config)
-        if dir_path in dir_info:
-            dir_info[dir_path].has_files = bool(scan_result.files)
-            dir_info[dir_path].scan_result = scan_result
+        if dir_path in dir_info_local:
+            dir_info_local[dir_path].has_files = bool(scan_result.files)
+            dir_info_local[dir_path].scan_result = scan_result
 
         # Update parent-child relationship for README tracking
         parent_path = dir_path.parent
-        if parent_path in dir_info:
-            dir_info[parent_path].readmes_below.add(dir_path)
+        if parent_path in dir_info_local:
+            dir_info_local[parent_path].readmes_below.add(dir_path)
 
-    # Step 4: Create processing batches
+    return dir_info_local, roots
+
+
+def _create_and_report_batches(dir_info_map: dict, max_workers: int, quiet: bool) -> tuple[list, int]:
+    """Create processing batches and report statistics."""
     if not quiet:
         console.print("[bold]📦 Creating processing batches...[/bold]")
 
-    batches = create_processing_batches(dir_info, max_workers)
+    batches = create_processing_batches(dir_info_map, max_workers)
+    total_dirs = sum(len(batch) for batch in batches)
 
     if not quiet:
-        total_dirs = sum(len(batch) for batch in batches)
         console.print(f"[green]✓ {total_dirs} directories in {len(batches)} levels/batches[/green]")
 
-    # Step 5: Process batches
+    return batches, total_dirs
+
+
+def _process_all_batches(
+    batches: list,
+    dir_info_map: dict,
+    config: Config,
+    use_fallback: bool,
+    quiet: bool,
+    timeout: int,
+    root: Path
+) -> int:
+    """Process all batches and track success count."""
     global_processed = 0
+
     for i, batch in enumerate(batches):
         if not quiet:
-            level = dir_info[batch[0]].level if batch else 0
+            level = dir_info_map[batch[0]].level if batch else 0
             console.print(f"\n[bold]Level {level} - Batch {i+1}/{len(batches)}[/bold]")
 
         results = process_directory_batch(
@@ -290,10 +326,7 @@ def scan_directories_hierarchical(
             elif not quiet:
                 console.print(f"[yellow]⚠ Skipped: {path.name}[/yellow]")
 
-    if not quiet:
-        console.print(f"\n[green]✓ Processed {global_processed}/{total_dirs} directories[/green]")
-
-    return global_processed > 0
+    return global_processed
 
 
 def generate_enhanced_fallback_readme(

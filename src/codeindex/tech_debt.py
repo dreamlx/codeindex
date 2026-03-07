@@ -732,75 +732,105 @@ class TechDebtDetector:
         issues = []
         total_symbols = len(parse_result.symbols)
 
-        # Detect massive symbol count
-        if total_symbols > self.MASSIVE_SYMBOL_COUNT:
-            issues.append(
-                DebtIssue(
-                    severity=DebtSeverity.CRITICAL,
-                    category="massive_symbol_count",
-                    file_path=parse_result.path,
-                    metric_value=total_symbols,
-                    threshold=self.MASSIVE_SYMBOL_COUNT,
-                    description=f"File has {total_symbols} symbols "
-                    f"(threshold: {self.MASSIVE_SYMBOL_COUNT})",
-                    suggestion="Split into multiple modules to reduce cognitive load",
-                )
-            )
+        # Check for massive symbol count
+        massive_issue = self._check_massive_symbols(parse_result.path, total_symbols)
+        if massive_issue:
+            issues.append(massive_issue)
 
-        # Score all symbols and filter
-        scored_symbols = []
-        for symbol in parse_result.symbols:
-            score = scorer.score(symbol)
-            scored_symbols.append((symbol, score))
-
-        # Use standard threshold for filtering (30.0 is a reasonable cutoff)
-        threshold = 30.0
-        filtered_symbols = [s for s, score in scored_symbols if score >= threshold]
-
-        # Calculate metrics
-        filtered_count = len(filtered_symbols)
-        filter_ratio = 1.0 - (filtered_count / total_symbols) if total_symbols > 0 else 0.0
-
-        # Analyze noise breakdown (language-aware)
-        file_type = getattr(scorer.context, "file_type", "unknown")
-        noise_breakdown = self._analyze_noise_breakdown(
-            parse_result.symbols, filtered_symbols, file_type=file_type
+        # Score and filter symbols
+        filtered_symbols, filter_ratio = self._score_and_filter_symbols(
+            parse_result.symbols, scorer, total_symbols
         )
 
-        # Get language-specific noise ratio threshold
-        noise_threshold = self._get_noise_ratio_threshold(parse_result.path, file_type)
-
-        # Detect high noise ratio (using language-specific threshold)
-        if filter_ratio > noise_threshold:
-            noise_description = self._format_noise_description(noise_breakdown)
-            issues.append(
-                DebtIssue(
-                    severity=DebtSeverity.HIGH,
-                    category="low_quality_symbols",
-                    file_path=parse_result.path,
-                    metric_value=filter_ratio,
-                    threshold=noise_threshold,  # Use dynamic threshold
-                    description=f"High symbol noise ratio: {filter_ratio*100:.1f}% "
-                    f"({total_symbols - filtered_count}/{total_symbols} symbols filtered). "
-                    f"{noise_description}",
-                    suggestion=self._suggest_noise_reduction(noise_breakdown),
-                )
-            )
+        # Check for high noise ratio
+        file_type = getattr(scorer.context, "file_type", "unknown")
+        noise_issue, noise_breakdown = self._check_noise_ratio(
+            parse_result, total_symbols, filtered_symbols, filter_ratio, file_type
+        )
+        if noise_issue:
+            issues.append(noise_issue)
 
         # Calculate quality score
         quality_score = self._calculate_symbol_quality_score(
-            total_symbols, filtered_count, noise_breakdown
+            total_symbols, len(filtered_symbols), noise_breakdown
         )
 
         analysis = SymbolOverloadAnalysis(
             total_symbols=total_symbols,
-            filtered_symbols=filtered_count,
+            filtered_symbols=len(filtered_symbols),
             filter_ratio=filter_ratio,
             noise_breakdown=noise_breakdown,
             quality_score=quality_score,
         )
 
         return issues, analysis
+
+    def _check_massive_symbols(self, file_path: Path, total_symbols: int) -> DebtIssue | None:
+        """Check if file has massive symbol count."""
+        if total_symbols > self.MASSIVE_SYMBOL_COUNT:
+            return DebtIssue(
+                severity=DebtSeverity.CRITICAL,
+                category="massive_symbol_count",
+                file_path=file_path,
+                metric_value=total_symbols,
+                threshold=self.MASSIVE_SYMBOL_COUNT,
+                description=f"File has {total_symbols} symbols "
+                f"(threshold: {self.MASSIVE_SYMBOL_COUNT})",
+                suggestion="Split into multiple modules to reduce cognitive load",
+            )
+        return None
+
+    def _score_and_filter_symbols(
+        self, symbols: list, scorer: SymbolImportanceScorer, total_symbols: int
+    ) -> tuple[list, float]:
+        """Score all symbols and filter by threshold."""
+        # Score all symbols
+        scored_symbols = [(symbol, scorer.score(symbol)) for symbol in symbols]
+
+        # Filter by threshold
+        threshold = 30.0
+        filtered_symbols = [s for s, score in scored_symbols if score >= threshold]
+
+        # Calculate filter ratio
+        filtered_count = len(filtered_symbols)
+        filter_ratio = 1.0 - (filtered_count / total_symbols) if total_symbols > 0 else 0.0
+
+        return filtered_symbols, filter_ratio
+
+    def _check_noise_ratio(
+        self,
+        parse_result: ParseResult,
+        total_symbols: int,
+        filtered_symbols: list,
+        filter_ratio: float,
+        file_type: str,
+    ) -> tuple[DebtIssue | None, dict[str, int]]:
+        """Check for high noise ratio and analyze breakdown."""
+        # Analyze noise breakdown
+        noise_breakdown = self._analyze_noise_breakdown(
+            parse_result.symbols, filtered_symbols, file_type=file_type
+        )
+
+        # Get language-specific threshold
+        noise_threshold = self._get_noise_ratio_threshold(parse_result.path, file_type)
+
+        # Check if noise ratio exceeds threshold
+        if filter_ratio > noise_threshold:
+            noise_description = self._format_noise_description(noise_breakdown)
+            issue = DebtIssue(
+                severity=DebtSeverity.HIGH,
+                category="low_quality_symbols",
+                file_path=parse_result.path,
+                metric_value=filter_ratio,
+                threshold=noise_threshold,
+                description=f"High symbol noise ratio: {filter_ratio*100:.1f}% "
+                f"({total_symbols - len(filtered_symbols)}/{total_symbols} symbols filtered). "
+                f"{noise_description}",
+                suggestion=self._suggest_noise_reduction(noise_breakdown),
+            )
+            return issue, noise_breakdown
+
+        return None, noise_breakdown
 
     def _analyze_noise_breakdown(
         self, all_symbols: list, filtered_symbols: list, file_type: str = "unknown"
