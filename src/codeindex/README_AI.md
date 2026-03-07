@@ -224,9 +224,6 @@ Changed files:
 Changed files:
 - `parser.py`
 
----
-
-## Recent Changes
 
 **Commit ``**: 
 
@@ -235,3 +232,12 @@ Changed files:
 - `directory_tree.py`
 - `hierarchical.py`
 - `tech_debt.py`
+
+---
+
+## Recent Changes
+
+**Commit ``**: 
+
+Changed files:
+- `hooks.py`

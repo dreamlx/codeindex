@@ -235,6 +235,12 @@ Changed files:
 - `test_cli_debt_scan.py`
 - `test_test_smells.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_cli_debt_scan.py`
+
 ---
 
 ## Recent Changes
@@ -242,4 +248,5 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_cli_debt_scan.py`
+- `test_hooks.py`
+- `test_hooks_integration.py`
