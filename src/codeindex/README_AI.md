@@ -218,6 +218,12 @@ Changed files:
 Changed files:
 - `cli_scan.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `parser.py`
+
 ---
 
 ## Recent Changes
@@ -225,4 +231,7 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `parser.py`
+- `cli_tech_debt.py`
+- `directory_tree.py`
+- `hierarchical.py`
+- `tech_debt.py`
