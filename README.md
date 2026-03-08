@@ -7,7 +7,7 @@
 
 **Enterprise-grade Code Intelligence Platform — Multi-language AST parser for AI-assisted development, code quality analysis, and knowledge graph integration.**
 
-codeindex extracts symbols, inheritance relationships, call graphs, and imports from Python, PHP, Java, TypeScript, and JavaScript using tree-sitter. Designed for **enterprise environments** with intranet isolation, providing structured code data for AI tools, knowledge graphs, and code intelligence platforms.
+codeindex extracts symbols, inheritance relationships, call graphs, and imports from Python, PHP, Java, TypeScript, JavaScript, Swift, and Objective-C using tree-sitter. Designed for **enterprise environments** with intranet isolation, providing structured code data for AI tools, knowledge graphs, and code intelligence platforms.
 
 **🏢 Enterprise Ready**: ✅ Intranet compatible ✅ Self-contained ✅ Version stable ✅ Data sovereignty
 
@@ -19,7 +19,7 @@ codeindex extracts symbols, inheritance relationships, call graphs, and imports 
 
 ## Features
 
-- **Multi-language AST parsing** — Python, PHP, Java, TypeScript, JavaScript via tree-sitter (Go, Rust, C# planned)
+- **Multi-language AST parsing** — Python, PHP, Java, TypeScript, JavaScript, Swift, Objective-C via tree-sitter (Go, Rust, C# planned)
 - **AI-powered documentation** — Generate README files using Claude, GPT, or any AI CLI
 - **Single file parse** — `codeindex parse <file>` with JSON output for tool integration
 - **Structured JSON output** — `--output json` for CI/CD, knowledge graphs, and downstream tools
@@ -117,6 +117,8 @@ pip install ai-codeindex[php]
 pip install ai-codeindex[java]
 pip install ai-codeindex[typescript]
 pip install ai-codeindex[python,php]
+pip install ai-codeindex[swift]
+pip install ai-codeindex[ios]          # Swift + Objective-C
 ```
 
 ### Using pipx (Recommended for CLI use)
@@ -236,6 +238,8 @@ For manual setup, MCP skills (`/mo:arch`, `/mo:index`), and Git hooks integratio
 | PHP | ✅ Supported | v0.5.0 | Classes (extends/implements), methods, properties, PHPDoc, inheritance, calls |
 | Java | ✅ Supported | v0.7.0 | Classes, interfaces, enums, records, annotations, Spring routes, Lombok, calls |
 | TypeScript/JS | ✅ Supported | v0.19.0 | Classes, interfaces, enums, type aliases, arrow functions, JSX/TSX, imports/exports, calls |
+| Swift | ✅ Supported | v0.21.0 | Classes, structs, enums, protocols, extensions, methods, properties |
+| Objective-C | ✅ Supported | v0.21.0 | Classes, protocols, categories, properties, methods (instance/class) |
 | Go | 📋 Planned | — | Packages, interfaces, struct methods |
 | Rust | 📋 Planned | — | Structs, traits, modules |
 | C# | 📋 Planned | — | Classes, interfaces, .NET projects |
@@ -424,13 +428,14 @@ See [Release Automation Guide](docs/development/QUICK_START_RELEASE.md) for deta
 
 ## Roadmap
 
-**Current version**: v0.21.0
+**Current version**: v0.22.2
 
 **Recent milestones**:
+- v0.22.2 — Auto-update CLAUDE.md on `pip upgrade`, `/codeindex-update-guide` skill
+- v0.22.0 — Unified tech-debt + test smells analysis
+- v0.21.0 — Swift & Objective-C language support
+- v0.19.0 — TypeScript/JavaScript support with call extraction
 - v0.17.0 — CLAUDE.md injection via `codeindex init`
-- v0.16.0 — CLI UX restructuring (structural mode default, `--ai` opt-in)
-- v0.15.0 — Template-based test architecture migration
-- v0.14.0 — Interactive setup wizard, single file parse, parser modularization
 
 **Next**:
 - Framework routes expansion: Express, Laravel, FastAPI, Django (Epic 17)

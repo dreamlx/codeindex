@@ -1,7 +1,7 @@
 # Planning Index
 
 **Last Updated**: 2026-02-20
-**Current Version**: v0.21.0
+**Current Version**: v0.22.2
 
 ---
 

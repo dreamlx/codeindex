@@ -36,6 +36,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Test coverage**: 87% (21 tests: 18 unit + 3 integration)
 - **Documentation**: ADR 004 (`docs/architecture/adr/004-automatic-claude-md-update.md`)
 
+- **`/codeindex-update-guide` skill** (Epic #25, Story #27): Interactive Claude Code skill for deep CLAUDE.md customization.
+  - **Project analysis**: Detects languages (10 extensions), .codeindex.yaml, LoomGraph integration
+  - **Personalized suggestions**: Profile-based recommendations (Swift docs, LoomGraph tips, version updates)
+  - **Version diff**: Markdown-formatted comparison between old and new versions
+  - **Language table diff**: Highlights newly supported languages
+  - **Selective updates**: Apply all or choose specific suggestions
+  - **Backup & rollback**: Timestamped backups with one-command restore
+  - **Implementation**: `src/codeindex/skill_helpers.py` with 9 helper functions
+  - **Test coverage**: 80% (25 unit tests)
+
 ## [0.22.1] - 2026-03-06
 
 ### Added
