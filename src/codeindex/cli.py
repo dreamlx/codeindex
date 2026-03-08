@@ -37,6 +37,7 @@ main.add_command(index)
 main.add_command(symbols)
 main.add_command(affected)
 main.add_command(tech_debt)
+main.add_command(tech_debt, name="debt-scan")  # Alias for backward compatibility (v0.22.0+)
 main.add_command(hooks)
 main.add_command(docs)
 

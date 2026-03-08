@@ -49,6 +49,17 @@ class DirectoryTree:
 
     def _build_tree(self):
         """Build the directory tree from root."""
+        # Phase 1: Scan filesystem and create nodes
+        self._scan_directory_structure()
+
+        # Phase 2: Add intermediate directories
+        self._add_intermediate_directories()
+
+        # Phase 3: Establish parent-child relationships
+        self._establish_relationships()
+
+    def _scan_directory_structure(self):
+        """Scan filesystem and create nodes for directories with files."""
         from .scanner import get_language_extensions, should_exclude
 
         # Get valid extensions for this config
@@ -116,17 +127,10 @@ class DirectoryTree:
         # Walk from root
         walk_directory(self.root)
 
-        # Build parent-child relationships
-        for dir_path, node in list(self.nodes.items()):
-            parent_path = dir_path.parent.resolve()
-            if parent_path in self.nodes and parent_path != dir_path:
-                node.parent = parent_path
-                self.nodes[parent_path].children.add(dir_path)
-
-        # Add intermediate directories that have children but weren't added
-        # (directories without files but with children need to be in tree)
+    def _add_intermediate_directories(self):
+        """Add intermediate directories that have children but no files."""
         dirs_to_add = {}
-        for dir_path, node in list(self.nodes.items()):
+        for dir_path in list(self.nodes.keys()):
             current = dir_path.parent.resolve()
             while current != self.root.parent and current not in self.nodes:
                 try:
@@ -140,13 +144,15 @@ class DirectoryTree:
                 )
                 current = current.parent.resolve()
 
-        # Add intermediate directories and rebuild relationships
         self.nodes.update(dirs_to_add)
 
-        # Rebuild all parent-child relationships
-        for dir_path, node in self.nodes.items():
+    def _establish_relationships(self):
+        """Build parent-child relationships for all nodes."""
+        # Clear existing relationships
+        for node in self.nodes.values():
             node.children.clear()
 
+        # Build relationships
         for dir_path, node in self.nodes.items():
             parent_path = dir_path.parent.resolve()
             if parent_path in self.nodes and parent_path != dir_path:

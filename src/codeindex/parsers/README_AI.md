@@ -326,6 +326,82 @@ Test fixtures include real-world code patterns and edge cases.
 - **v0.2.0**: Introduced `BaseLanguageParser` architecture
 - **v0.1.0**: Initial Python parser implementation
 
+
+**Commit ``**: 
+
+Changed files:
+- `__init__.py`
+- `typescript_parser.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `__init__.py`
+- `swift.py`
+- `swift_parser.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `swift_parser.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `swift_parser.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `swift_parser.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `swift_parser.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `swift_parser.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `swift_parser.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `swift_parser.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `__init__.py`
+- `objc_parser.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `objc_parser.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `objc_parser.py`
+
 ---
 
 ## Recent Changes
@@ -334,4 +410,4 @@ Test fixtures include real-world code patterns and edge cases.
 
 Changed files:
 - `__init__.py`
-- `typescript_parser.py`
+- `java_parser.py`

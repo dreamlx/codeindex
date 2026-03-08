@@ -8,30 +8,72 @@
 
 ## 🧭 Part 1: Understanding & Navigating
 
+### 🎯 Usage Scenarios — Choose Your Workflow
+
+**This project supports multiple development environments. Your workflow depends on available tools:**
+
+#### Scenario A: Personal Developer (Claude Code + Serena MCP)
+**Tools available**: Serena MCP, codeindex, Claude Code
+**Workflow**:
+1. **Architecture understanding**: Read README_AI.md for global view
+2. **Precise navigation**: Use Serena `find_symbol()` for exact locations
+3. **Quality analysis**: Use `codeindex tech-debt` for code health
+
+**Tool priority**: Serena (real-time navigation) + codeindex (architecture + quality)
+
+---
+
+#### Scenario B: Enterprise Intranet (No Serena)
+**Tools available**: codeindex only (no external MCP servers)
+**Workflow**:
+1. **Architecture understanding**: README_AI.md is your **primary tool**
+2. **Symbol lookup**: PROJECT_SYMBOLS.md for finding symbols
+3. **Quality analysis**: `codeindex tech-debt` for code review
+
+**Key difference**: Without Serena, README_AI.md and PROJECT_SYMBOLS.md become **critical** for code navigation.
+
+---
+
+#### Scenario C: Enterprise with LoomGraph
+**Tools available**: codeindex, LoomGraph, LightRAG
+**Workflow**:
+1. **Data source**: codeindex generates ParseResult for LoomGraph
+2. **Semantic search**: LoomGraph provides natural language code search
+3. **Knowledge graph**: LightRAG stores and queries relationships
+
+**codeindex role**: Core data layer — without codeindex, LoomGraph cannot function.
+
+---
+
 ### 📖 How to Understand This Project
 
-**⚠️ Start with README_AI.md files** - They are your best entry point
+**Priority order** (adjust based on your scenario):
 
-**Priority order**:
-1. `/README_AI.md` - Project overview
-2. `/src/codeindex/README_AI.md` - Core module architecture
-3. `/tests/README_AI.md` - Test structure
-4. Specific module README_AI.md as needed
+**Priority order** (Scenario A: With Serena):
+1. `/README_AI.md` - Project overview (architecture map)
+2. Serena `find_symbol()` - Precise symbol location
+3. `/src/codeindex/README_AI.md` - Core module details
+4. Serena `find_referencing_symbols()` - Call relationships
+
+**Priority order** (Scenario B/C: Without Serena):
+1. `/README_AI.md` - Project overview (critical!)
+2. `PROJECT_SYMBOLS.md` - Global symbol index (critical!)
+3. `/src/codeindex/README_AI.md` - Core module architecture
+4. Specific module README_AI.md - Detailed navigation
 
 **Secondary resources**:
-- `PROJECT_SYMBOLS.md` - Global symbol index
 - `CHANGELOG.md` - Version history and breaking changes
 - `RELEASE_NOTES_*.md` - Major release details
 - `docs/planning/*.md` - Epic/Story design decisions
 
 **❌ Avoid**:
-- Direct Glob/Grep on source code (inefficient)
-- Reading .py files without context
+- **Scenario A**: Direct Glob/Grep (use Serena instead)
+- **Scenario B/C**: Reading files without README_AI.md context first
 - Ignoring existing documentation
 
 ### 🔍 How to Navigate Code
 
-**Use Serena MCP tools** for precise navigation:
+**Scenario A (With Serena)**: Use Serena MCP tools for precise navigation:
 
 ```python
 # Find symbol definitions
@@ -56,6 +98,30 @@ search_for_pattern(
     restrict_search_to_code_files=True
 )
 ```
+
+---
+
+**Scenario B/C (Without Serena)**: Use README_AI.md and PROJECT_SYMBOLS.md for navigation:
+
+```bash
+# Step 1: Understand architecture
+Read("README_AI.md")  # Get project overview
+Read("src/codeindex/README_AI.md")  # Understand core modules
+
+# Step 2: Find symbol location
+Read("PROJECT_SYMBOLS.md")  # Search for symbol name
+# Example result: "AdaptiveSymbolSelector → src/codeindex/adaptive_selector.py:45"
+
+# Step 3: Read specific file
+Read("src/codeindex/adaptive_selector.py", offset=45, limit=50)
+
+# Step 4: Understand module structure
+Read("src/codeindex/README_AI.md")  # Shows all symbols in module
+```
+
+**Key difference**: Without Serena, you rely on pre-generated indexes (README_AI.md, PROJECT_SYMBOLS.md) instead of real-time queries.
+
+---
 
 ### 📁 Project Special Files
 
@@ -153,6 +219,17 @@ codeindex status
 codeindex scan-all --output json > parse_results.json
 codeindex scan ./src --output json                    # Single directory
 codeindex scan ./src --output json | jq .             # View formatted JSON
+
+# 🔍 Technical Debt & Test Smells Analysis (v0.22.0+)
+codeindex tech-debt ./src                             # Comprehensive quality analysis
+codeindex tech-debt ./src --format json               # LoomGraph-compatible JSON
+codeindex tech-debt ./src --format markdown           # Detailed report
+codeindex debt-scan ./src                             # Alias (backward compatible)
+
+# Detects:
+# - Code quality issues (giant files, god classes, symbol overload)
+# - Test smells (skipped tests, giant test files)
+# - High coupling, long methods, too many functions
 
 # Git Hooks management
 codeindex hooks status
@@ -453,7 +530,7 @@ include:        # Directories to scan
   - src/
 exclude:        # Patterns to skip
   - "**/__pycache__/**"
-languages:      # Supported: python, php, java, typescript, javascript
+languages:      # Supported: python, php, java, typescript, javascript, swift, objc
   - python
 output_file: README_AI.md
 
@@ -530,7 +607,7 @@ codeindex status
 
 ## 📈 Version History
 
-**Current version**: v0.20.0
+**Current version**: v0.22.2
 
 For complete version history, see:
 - **[CHANGELOG.md](CHANGELOG.md)** - Detailed changes for each version
@@ -678,8 +755,8 @@ All versions 100% backward compatible (v0.1.0 → v0.5.0)
 
 ---
 
-**Last Updated**: 2026-02-04
-**codeindex Version**: v0.6.0
+**Last Updated**: 2026-03-08
+**codeindex Version**: v0.21.0
 **For**: Claude Code and contributors
 
 ---

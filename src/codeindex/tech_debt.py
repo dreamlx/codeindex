@@ -231,6 +231,8 @@ class TechDebtDetector:
         LONG_METHOD_HIGH: High threshold for long methods (>150 lines, HIGH)
         MAX_TOP_LEVEL_FUNCTIONS: Max top-level functions per file (>15, MEDIUM)
         MAX_INTERNAL_IMPORTS: Max internal imports per file (>8, MEDIUM)
+        MASSIVE_VIEW_CONTROLLER_LINES: iOS ViewController line threshold (>500, CRITICAL)
+        MASSIVE_VIEW_CONTROLLER_METHODS: iOS ViewController method threshold (>20, CRITICAL)
     """
 
     GOD_CLASS_METHODS_WARN = 20  # MEDIUM
@@ -243,8 +245,25 @@ class TechDebtDetector:
     MAX_TOP_LEVEL_FUNCTIONS = 15  # MEDIUM
     MAX_INTERNAL_IMPORTS = 8  # MEDIUM
 
+    # iOS-specific thresholds (Story 2.4)
+    MASSIVE_VIEW_CONTROLLER_LINES = 500  # CRITICAL
+    MASSIVE_VIEW_CONTROLLER_METHODS = 20  # CRITICAL
+
     MASSIVE_SYMBOL_COUNT = 100  # Total symbols
-    HIGH_NOISE_RATIO = 0.5  # 50% filter ratio
+    HIGH_NOISE_RATIO = 0.5  # 50% filter ratio (default)
+
+    # Language-specific noise ratio thresholds
+    # Objective-C categories often have simple utility methods, need higher threshold
+    NOISE_RATIO_THRESHOLDS = {
+        "python": 0.5,      # 50% - standard threshold
+        "php": 0.5,         # 50% - standard threshold
+        "javascript": 0.5,  # 50% - standard threshold
+        "typescript": 0.5,  # 50% - standard threshold
+        "java": 0.5,        # 50% - standard threshold
+        "swift": 0.6,       # 60% - Swift extensions are similar to categories
+        "objc": 0.7,        # 70% - Objective-C categories are intentionally simple
+        "default": 0.5,     # 50% - fallback for unknown languages
+    }
 
     # Language-specific file size thresholds
     FILE_SIZE_THRESHOLDS = {
@@ -253,7 +272,7 @@ class TechDebtDetector:
     }
 
     # Extension to language profile mapping
-    _COMPACT_EXTENSIONS = {".py", ".ts", ".tsx", ".js", ".jsx"}
+    _COMPACT_EXTENSIONS = {".py", ".ts", ".tsx", ".js", ".jsx", ".swift"}
     _VERBOSE_EXTENSIONS = {".php", ".java", ".go"}
 
     def __init__(self, config: Config):
@@ -281,6 +300,41 @@ class TechDebtDetector:
         if ext in self._VERBOSE_EXTENSIONS:
             return self.FILE_SIZE_THRESHOLDS["verbose"]
         return self.FILE_SIZE_THRESHOLDS["compact"]
+
+    def _get_noise_ratio_threshold(self, file_path: Path, file_type: str | None = None) -> float:
+        """Get language-aware noise ratio threshold.
+
+        Objective-C categories and Swift extensions often contain simple utility
+        methods that would be flagged as "noise" under strict thresholds. This
+        method returns language-specific thresholds to reduce false positives.
+
+        Args:
+            file_path: Path to the file being analyzed
+            file_type: Optional file type override (e.g., 'objc', 'swift')
+
+        Returns:
+            Noise ratio threshold (0.0-1.0)
+        """
+        # Use provided file_type or infer from extension
+        if file_type:
+            return self.NOISE_RATIO_THRESHOLDS.get(file_type, self.NOISE_RATIO_THRESHOLDS["default"])
+
+        # Infer from file extension
+        ext = file_path.suffix.lower()
+        ext_to_type = {
+            ".py": "python",
+            ".php": "php",
+            ".js": "javascript",
+            ".ts": "typescript",
+            ".tsx": "typescript",
+            ".java": "java",
+            ".swift": "swift",
+            ".h": "objc",
+            ".m": "objc",
+        }
+
+        file_type = ext_to_type.get(ext, "default")
+        return self.NOISE_RATIO_THRESHOLDS.get(file_type, self.NOISE_RATIO_THRESHOLDS["default"])
 
     def analyze_file(
         self, parse_result: ParseResult, scorer: SymbolImportanceScorer
@@ -310,6 +364,9 @@ class TechDebtDetector:
 
         # Detect high import coupling
         issues.extend(self._detect_high_coupling(parse_result))
+
+        # iOS-specific: Detect Massive View Controller (Story 2.4)
+        issues.extend(self._detect_massive_view_controller(parse_result))
 
         # Calculate quality score based on issues
         quality_score = self._calculate_quality_score(parse_result, issues)
@@ -550,6 +607,78 @@ class TechDebtDetector:
             ]
         return []
 
+    def _detect_massive_view_controller(
+        self, parse_result: ParseResult
+    ) -> list[DebtIssue]:
+        """Detect Massive View Controller anti-pattern (iOS-specific).
+
+        A Massive View Controller is detected when a class whose name contains
+        "ViewController" (UIViewController or NSViewController subclass) violates
+        either of these conditions:
+        - >500 lines of code (class line_end - line_start + 1)
+        - >20 methods
+
+        Only applies to Swift files (.swift extension).
+
+        Args:
+            parse_result: The parsed file to analyze
+
+        Returns:
+            List of DebtIssue for Massive View Controller problems
+        """
+        issues = []
+
+        # Only check Swift files
+        if parse_result.path.suffix.lower() != ".swift":
+            return []
+
+        # Find all classes with "ViewController" in name
+        view_controller_classes = [
+            s for s in parse_result.symbols
+            if s.kind == "class" and "ViewController" in s.name
+        ]
+
+        for vc_class in view_controller_classes:
+            # Check line count
+            class_lines = vc_class.line_end - vc_class.line_start + 1
+            if class_lines > self.MASSIVE_VIEW_CONTROLLER_LINES:
+                issues.append(
+                    DebtIssue(
+                        severity=DebtSeverity.CRITICAL,
+                        category="massive_view_controller",
+                        file_path=parse_result.path,
+                        metric_value=class_lines,
+                        threshold=self.MASSIVE_VIEW_CONTROLLER_LINES,
+                        description=f"ViewController '{vc_class.name}' has {class_lines} lines "
+                        f"(threshold: {self.MASSIVE_VIEW_CONTROLLER_LINES})",
+                        suggestion="Extract child view controllers, separate data sources, "
+                        "or split into coordinator pattern with multiple view controllers",
+                    )
+                )
+
+            # Count methods in this ViewController
+            method_count = sum(
+                1 for s in parse_result.symbols
+                if s.kind == "method" and s.name.startswith(f"{vc_class.name}.")
+            )
+
+            if method_count > self.MASSIVE_VIEW_CONTROLLER_METHODS:
+                issues.append(
+                    DebtIssue(
+                        severity=DebtSeverity.CRITICAL,
+                        category="massive_view_controller",
+                        file_path=parse_result.path,
+                        metric_value=method_count,
+                        threshold=self.MASSIVE_VIEW_CONTROLLER_METHODS,
+                        description=f"ViewController '{vc_class.name}' has {method_count} methods "
+                        f"(threshold: {self.MASSIVE_VIEW_CONTROLLER_METHODS})",
+                        suggestion="Extract helper classes, apply MVVM pattern, "
+                        "or use child view controllers to reduce complexity",
+                    )
+                )
+
+        return issues
+
     def _calculate_quality_score(
         self, parse_result: ParseResult, issues: list[DebtIssue]
     ) -> float:
@@ -603,72 +732,105 @@ class TechDebtDetector:
         issues = []
         total_symbols = len(parse_result.symbols)
 
-        # Detect massive symbol count
-        if total_symbols > self.MASSIVE_SYMBOL_COUNT:
-            issues.append(
-                DebtIssue(
-                    severity=DebtSeverity.CRITICAL,
-                    category="massive_symbol_count",
-                    file_path=parse_result.path,
-                    metric_value=total_symbols,
-                    threshold=self.MASSIVE_SYMBOL_COUNT,
-                    description=f"File has {total_symbols} symbols "
-                    f"(threshold: {self.MASSIVE_SYMBOL_COUNT})",
-                    suggestion="Split into multiple modules to reduce cognitive load",
-                )
-            )
+        # Check for massive symbol count
+        massive_issue = self._check_massive_symbols(parse_result.path, total_symbols)
+        if massive_issue:
+            issues.append(massive_issue)
 
-        # Score all symbols and filter
-        scored_symbols = []
-        for symbol in parse_result.symbols:
-            score = scorer.score(symbol)
-            scored_symbols.append((symbol, score))
-
-        # Use standard threshold for filtering (30.0 is a reasonable cutoff)
-        threshold = 30.0
-        filtered_symbols = [s for s, score in scored_symbols if score >= threshold]
-
-        # Calculate metrics
-        filtered_count = len(filtered_symbols)
-        filter_ratio = 1.0 - (filtered_count / total_symbols) if total_symbols > 0 else 0.0
-
-        # Analyze noise breakdown (language-aware)
-        file_type = getattr(scorer.context, "file_type", "unknown")
-        noise_breakdown = self._analyze_noise_breakdown(
-            parse_result.symbols, filtered_symbols, file_type=file_type
+        # Score and filter symbols
+        filtered_symbols, filter_ratio = self._score_and_filter_symbols(
+            parse_result.symbols, scorer, total_symbols
         )
 
-        # Detect high noise ratio
-        if filter_ratio > self.HIGH_NOISE_RATIO:
-            noise_description = self._format_noise_description(noise_breakdown)
-            issues.append(
-                DebtIssue(
-                    severity=DebtSeverity.HIGH,
-                    category="low_quality_symbols",
-                    file_path=parse_result.path,
-                    metric_value=filter_ratio,
-                    threshold=self.HIGH_NOISE_RATIO,
-                    description=f"High symbol noise ratio: {filter_ratio*100:.1f}% "
-                    f"({total_symbols - filtered_count}/{total_symbols} symbols filtered). "
-                    f"{noise_description}",
-                    suggestion=self._suggest_noise_reduction(noise_breakdown),
-                )
-            )
+        # Check for high noise ratio
+        file_type = getattr(scorer.context, "file_type", "unknown")
+        noise_issue, noise_breakdown = self._check_noise_ratio(
+            parse_result, total_symbols, filtered_symbols, filter_ratio, file_type
+        )
+        if noise_issue:
+            issues.append(noise_issue)
 
         # Calculate quality score
         quality_score = self._calculate_symbol_quality_score(
-            total_symbols, filtered_count, noise_breakdown
+            total_symbols, len(filtered_symbols), noise_breakdown
         )
 
         analysis = SymbolOverloadAnalysis(
             total_symbols=total_symbols,
-            filtered_symbols=filtered_count,
+            filtered_symbols=len(filtered_symbols),
             filter_ratio=filter_ratio,
             noise_breakdown=noise_breakdown,
             quality_score=quality_score,
         )
 
         return issues, analysis
+
+    def _check_massive_symbols(self, file_path: Path, total_symbols: int) -> DebtIssue | None:
+        """Check if file has massive symbol count."""
+        if total_symbols > self.MASSIVE_SYMBOL_COUNT:
+            return DebtIssue(
+                severity=DebtSeverity.CRITICAL,
+                category="massive_symbol_count",
+                file_path=file_path,
+                metric_value=total_symbols,
+                threshold=self.MASSIVE_SYMBOL_COUNT,
+                description=f"File has {total_symbols} symbols "
+                f"(threshold: {self.MASSIVE_SYMBOL_COUNT})",
+                suggestion="Split into multiple modules to reduce cognitive load",
+            )
+        return None
+
+    def _score_and_filter_symbols(
+        self, symbols: list, scorer: SymbolImportanceScorer, total_symbols: int
+    ) -> tuple[list, float]:
+        """Score all symbols and filter by threshold."""
+        # Score all symbols
+        scored_symbols = [(symbol, scorer.score(symbol)) for symbol in symbols]
+
+        # Filter by threshold
+        threshold = 30.0
+        filtered_symbols = [s for s, score in scored_symbols if score >= threshold]
+
+        # Calculate filter ratio
+        filtered_count = len(filtered_symbols)
+        filter_ratio = 1.0 - (filtered_count / total_symbols) if total_symbols > 0 else 0.0
+
+        return filtered_symbols, filter_ratio
+
+    def _check_noise_ratio(
+        self,
+        parse_result: ParseResult,
+        total_symbols: int,
+        filtered_symbols: list,
+        filter_ratio: float,
+        file_type: str,
+    ) -> tuple[DebtIssue | None, dict[str, int]]:
+        """Check for high noise ratio and analyze breakdown."""
+        # Analyze noise breakdown
+        noise_breakdown = self._analyze_noise_breakdown(
+            parse_result.symbols, filtered_symbols, file_type=file_type
+        )
+
+        # Get language-specific threshold
+        noise_threshold = self._get_noise_ratio_threshold(parse_result.path, file_type)
+
+        # Check if noise ratio exceeds threshold
+        if filter_ratio > noise_threshold:
+            noise_description = self._format_noise_description(noise_breakdown)
+            issue = DebtIssue(
+                severity=DebtSeverity.HIGH,
+                category="low_quality_symbols",
+                file_path=parse_result.path,
+                metric_value=filter_ratio,
+                threshold=noise_threshold,
+                description=f"High symbol noise ratio: {filter_ratio*100:.1f}% "
+                f"({total_symbols - len(filtered_symbols)}/{total_symbols} symbols filtered). "
+                f"{noise_description}",
+                suggestion=self._suggest_noise_reduction(noise_breakdown),
+            )
+            return issue, noise_breakdown
+
+        return None, noise_breakdown
 
     def _analyze_noise_breakdown(
         self, all_symbols: list, filtered_symbols: list, file_type: str = "unknown"

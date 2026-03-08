@@ -7,6 +7,158 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.2] - 2026-03-08
+
+### Added
+
+- **Post-install hook for automatic CLAUDE.md updates** (Epic #25, Story #26): Automatically updates `~/.claude/CLAUDE.md` after `pip install --upgrade ai-codeindex`.
+  - **Marker-based injection**: Idempotent updates using `<!-- CODEINDEX_GUIDE_START vX.X.X -->` markers
+  - **Version detection**: Automatically extracts and updates version numbers
+  - **Backup creation**: Creates timestamped backups before modification (`CLAUDE.md.backup.YYYYMMDD_HHMMSS`)
+  - **CI environment detection**: Skips updates in GitHub Actions, GitLab CI, Jenkins, CircleCI, and generic CI environments
+  - **Silent failure handling**: Gracefully handles permission errors and missing directories
+  - **Content preservation**: Preserves user customizations before/after guide section
+  - **Template system**: Uses `src/codeindex/templates/claude_md_core.md` for guide content
+
+- **Core guide template** (`src/codeindex/templates/claude_md_core.md`): Comprehensive codeindex usage guide for Claude Code users.
+  - **Complete command reference**: All core commands (scan, tech-debt, symbols, index, status)
+  - **Language support table**: 9 languages with version information
+  - **Best practices**: AI Code integration workflow and tips
+  - **Auto-updated on install**: Version number dynamically replaced from package metadata
+
+### Technical Details
+
+- **Implementation**: `src/codeindex/hooks.py` with 4 core functions:
+  - `_is_ci_environment()`: CI/CD detection (6 environment variables)
+  - `_extract_version_from_file()`: Regex-based version extraction
+  - `_inject_core_guide()`: Marker-based content replacement
+  - `post_install_update_guide()`: Main hook orchestration
+- **Test coverage**: 87% (21 tests: 18 unit + 3 integration)
+- **Documentation**: ADR 004 (`docs/architecture/adr/004-automatic-claude-md-update.md`)
+
+- **`/codeindex-update-guide` skill** (Epic #25, Story #27): Interactive Claude Code skill for deep CLAUDE.md customization.
+  - **Project analysis**: Detects languages (10 extensions), .codeindex.yaml, LoomGraph integration
+  - **Personalized suggestions**: Profile-based recommendations (Swift docs, LoomGraph tips, version updates)
+  - **Version diff**: Markdown-formatted comparison between old and new versions
+  - **Language table diff**: Highlights newly supported languages
+  - **Selective updates**: Apply all or choose specific suggestions
+  - **Backup & rollback**: Timestamped backups with one-command restore
+  - **Implementation**: `src/codeindex/skill_helpers.py` with 9 helper functions
+  - **Test coverage**: 80% (25 unit tests)
+
+## [0.22.1] - 2026-03-06
+
+### Added
+
+- **tech-debt JSON output enhancement**: Added `target_path` field to record analyzed directory path.
+  - **Use case**: LoomGraph integration and logging/tracing
+  - **Format**: Absolute path (e.g., `/Users/username/project/src`)
+  - **Default**: "." if not provided (backward compatible)
+  - **Cost**: Minimal (1 field addition, <5 minutes implementation)
+
+### Changed
+
+- **JSONFormatter**: Now accepts optional `target_path` parameter (v0.22.1+)
+- **tech-debt command**: Automatically passes target path to JSON output
+
+## [0.22.0] - 2026-03-06
+
+### Added
+
+- **Enhanced tech-debt command with test smells detection** (Issue #24): Unified code quality analysis.
+  - **Test smells detection**: Automatic detection of skipped tests (`it.skip()`, `xit()`, `@pytest.mark.skip`, `@unittest.skip`, `@Ignore`, `@Disabled`) and giant test files (>1000 lines)
+  - **Framework-agnostic**: Supports Jest, Mocha, pytest, unittest, JUnit 4/5 without framework-specific logic
+  - **Enhanced JSON output**: Added `timestamp`, `summary` (with `test_smells` count, `avg_maintainability`), `giant_files`, `giant_functions`, `maintainability_scores`, and `test_smells` fields
+  - **Backward compatible**: All existing JSON fields preserved for existing integrations
+  - **LoomGraph ready**: JSON format optimized for LoomGraph technical debt analysis integration
+
+- **debt-scan command alias**: `debt-scan` is now an alias for `tech-debt` (backward compatibility for v0.22.0 users)
+  - `codeindex debt-scan ./src` ≡ `codeindex tech-debt ./src`
+  - All options and output formats work identically
+
+- **Test smells detection module** (test_smells.py): Framework-agnostic test code anti-pattern detection.
+  - **Skipped tests detection**: Regex-based pattern matching across 8 patterns
+  - **Giant test files**: Detects test files >1000 lines (reusing file size detection logic)
+  - **Test file recognition**: Automatic identification via naming patterns (test_*.py, *.test.js, *Test.java) and directory conventions (__tests__/, tests/)
+
+- **KISS implementation**: Simple, maintainable design following YAGNI principle.
+  - **90% code reuse**: tech-debt detection, scanner, parser, symbol scorer
+  - **Deferred features**: Cyclomatic complexity (use long method detection instead), comment rate analysis, Mock detection (low ROI)
+  - **Unified command**: Single entry point reduces user confusion and maintenance burden
+
+### Changed
+
+- **tech-debt command**: Now includes test smells detection by default (all output formats)
+- **JSONFormatter**: Enhanced with LoomGraph-compatible fields while maintaining backward compatibility
+
+### Tests
+
+- **test_test_smells.py**: 13 unit tests for test smells detection (100% passing)
+- **test_cli_debt_scan.py**: 9 integration tests for debt-scan/tech-debt (100% passing)
+- **Total**: 22 tests, all passing
+
+### Documentation
+
+- **Unified documentation**: tech-debt command now documented as comprehensive quality analysis tool
+- **Backward compatibility**: debt-scan alias preserved for existing users
+
+### Performance
+
+- **Scan speed**: 97 test files analyzed in <1 second
+- **Memory**: Minimal overhead (~5%) over previous tech-debt implementation
+
+## [0.21.0] - 2026-03-06
+
+### Added
+
+- **Swift language support** (Epic 23 - Phase 1 & 2): Full parsing for `.swift` files using tree-sitter-swift v0.6.0.
+  - **Symbol extraction**: classes, structs, enums, protocols, methods, properties, initializers, deinitializers, subscripts, top-level functions
+  - **Import extraction**: import statements with module names
+  - **Inheritance extraction**: class inheritance, protocol conformance, protocol inheritance
+  - **Extension support**: extensions with protocol conformance, constrained extensions, cross-file extension tracking
+  - **Docstring extraction**: Swift doc comments (`///` and `/** */`), preserves formatting
+  - **Advanced features**: property wrappers (@State, @Published), generic type parameters, access modifiers
+  - 23 comprehensive Swift tests (12 MVP + 11 advanced features)
+
+- **Objective-C language support** (Epic 23 - Phase 3): Full parsing for `.h` and `.m` files using tree-sitter-objc v3.0.2.
+  - **Symbol extraction**: @interface/@implementation declarations, methods (class/instance), properties, protocols, categories
+  - **File association**: .h/.m file pairing by basename, symbol merging with deduplication, association accuracy ≥95%
+  - **Protocol support**: @protocol declarations, protocol inheritance, @optional/@required method sections
+  - **Category support**: NSString+ZCHelp pattern, category method extraction, base class association
+  - **Preprocessing**: NS_ASSUME_NONNULL_BEGIN/END macro handling, NS_SWIFT_NAME removal, __attribute__ cleanup
+  - 51 comprehensive Objective-C tests (13 basic + 18 association + 12 categories + 11 bridging)
+
+- **Swift/Objective-C integration** (Epic 23 - Phase 3): Mixed project support for iOS/macOS development.
+  - **Bridging header detection**: *-Bridging-Header.h pattern recognition, exposed Objective-C API extraction
+  - **Mixed project parsing**: 814 files in real-world iOS project (280 Swift + 534 Objective-C)
+  - **Association accuracy**: 91.5% .h/.m pairing in production codebase
+  - 9 end-to-end integration tests
+
+- **Tech-debt language support** (Epic 23): Objective-C and Swift file recognition in `codeindex tech-debt` command.
+  - File extension mapping: `.h`, `.m` (objc), `.swift` (swift)
+  - Language-specific noise thresholds: objc=70% (more lenient for categories), swift=60%, default=50%
+  - Real-world validation: 28 files analyzed, 22 issues detected, 97.5/100 quality score
+
+- **New optional dependency group**: `pip install ai-codeindex[swift]` installs tree-sitter-swift v0.6.0 and tree-sitter-objc v3.0.2
+- **Scanner support**: `swift` and `objc` in `LANGUAGE_EXTENSIONS` and `.codeindex.yaml` config
+- **CLI integration**: `codeindex parse file.swift` and `codeindex parse Header.h` produce JSON output
+
+### Changed
+
+- **Tech-debt noise ratio thresholds**: Adjusted for language-specific patterns (objc: 50%→70%, swift: 50%→60%). Objective-C categories and Swift extensions are intentionally simple utility code and should not be penalized.
+
+### Fixed
+
+- **Objective-C preprocessing**: Apple framework macros (NS_ASSUME_NONNULL_BEGIN/END, NS_SWIFT_NAME, __attribute__) now handled via preprocessing to ensure successful parsing. Previous 52% failure rate reduced to 0%.
+- **POSIX newline requirement**: All test files now include trailing newline to satisfy tree-sitter-objc parser requirements.
+
+### Validation
+
+- **Real-world project**: slock-app (HEXFPORCE) - 814 files, 91.5% .h/.m association accuracy
+- **Performance**: <1s for 28 files, <30s for full project indexing
+- **Test coverage**: 1422 tests passing (74 new Swift/Objective-C tests), 13 skipped
+- **Validation reports**: `docs/evaluation/epic23-slock-app-validation.md`, `docs/evaluation/epic23-tech-debt-validation.md`
+
 ## [0.20.0] - 2026-02-20
 
 ### Added
