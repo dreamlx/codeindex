@@ -248,6 +248,12 @@ Changed files:
 - `test_hooks.py`
 - `test_hooks_integration.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_hooks_integration.py`
+
 ---
 
 ## Recent Changes
@@ -255,4 +261,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_hooks_integration.py`
+- `test_skill_helpers.py`
