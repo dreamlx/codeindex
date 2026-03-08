@@ -30,6 +30,7 @@ codeindex extracts symbols, inheritance relationships, call graphs, and imports 
 - **Smart indexing** — Tiered documentation (overview → navigation → detailed) optimized for AI agents
 - **Adaptive symbol extraction** — Dynamic 5–150 symbols per file based on size
 - **CLAUDE.md injection** — `codeindex init` auto-configures Claude Code integration (v0.17.0)
+- **Auto-update guide** — Post-install hook automatically updates `~/.claude/CLAUDE.md` after `pip upgrade` (v0.22.2)
 - **Template-based test generation** — YAML + Jinja2 for rapid language support (88–91% time savings)
 - **Parallel scanning** — Concurrent directory processing with configurable workers
 
@@ -198,7 +199,8 @@ codeindex affected --since HEAD~5
 |---------|-------------|-------|
 | `codeindex scan --output json` | JSON output for tools | [JSON Output Guide](docs/guides/json-output-integration.md) |
 | `codeindex parse <file>` | Parse single file to JSON | [LoomGraph Integration](docs/guides/loomgraph-integration.md) |
-| `codeindex tech-debt ./src` | Technical debt analysis | [Advanced Usage](docs/guides/advanced-usage.md) |
+| `codeindex tech-debt ./src` | Code quality analysis (debt + test smells) | Enhanced in v0.22.0 |
+| `codeindex debt-scan ./src` | Alias for tech-debt | Backward compatibility |
 | `codeindex hooks install` | Git hooks for auto-update | [Git Hooks Guide](docs/guides/git-hooks-integration.md) |
 | `codeindex config explain <param>` | Parameter help | [Configuration Guide](docs/guides/configuration.md) |
 
@@ -253,6 +255,71 @@ For manual setup, MCP skills (`/mo:arch`, `/mo:index`), and Git hooks integratio
 
 ---
 
+## Code Quality Analysis
+
+### tech-debt: Comprehensive Quality Analysis (Enhanced in v0.22.0)
+
+The `tech-debt` command provides comprehensive code quality analysis, now including test smells detection:
+
+```bash
+# JSON output (for LoomGraph integration)
+codeindex tech-debt ./src --format json > debt-data.json
+
+# Markdown report (for documentation)
+codeindex tech-debt ./src --format markdown > report.md
+
+# Console output (for quick checks)
+codeindex tech-debt ./src --format console
+
+# Alias: debt-scan also works (backward compatibility)
+codeindex debt-scan ./src --format json
+```
+
+**What it detects**:
+- 🔴 **Super large files** (>5000 lines), **Large files** (>2000 lines)
+- 🔴 **God Classes** (>50 methods)
+- 🔴 **Long methods** (>80/150 lines)
+- 🟡 **High coupling** (>8 internal imports)
+- 🟡 **Symbol overload** (>100 symbols, high noise ratio)
+- 🧪 **Test smells** (skipped tests, giant test files) — **New in v0.22.0**
+- 📊 **Quality scoring** (0-100 scale per file)
+
+**Enhanced JSON output (v0.22.0)**:
+```json
+{
+  "timestamp": "2026-03-06T13:45:39Z",
+  "summary": {
+    "total_files": 97,
+    "giant_files": 0,
+    "giant_functions": 3,
+    "test_smells": 64,
+    "avg_maintainability": 9.9
+  },
+  "total_files": 97,
+  "average_quality_score": 99.4,
+  "giant_files": [],
+  "giant_functions": [...],
+  "test_smells": [
+    {
+      "path": "tests/test_example.py",
+      "type": "skipped_test",
+      "details": "Skipped test detected: @pytest.mark.skip at line 42",
+      "line_number": 42
+    }
+  ],
+  "file_reports": [...]
+}
+```
+
+**Key features**:
+- ✅ **Unified command**: Single entry point for all quality checks
+- ✅ **Backward compatible**: All existing JSON fields preserved
+- ✅ **LoomGraph ready**: Enhanced summary for knowledge graph integration
+- ✅ **Framework-agnostic**: Detects test smells across Jest, pytest, JUnit, etc.
+- ✅ **KISS design**: 90% code reuse, simple regex patterns for test detection
+
+---
+
 ## How It Works
 
 ### Standalone Mode
@@ -278,7 +345,7 @@ Directory → Scanner → Parser (tree-sitter) → Smart Writer → README_AI.md
 │  🔍 codeindex (Parse Layer)                        │
 │       ├── scan --output json → ParseResult         │
 │       ├── README_AI.md → architecture docs         │
-│       └── tech-debt → quality analysis             │
+│       └── tech-debt → comprehensive quality scan   │
 │       ↓                                            │
 │  🕸️ LoomGraph (Orchestration Layer)                │
 │       ├── inject ParseResult                       │

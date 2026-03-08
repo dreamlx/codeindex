@@ -184,6 +184,61 @@ Changed files:
 Changed files:
 - `cli_tech_debt.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `tech_debt.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `cli.py`
+- `cli_tech_debt.py`
+- `tech_debt_formatters.py`
+- `test_smells.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `cli_tech_debt.py`
+- `tech_debt_formatters.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `cli_scan.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `cli_scan.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `parser.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `cli_tech_debt.py`
+- `directory_tree.py`
+- `hierarchical.py`
+- `tech_debt.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `hooks.py`
+
 ---
 
 ## Recent Changes
@@ -191,4 +246,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `tech_debt.py`
+- `hooks.py`

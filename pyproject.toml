@@ -1,6 +1,6 @@
 [project]
 name = "ai-codeindex"
-version = "0.21.0"
+version = "0.22.2"
 description = "AI-native code indexing tool for large codebases"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -88,3 +88,6 @@ select = ["E", "F", "I", "N", "W"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 norecursedirs = ["examples"]
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+]

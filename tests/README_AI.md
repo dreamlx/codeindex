@@ -222,6 +222,32 @@ Changed files:
 Changed files:
 - `test_integration_swift_objc.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_parser_swift_protocols.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_cli_debt_scan.py`
+- `test_test_smells.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_cli_debt_scan.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `test_hooks.py`
+- `test_hooks_integration.py`
+
 ---
 
 ## Recent Changes
@@ -229,4 +255,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_parser_swift_protocols.py`
+- `test_hooks_integration.py`
