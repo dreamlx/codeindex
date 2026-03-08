@@ -239,6 +239,18 @@ Changed files:
 Changed files:
 - `hooks.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `hooks.py`
+
+
+**Commit ``**: 
+
+Changed files:
+- `skill_helpers.py`
+
 ---
 
 ## Recent Changes
@@ -246,4 +258,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `hooks.py`
+- `skill_helpers.py`
