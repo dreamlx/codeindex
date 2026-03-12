@@ -97,11 +97,12 @@ codeindex status
 1. **初始化项目时**:
    ```bash
    codeindex init
-   codeindex scan-all  # 生成完整索引
+   codeindex scan-all  # 生成完整索引（ai_command 配置后自动 AI 增强）
    ```
 
 2. **日常开发**:
-   - 使用 Git Hooks 自动更新（mode: auto）
+   - 安装 Git Hooks 自动更新: `codeindex hooks install post-commit`
+   - Hook 使用 thin wrapper 模式，`pip install --upgrade ai-codeindex` 自动更新逻辑
    - 大改动后手动运行 `codeindex affected` 检查影响范围
 
 3. **AI Code 使用**:
