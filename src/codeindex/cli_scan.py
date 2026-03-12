@@ -370,20 +370,18 @@ def _generate_ai_readme(
 # ========== Helper functions for scan_all (validation and config) ==========
 
 
-def _validate_scanall_args(fallback: bool, no_ai: bool, quiet: bool) -> None:
+def _validate_scanall_args(fallback: bool, quiet: bool) -> None:
     """Validate scan_all command arguments.
 
     Args:
         fallback: Deprecated --fallback flag
-        no_ai: Deprecated --no-ai flag
         quiet: --quiet flag
     """
     # Handle deprecated flags
-    if fallback or no_ai:
+    if fallback:
         if not quiet:
-            flag_name = "--fallback" if fallback else "--no-ai"
             console.print(
-                f"[yellow]Warning: {flag_name} is deprecated. "
+                "[yellow]Warning: --fallback is deprecated. "
                 "Structural mode is now the default. "
                 "This flag will be removed in a future version.[/yellow]"
             )
@@ -851,9 +849,9 @@ def scan(
 @click.option("--timeout", default=120, help="Timeout per directory in seconds")
 @click.option(
     "--ai", is_flag=True,
-    help="Enable AI-enriched module descriptions (requires ai_command in config)",
+    help="Enable AI enrichment (auto-detected when ai_command is configured)",
 )
-@click.option("--no-ai", is_flag=True, hidden=True, help="[Deprecated] Structural mode is now the default")
+@click.option("--no-ai", is_flag=True, help="Disable automatic AI enrichment")
 @click.option("--fallback", is_flag=True, hidden=True, help="[Deprecated] Structural mode is now the default")
 @click.option("--quiet", "-q", is_flag=True, help="Minimal output")
 @click.option("--hierarchical", "-h", is_flag=True, help="Use hierarchical processing (bottom-up)")
@@ -890,24 +888,44 @@ def scan_all(
 ):
     """Scan all project directories for README_AI.md generation.
 
-    By default, generates structural documentation without AI.
-    Use --ai to enable AI-enhanced documentation.
+    By default, auto-detects ai_command in config and enables AI enrichment.
+    Use --no-ai to disable AI enrichment.
     """
     # Determine root path first (needed for config loading)
     root = Path.cwd() if root is None else root
 
     # Validate arguments
-    _validate_scanall_args(fallback, no_ai, quiet)
+    _validate_scanall_args(fallback, quiet)
+
+    # --ai and --no-ai are mutually exclusive
+    if ai and no_ai:
+        console.print("[red]Error: --ai and --no-ai are mutually exclusive[/red]")
+        raise SystemExit(1)
 
     # Load configuration
     config, docstring_processor = _load_scanall_config(root, output, parallel, docstring_mode)
 
-    # --ai requires ai_command in config
-    if ai and not config.ai_command:
-        console.print("[red]Error: --ai requires ai_command in .codeindex.yaml[/red]")
-        console.print("  Add ai_command to your config, for example:")
-        console.print('  ai_command: \'claude -p "{prompt}" --allowedTools "Read"\'')
-        raise SystemExit(1)
+    # Compute effective AI flag:
+    # - --no-ai explicitly passed → disable
+    # - --ai explicitly passed → enable (requires ai_command)
+    # - Neither → auto-enable if ai_command is configured
+    if no_ai:
+        effective_ai = False
+    elif ai:
+        if not config.ai_command:
+            console.print("[red]Error: --ai requires ai_command in .codeindex.yaml[/red]")
+            console.print("  Add ai_command to your config, for example:")
+            console.print('  ai_command: \'claude -p "{prompt}" --allowedTools "Read"\'')
+            raise SystemExit(1)
+        effective_ai = True
+    else:
+        # Auto-detect: enable if ai_command is configured
+        effective_ai = bool(config.ai_command)
+        if effective_ai and not quiet:
+            console.print(
+                "[dim]→ ai_command detected, AI enrichment enabled "
+                "(use --no-ai to disable)[/dim]"
+            )
 
     # Use hierarchical processing if requested
     if hierarchical:
@@ -921,7 +939,7 @@ def scan_all(
             root,
             config,
             config.parallel_workers,
-            not ai,  # fallback parameter
+            not effective_ai,  # fallback parameter
             quiet,
             timeout
         )
@@ -939,8 +957,8 @@ def scan_all(
 
     dirs = tree.get_processing_order()
 
-    # Process directories in parallel (Phase 1: structural, Phase 2: AI enrich if --ai)
+    # Process directories in parallel (Phase 1: structural, Phase 2: AI enrich if enabled)
     _process_directories_parallel(
         dirs, tree, config, docstring_processor, quiet, show_cost,
-        ai=ai, timeout=timeout,
+        ai=effective_ai, timeout=timeout,
     )

@@ -7,11 +7,11 @@
 The simplest way to scan entire projects:
 
 ```bash
-# Structural documentation (default, no AI needed)
+# When ai_command is configured, auto-enables AI enrichment
 codeindex scan-all
 
-# AI-enhanced documentation
-codeindex scan-all --ai
+# Disable AI enrichment (structural only)
+codeindex scan-all --no-ai
 
 # Custom timeout per directory
 codeindex scan-all --timeout 180
@@ -19,6 +19,8 @@ codeindex scan-all --timeout 180
 # Custom parallel workers
 codeindex scan-all --workers 4
 ```
+
+> When `ai_command` is configured, `scan-all` runs in two phases: Phase 1 generates structural README_AI.md for all directories, Phase 2 uses AI to add a short functional description (`> description`) to each non-leaf directory. Cost: ~300-800 tokens input, ~20-50 tokens output per directory. Use `--no-ai` to skip Phase 2.
 
 ### Traditional Parallel with xargs
 
@@ -468,16 +470,19 @@ claude /mo:arch "Where is authentication implemented?"
 
 ## Tips & Tricks
 
-### 1. Selective AI Enhancement
+### 1. AI Enhancement Strategies
 
 ```bash
-# Generate structural docs for everything (fast)
+# Option A: Auto AI enrichment (default when ai_command configured)
 codeindex scan-all
 
-# Then enhance critical modules with AI
-codeindex scan ./src/core --ai
-codeindex scan ./src/auth --ai
+# Option B: Selective full AI README for critical modules only
+codeindex scan-all --no-ai            # Structural docs only
+codeindex scan ./src/core --ai        # Full AI README for core module
+codeindex scan ./src/auth --ai        # Full AI README for auth module
 ```
+
+> **Tip**: When `ai_command` is configured, `scan-all` automatically adds concise AI-generated module descriptions (e.g., "支付网关（微信、支付宝）") at low cost (~$0.5-2 for 2000+ directories). Use `scan --ai` only when you need a full AI-written README for a specific directory.
 
 ### 2. Conditional Scanning
 

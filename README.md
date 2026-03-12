@@ -160,8 +160,14 @@ codeindex scan-all
 # Scan a single directory
 codeindex scan ./src/auth
 
-# AI-enhanced documentation (requires ai_command in config)
-codeindex scan-all --ai
+# When ai_command is configured, auto-enables AI module descriptions
+codeindex scan-all
+
+# Disable AI enrichment (structural only)
+codeindex scan-all --no-ai
+
+# Full AI-generated README for a single directory
+codeindex scan ./src/auth --ai
 
 # Preview AI prompt without executing
 codeindex scan ./src/auth --ai --dry-run
