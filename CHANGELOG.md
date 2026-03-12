@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-03-12
+
+### Added
+
+- **AI-Enhanced Module Descriptions** (Epic #25, Stories 25.1–25.3): Redefine `--ai` mode from full AI takeover to structural + AI micro-enhancement.
+  - **Blockquote description support**: `extract_module_description()` now reads `> description` as Strategy 0 (highest priority)
+  - **AI enrichment module** (`src/codeindex/enricher.py`): Generates one-line functional descriptions per module using symbol names + file names
+  - **Concise prompt design**: ~200-400 tokens per directory, ≤30 char output, 10-20x cheaper than old `--ai` mode
+  - **Batch AI calls**: Groups multiple directories per AI invocation to reduce overhead
+  - **scan-all auto-AI**: Automatically enables Phase 2 AI enrichment when `ai_command` is configured (no `--ai` flag needed)
+  - **`--no-ai` opt-out**: Explicitly disable AI enrichment for structural-only output
+  - **`--ai` / `--no-ai` mutual exclusion**: Clear error when both flags are used
+
+- **Post-commit hook thin wrapper** (Issue #30 fix): Redesigned hook architecture for maintainability.
+  - **Thin shell wrapper** (~30 lines): Only handles loop guard + venv activation
+  - **Python logic** via `codeindex hooks run post-commit`: All business logic in upgradeable Python
+  - **Upgrade path**: `pip install --upgrade ai-codeindex` auto-updates hook behavior (no reinstall needed)
+  - **No custom AI prompts**: Uses `codeindex scan` pipeline, eliminating commit changelog noise
+
+### Fixed
+
+- **AI mode commit changelog noise** (#30): Post-commit hook no longer injects git diff into custom AI prompts. Uses standard `codeindex scan` pipeline instead.
+- **Enricher prompt accuracy**: Improved from "20 chars/brief" to "30 chars/concise" for better description quality.
+
+### Changed
+
+- **`--no-ai` flag**: Changed from hidden/deprecated to active opt-out flag for scan-all.
+- **Post-commit hook generation**: `_generate_post_commit_script()` now generates thin wrapper delegating to Python.
+- **Documentation**: All hook and scan-all docs rewritten for AI CLI agent readers.
+
+### Technical Details
+
+- **New module**: `src/codeindex/enricher.py` — AI enrichment with `enrich_directory()` and `_enrich_directories_with_ai()`
+- **New CLI subcommand**: `codeindex hooks run post-commit` — Python-side post-commit logic
+- **New tests**: 15 tests (7 scan-all auto-AI + 8 post-commit hook)
+- **Total tests**: 1532 passed
+
 ## [0.22.2] - 2026-03-08
 
 ### Added

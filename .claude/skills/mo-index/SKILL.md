@@ -43,19 +43,21 @@ codeindex list-dirs
 
 ### Step 4: Index Directories
 
-**All directories (recommended - structural documentation, works immediately):**
+**All directories (recommended):**
 ```bash
+# When ai_command is configured, automatically includes AI enrichment (Phase 2)
 codeindex scan-all
+
+# Disable AI enrichment
+codeindex scan-all --no-ai
 ```
 
 **Single directory:**
 ```bash
 codeindex scan ./src/module
-```
 
-**AI-enhanced mode (requires ai_command in config):**
-```bash
-codeindex scan-all --ai
+# Full AI-generated README for a single directory (requires --ai)
+codeindex scan ./src/module --ai
 codeindex scan ./src/module --ai --dry-run  # Preview AI prompt
 ```
 
@@ -110,8 +112,9 @@ Done! Your project is now indexed:
 
 | Mode | Command | Description |
 |------|---------|-------------|
-| Structural (default) | `codeindex scan-all` | Fast, no AI needed, works immediately |
-| AI-enhanced | `codeindex scan-all --ai` | Richer docs, requires ai_command config |
+| Auto (default) | `codeindex scan-all` | Structural + AI enrichment if ai_command configured |
+| No AI | `codeindex scan-all --no-ai` | Structural only, skip AI enrichment |
+| Single dir AI | `codeindex scan ./dir --ai` | Full AI-generated README for one directory |
 
 ## Configuration Reference
 

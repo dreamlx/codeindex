@@ -607,7 +607,7 @@ codeindex status
 
 ## 📈 Version History
 
-**Current version**: v0.22.2
+**Current version**: v0.23.0
 
 For complete version history, see:
 - **[CHANGELOG.md](CHANGELOG.md)** - Detailed changes for each version

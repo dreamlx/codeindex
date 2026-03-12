@@ -9,7 +9,10 @@ This module provides:
 - Detect and merge with existing hooks
 """
 
+import json
+import logging
 import shutil
+import subprocess
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -18,6 +21,8 @@ from typing import Optional
 import click
 
 from .cli_common import console
+
+logger = logging.getLogger(__name__)
 
 
 class HookStatus(Enum):
@@ -349,21 +354,14 @@ exit 0
     return """#!/bin/zsh
 # codeindex-managed hook
 # Post-commit hook for codeindex
-# Smart incremental update based on change analysis
-
-# Colors
-RED='\\033[0;31m'
-GREEN='\\033[0;32m'
-YELLOW='\\033[0;33m'
-CYAN='\\033[0;36m'
-NC='\\033[0m'
+# Thin wrapper — all logic in Python (auto-updated via pip)
 
 # Avoid infinite loop: skip if last commit only contains README_AI.md
 LAST_COMMIT_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD)
 NON_DOC_FILES=$(echo "$LAST_COMMIT_FILES" | \\
     grep -v "README_AI.md" | grep -v "PROJECT_INDEX.md" || true)
 if [ -z "$NON_DOC_FILES" ]; then
-    exit 0  # Only doc files changed, skip to avoid loop
+    exit 0
 fi
 
 # Set up working directory
@@ -377,100 +375,8 @@ elif [ -f "$REPO_ROOT/venv/bin/activate" ]; then
     source "$REPO_ROOT/venv/bin/activate"
 fi
 
-echo "\\n${CYAN}📝 Post-commit: Analyzing changes...${NC}"
-
-# Check if codeindex is available
-if ! command -v codeindex &> /dev/null; then
-    echo "${YELLOW}⚠ codeindex not found, skipping auto-update${NC}"
-    exit 0
-fi
-
-# Get change analysis as JSON
-ANALYSIS=$(codeindex affected --json 2>/dev/null || echo '{"level": "skip"}')
-
-# Extract level from JSON
-LEVEL=$(echo "$ANALYSIS" | python3 -c \\
-    "import sys, json; print(json.load(sys.stdin).get('level', 'skip'))" \\
-    2>/dev/null || echo "skip")
-
-if [ "$LEVEL" = "skip" ]; then
-    echo "${GREEN}✓ Changes below threshold, skipping update${NC}"
-    exit 0
-fi
-
-echo "   Update level: ${YELLOW}${LEVEL}${NC}"
-
-# Get affected directories
-AFFECTED_DIRS=$(echo "$ANALYSIS" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-for d in data.get('affected_dirs', []):
-    print(d)
-" 2>/dev/null || true)
-
-if [ -z "$AFFECTED_DIRS" ]; then
-    echo "${GREEN}✓ No directories need updating${NC}"
-    exit 0
-fi
-
-DIR_COUNT=$(echo "$AFFECTED_DIRS" | wc -l | tr -d ' ')
-echo "   Found ${DIR_COUNT} directory(ies) to update"
-
-# Update README_AI.md for each affected directory
-UPDATED_LIST=/tmp/codeindex_updated_$$
-rm -f "$UPDATED_LIST"
-
-while IFS= read -r dir; do
-    [ -z "$dir" ] && continue
-
-    README_PATH="$REPO_ROOT/$dir/README_AI.md"
-
-    # Skip if no README_AI.md exists (not indexed yet)
-    if [ ! -f "$README_PATH" ]; then
-        echo "   ${YELLOW}⚠ $dir: not indexed (run 'codeindex scan $dir' first)${NC}"
-        continue
-    fi
-
-    echo "   ${CYAN}→ Updating $dir/README_AI.md${NC}"
-    if codeindex scan "$dir" 2>&1 | tail -1; then
-        echo "   ${GREEN}✓ $dir: updated${NC}"
-        echo "$README_PATH" >> "$UPDATED_LIST"
-    else
-        echo "   ${YELLOW}⚠ $dir: scan failed, skipping${NC}"
-    fi
-done <<< "$AFFECTED_DIRS"
-
-# Auto-commit updated README_AI.md files
-if [ -f "$UPDATED_LIST" ]; then
-    UPDATED_COUNT=$(wc -l < "$UPDATED_LIST" | tr -d ' ')
-
-    if [ "$UPDATED_COUNT" -gt 0 ]; then
-        # Stage updated files
-        while IFS= read -r readme; do
-            git add "$readme"
-        done < "$UPDATED_LIST"
-
-        # Check if there are actual staged changes
-        if git diff --cached --quiet; then
-            echo "   ${GREEN}✓ README_AI.md already up to date${NC}"
-        else
-            echo "\\n${CYAN}→ Committing ${UPDATED_COUNT} updated README_AI.md file(s)...${NC}"
-
-            COMMIT_HASH=$(git rev-parse --short HEAD)
-            git commit --no-verify -m "docs: auto-update README_AI.md for ${COMMIT_HASH}
-
-Updated by post-commit hook based on code changes.
-Update level: ${LEVEL}"
-
-            echo "${GREEN}✓ README_AI.md updates committed${NC}"
-        fi
-    fi
-
-    rm -f "$UPDATED_LIST"
-fi
-
-echo "\\n${GREEN}✓ Post-commit hook completed${NC}\\n"
-exit 0
+# Delegate to Python (upgradeable via pip)
+codeindex hooks run post-commit 2>/dev/null || true
 """
 
 
@@ -573,6 +479,87 @@ def uninstall_hook(hook_name: str, repo_path: Optional[Path] = None) -> bool:
     """
     manager = HookManager(repo_path)
     return manager.uninstall_hook(hook_name, restore_backup=True)
+
+
+def run_post_commit_hook() -> int:
+    """Execute post-commit hook logic in Python.
+
+    This is called by the thin wrapper shell script via
+    `codeindex hooks run post-commit`. All logic lives here so that
+    `pip install --upgrade` automatically updates the behavior.
+
+    Returns:
+        Exit code (0 = success)
+    """
+    # Step 1: Get affected directories
+    try:
+        result = subprocess.run(
+            ["codeindex", "affected", "--json"],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode != 0:
+            return 0  # Silently skip on error
+
+        analysis = json.loads(result.stdout)
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
+        return 0
+
+    level = analysis.get("level", "skip")
+    affected_dirs = analysis.get("affected_dirs", [])
+
+    if level == "skip" or not affected_dirs:
+        return 0
+
+    # Step 2: Run codeindex scan for each affected directory
+    repo_root = Path.cwd()
+    updated_readmes: list[str] = []
+
+    for dir_path in affected_dirs:
+        readme_path = repo_root / dir_path / "README_AI.md"
+        if not readme_path.exists():
+            continue
+
+        try:
+            scan_result = subprocess.run(
+                ["codeindex", "scan", dir_path, "--quiet"],
+                capture_output=True, text=True, timeout=120,
+            )
+            if scan_result.returncode == 0:
+                updated_readmes.append(str(readme_path))
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            continue
+
+    if not updated_readmes:
+        return 0
+
+    # Step 3: Stage and commit updated README_AI.md files
+    try:
+        for readme in updated_readmes:
+            subprocess.run(["git", "add", readme], capture_output=True, timeout=10)
+
+        # Check if there are actual staged changes
+        diff_result = subprocess.run(
+            ["git", "diff", "--cached", "--quiet"],
+            capture_output=True, timeout=10,
+        )
+        if diff_result.returncode == 0:
+            return 0  # No actual changes
+
+        commit_hash = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True, text=True, timeout=10,
+        ).stdout.strip()
+
+        subprocess.run(
+            ["git", "commit", "--no-verify", "-m",
+             f"docs: auto-update README_AI.md for {commit_hash}\n\n"
+             f"Updated by post-commit hook.\nUpdate level: {level}"],
+            capture_output=True, timeout=30,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+
+    return 0
 
 
 # ============================================================================
@@ -761,6 +748,25 @@ def uninstall(hook_name: Optional[str], uninstall_all: bool, keep_backup: bool):
     except ValueError as e:
         console.print(f"[red]✗[/red] Error: {e}", style="red")
         raise click.Abort()
+
+
+@hooks.command("run")
+@click.argument("hook_name")
+def run_hook(hook_name: str):
+    """Run hook logic (called by thin wrapper scripts).
+
+    This is not intended for direct user invocation.
+    The shell hook script delegates to this command so that
+    hook logic can be updated via pip install --upgrade.
+
+    Example: codeindex hooks run post-commit
+    """
+    if hook_name == "post-commit":
+        exit_code = run_post_commit_hook()
+        raise SystemExit(exit_code)
+    else:
+        console.print(f"[yellow]No run handler for hook: {hook_name}[/yellow]")
+        raise SystemExit(0)
 
 
 @hooks.command()

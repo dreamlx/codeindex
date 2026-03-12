@@ -171,39 +171,39 @@ All checks passed!
 
 ### Post-commit Hook
 
-**Purpose**: Automatic documentation updates
+**Purpose**: Automatic structural documentation updates
+
+**Architecture** (v0.23.0+): Thin wrapper pattern
+- Shell script (~30 lines): loop guard + venv activation
+- Python logic via `codeindex hooks run post-commit`: all business logic
+- **Upgrade path**: `pip install --upgrade ai-codeindex` automatically updates hook behavior (no need to reinstall hooks)
 
 **Features**:
 - Analyzes commit changes (`codeindex affected`)
-- Updates README_AI.md for affected directories
+- Runs `codeindex scan` for affected directories (structural regeneration)
 - Creates follow-up commit with updates
 - Avoids infinite loops (skips doc-only commits)
+- No custom AI prompts — uses standard codeindex scan pipeline
 
 **Workflow**:
 ```
 Code Change Commit
     ↓
-Post-commit Hook Triggered
+Shell wrapper (loop guard + venv)
     ↓
-Analyze: Which directories changed?
+codeindex hooks run post-commit  (Python)
     ↓
-Update: README_AI.md files
+codeindex affected --json → affected directories
+    ↓
+codeindex scan <dir> for each → structural README_AI.md update
     ↓
 Auto-commit: "docs: auto-update README_AI.md for <hash>"
 ```
 
-**Example Output**:
-```
-📝 Post-commit: Analyzing changes...
-   Update level: full
-   Found 2 directory(ies) to check
-
-→ Updating src/codeindex/README_AI.md
-   Invoking AI CLI...
-   ✓ Updated via AI
-
-✓ Post-commit hook completed
-```
+> **Note**: Post-commit hook only updates structural content. AI-generated
+> module descriptions (blockquotes) are not regenerated on every commit —
+> they describe module purpose which rarely changes. Run `codeindex scan-all`
+> (with `ai_command` configured) to refresh AI descriptions.
 
 ### Pre-push Hook
 
@@ -522,14 +522,34 @@ fi
 
 **Note**: Manual edits will be lost if you reinstall with `--force`.
 
-### Hook Versioning
+### Hook Architecture and Upgrades
 
-Hooks are marked with `# codeindex-managed hook` comment.
+**Thin wrapper pattern** (v0.23.0+):
 
-To update hooks to latest version:
+Post-commit hooks use a thin shell wrapper that delegates to Python:
+
+```
+.git/hooks/post-commit (shell, ~30 lines)
+    → loop guard (skip doc-only commits)
+    → activate venv
+    → codeindex hooks run post-commit  ← Python logic
+
+codeindex hooks run post-commit (Python, in cli_hooks.py)
+    → codeindex affected --json
+    → codeindex scan <dir> for each affected dir
+    → git add + git commit
+```
+
+**Upgrade behavior**:
+- `pip install --upgrade ai-codeindex` → Python logic auto-updates, no hook reinstall needed
+- `codeindex hooks install --force` → only needed if shell wrapper itself changes (rare)
+- Hooks are marked with `# codeindex-managed hook` comment
+
+**To update hooks to latest version**:
 
 ```bash
-# Reinstall all hooks
+# Usually not needed (Python logic auto-updates via pip)
+# Only if instructed by release notes:
 codeindex hooks install --all --force
 ```
 
@@ -597,5 +617,5 @@ A: Hooks persist across branches (stored in `.git/hooks/`, not tracked by Git).
 
 ---
 
-**Last Updated**: 2026-02-13
-**Status**: Production Ready (v0.17.2)
+**Last Updated**: 2026-03-12
+**Status**: Production Ready (v0.23.0)

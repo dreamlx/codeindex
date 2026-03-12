@@ -14,17 +14,25 @@ codeindex init  # 生成 .codeindex.yaml 配置文件
 
 #### 2. 扫描与文档生成
 ```bash
-# 扫描单个目录（生成 README_AI.md）
+# 扫描单个目录（生成结构化 README_AI.md）
 codeindex scan ./src/auth
 
 # 扫描所有目录（SmartWriter 模式）
 codeindex scan-all
 
-# 预览提示词（不执行 AI）
-codeindex scan ./src/auth --dry-run
+# 当配置了 ai_command 时，自动启用 AI 一句话模块描述
+# Phase 1: 生成结构化 README_AI.md
+# Phase 2: AI 为每个非叶子目录生成 blockquote 功能描述
+codeindex scan-all
 
-# 无 AI 模式（仅结构化文档）
-codeindex scan ./src/auth --fallback
+# 禁用 AI 增强（仅结构化文档）
+codeindex scan-all --no-ai
+
+# 单目录完整 AI 生成（AI 生成整个 README 内容）
+codeindex scan ./src/auth --ai
+
+# 预览 AI 提示词（不执行）
+codeindex scan ./src/auth --ai --dry-run
 
 # 生成 JSON 输出（用于工具集成）
 codeindex scan ./src --output json
@@ -89,11 +97,12 @@ codeindex status
 1. **初始化项目时**:
    ```bash
    codeindex init
-   codeindex scan-all  # 生成完整索引
+   codeindex scan-all  # 生成完整索引（ai_command 配置后自动 AI 增强）
    ```
 
 2. **日常开发**:
-   - 使用 Git Hooks 自动更新（mode: auto）
+   - 安装 Git Hooks 自动更新: `codeindex hooks install post-commit`
+   - Hook 使用 thin wrapper 模式，`pip install --upgrade ai-codeindex` 自动更新逻辑
    - 大改动后手动运行 `codeindex affected` 检查影响范围
 
 3. **AI Code 使用**:
