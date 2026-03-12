@@ -632,7 +632,7 @@ def _enrich_directories_with_ai(
     """
     from .enricher import (
         build_enrich_prompt,
-        extract_symbol_summary,
+        extract_summary_from_readme,
         inject_blockquote,
         should_enrich,
     )
@@ -652,16 +652,12 @@ def _enrich_directories_with_ai(
 
     enriched_count = 0
     for dir_path in enrich_dirs:
-        # Scan and parse to get symbol names
-        result = scan_directory(dir_path, config, recursive=False)
-        parse_results = []
-        if result.files:
-            parse_results = parse_files_parallel(result.files, config, quiet=True)
+        # Extract summary from the README_AI.md already generated in Phase 1
+        readme_path = dir_path / config.output_file
+        summary = extract_summary_from_readme(readme_path)
 
-        # Build minimal prompt
-        summary = extract_symbol_summary(parse_results)
         if not summary:
-            # Also try reading child README_AI.md for subdirectory names
+            # Fallback: use child directory names
             child_dirs = tree.get_children(dir_path)
             child_names = [d.name for d in child_dirs]
             if child_names:
@@ -670,7 +666,9 @@ def _enrich_directories_with_ai(
         if not summary:
             continue
 
-        prompt = build_enrich_prompt(dir_path.name, summary)
+        # Include parent directory name for context
+        parent_name = dir_path.parent.name if dir_path.parent != dir_path else ""
+        prompt = build_enrich_prompt(dir_path.name, summary, parent_name)
 
         # Invoke AI CLI
         invoke_result = invoke_ai_cli(config.ai_command, prompt, timeout=timeout)

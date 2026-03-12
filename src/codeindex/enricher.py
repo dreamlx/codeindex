@@ -1,18 +1,19 @@
 """AI enrichment module for generating one-line module descriptions.
 
 Epic 25: Instead of AI generating entire README_AI.md files, AI only
-produces a short functional description (~20 chars) per module.
+produces a short functional description (~30 chars) per module.
 This is injected as a blockquote line after the title in README_AI.md.
 
-Cost: ~200-400 tokens input, ~20-50 tokens output per directory.
+Cost: ~300-800 tokens input, ~20-50 tokens output per directory.
 """
 
+import re
 from pathlib import Path
 
 from .parser import ParseResult
 
 # Maximum symbol names to include per file in the prompt
-_MAX_SYMBOLS_PER_FILE = 10
+_MAX_SYMBOLS_PER_FILE = 5
 
 # Maximum total files to include in the prompt
 _MAX_FILES = 15
@@ -20,6 +21,8 @@ _MAX_FILES = 15
 
 def extract_symbol_summary(parse_results: list[ParseResult]) -> str:
     """Extract a compact summary of file names + symbol names for AI prompt.
+
+    Uses short names (no class:: prefix) to keep prompt compact.
 
     Args:
         parse_results: Parsed file results for a directory
@@ -35,9 +38,11 @@ def extract_symbol_summary(parse_results: list[ParseResult]) -> str:
         if result.error:
             continue
         filename = result.path.name
-        symbol_names = [
-            s.name for s in result.symbols[:_MAX_SYMBOLS_PER_FILE]
-        ]
+        # Use short names: "MyClass::method" → "method", "MyClass" stays
+        symbol_names = []
+        for s in result.symbols[:_MAX_SYMBOLS_PER_FILE]:
+            short = s.name.split("::")[-1].split(".")[-1]
+            symbol_names.append(short)
         if symbol_names:
             parts.append(f"{filename}: {', '.join(symbol_names)}")
         else:
@@ -46,24 +51,81 @@ def extract_symbol_summary(parse_results: list[ParseResult]) -> str:
     return "; ".join(parts)
 
 
-def build_enrich_prompt(dir_name: str, symbol_summary: str) -> str:
+def extract_summary_from_readme(readme_path: Path) -> str:
+    """Extract a compact summary from an existing README_AI.md.
+
+    Reads the file listing and subdirectory names from a structural
+    README_AI.md to build a summary for the AI prompt. This avoids
+    re-scanning the directory when Phase 1 already generated the README.
+
+    Args:
+        readme_path: Path to an existing README_AI.md
+
+    Returns:
+        Compact summary string, or empty string if unreadable
+    """
+    if not readme_path.exists():
+        return ""
+
+    try:
+        content = readme_path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return ""
+
+    parts = []
+
+    # Extract subdirectory names
+    for m in re.finditer(r'\*\*(\w[\w/]*)/\*\*\s*-\s*(.+?)$', content, re.MULTILINE):
+        dir_name = m.group(1)
+        desc = m.group(2).strip()
+        # Skip stats-only descriptions like "48 files | 386 symbols"
+        if re.match(r'^\d+ files', desc):
+            parts.append(dir_name)
+        else:
+            parts.append(f"{dir_name}: {desc[:60]}")
+
+    # Extract file names with their key symbols
+    for m in re.finditer(r'\*\*(\w[\w.]*\.[\w.]+)\*\*\s*-\s*(\w[\w, ]*)', content, re.MULTILINE):
+        filename = m.group(1)
+        symbols = m.group(2).strip()
+        parts.append(f"{filename}: {symbols[:50]}")
+
+    if len(parts) > 20:
+        parts = parts[:20]
+
+    return "; ".join(parts)
+
+
+def build_enrich_prompt(
+    dir_name: str,
+    symbol_summary: str,
+    parent_name: str = "",
+) -> str:
     """Build a minimal prompt for AI to generate a one-line module description.
 
     Args:
         dir_name: Directory name (e.g., "SmallProgramApi")
-        symbol_summary: Output of extract_symbol_summary()
+        symbol_summary: Output of extract_symbol_summary() or extract_summary_from_readme()
+        parent_name: Parent directory name for context (e.g., "Application")
 
     Returns:
         Prompt string for AI CLI
     """
+    context = f"Directory: {dir_name}\n"
+    if parent_name:
+        context += f"Parent: {parent_name}\n"
+    context += f"Contents: {symbol_summary}\n"
+
     return (
-        f"Directory: {dir_name}\n"
-        f"Contents: {symbol_summary}\n"
-        "\n"
-        "Based on the file names and symbol names above, write a brief functional "
-        "description of this module in 20 characters or less. "
-        "Describe WHAT it does (e.g., '会员等级管理、积分兑换' or 'Payment gateway integration'). "
-        "Output ONLY the description, nothing else. No quotes, no markdown, no explanation."
+        context
+        + "\n"
+        "Based ONLY on the file names and symbol names above, write a concise "
+        "functional description of this module (30 chars or less). "
+        "Describe WHAT it does, not HOW. "
+        "Examples: '会员等级、积分、权益卡管理', 'Payment gateway (Alipay/WeChat)', "
+        "'物流配送与运费计算'. "
+        "Output ONLY the description text. No quotes, no markdown, no explanation. "
+        "Do NOT invent features not evidenced by the symbol names."
     )
 
 

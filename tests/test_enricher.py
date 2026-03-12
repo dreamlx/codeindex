@@ -8,6 +8,7 @@ from pathlib import Path
 
 from codeindex.enricher import (
     build_enrich_prompt,
+    extract_summary_from_readme,
     extract_symbol_summary,
     inject_blockquote,
     should_enrich,
@@ -66,6 +67,46 @@ class TestExtractSymbolSummary:
         assert summary.count("method_") <= 20
 
 
+class TestExtractSummaryFromReadme:
+    """Extract summary from existing README_AI.md files."""
+
+    def test_extracts_subdirectories(self, tmp_path):
+        readme = tmp_path / "README_AI.md"
+        readme.write_text(
+            "# App\n\n## Subdirectories\n"
+            "- **Pay/** - 34 files | 448 symbols\n"
+            "- **Vip/** - 会员管理 | 48 files\n"
+        )
+        summary = extract_summary_from_readme(readme)
+        assert "Pay" in summary
+        assert "Vip" in summary
+
+    def test_extracts_file_symbols(self, tmp_path):
+        readme = tmp_path / "README_AI.md"
+        readme.write_text(
+            "# Mod\n\n## Files\n"
+            "- **Pay.php** - Pay, placeOrder, refund\n"
+            "- **User.php** - User, login\n"
+        )
+        summary = extract_summary_from_readme(readme)
+        assert "Pay.php" in summary
+        assert "placeOrder" in summary
+
+    def test_missing_file_returns_empty(self, tmp_path):
+        summary = extract_summary_from_readme(tmp_path / "nonexistent.md")
+        assert summary == ""
+
+    def test_limits_entries(self, tmp_path):
+        readme = tmp_path / "README_AI.md"
+        lines = ["# Big\n\n## Files\n"]
+        for i in range(50):
+            lines.append(f"- **File{i}.php** - Class{i}, method{i}\n")
+        readme.write_text("".join(lines))
+        summary = extract_summary_from_readme(readme)
+        # Should be bounded
+        assert summary.count("File") <= 20
+
+
 class TestBuildEnrichPrompt:
     """Build the minimal prompt for AI one-line description."""
 
@@ -80,7 +121,15 @@ class TestBuildEnrichPrompt:
     def test_constrains_output_length(self):
         """Prompt should instruct AI to keep description short."""
         prompt = build_enrich_prompt("Vip", "CardBag, Integral, Membership")
-        assert "20" in prompt or "短" in prompt or "brief" in prompt.lower() or "concise" in prompt.lower()
+        assert "30" in prompt or "concise" in prompt.lower()
+
+    def test_includes_parent_name(self):
+        prompt = build_enrich_prompt("Pay", "Alipay, WechatPay", parent_name="Application")
+        assert "Application" in prompt
+
+    def test_anti_hallucination_instruction(self):
+        prompt = build_enrich_prompt("Mod", "file1, file2")
+        assert "NOT" in prompt or "ONLY" in prompt
 
 
 class TestInjectBlockquote:

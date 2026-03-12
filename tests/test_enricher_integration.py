@@ -80,8 +80,8 @@ class TestEnrichmentIntegration:
 
         assert "Pay" in prompt
         assert "placeOrder" in prompt
-        # Prompt should ask for brief description
-        assert "20" in prompt or "brief" in prompt.lower()
+        # Prompt should ask for concise description
+        assert "30" in prompt or "concise" in prompt.lower()
 
     def test_re_enrich_updates_description(self, tmp_path):
         """Running enrich twice should update, not duplicate."""
