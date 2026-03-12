@@ -254,6 +254,12 @@ Changed files:
 Changed files:
 - `test_hooks_integration.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_skill_helpers.py`
+
 ---
 
 ## Recent Changes
@@ -261,4 +267,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_skill_helpers.py`
+- `test_enricher.py`
