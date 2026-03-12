@@ -545,6 +545,8 @@ def _process_directories_parallel(
     docstring_processor: DocstringProcessor | None,
     quiet: bool,
     show_cost: bool,
+    ai: bool = False,
+    timeout: int = 120,
 ) -> None:
     """Process directories in parallel using SmartWriter.
 
@@ -555,6 +557,8 @@ def _process_directories_parallel(
         docstring_processor: Optional docstring processor
         quiet: Suppress progress messages
         show_cost: Show token cost information
+        ai: Enable AI enrichment (Phase 2)
+        timeout: AI CLI timeout in seconds
     """
     # ========== Phase 1: SmartWriter parallel generation ==========
     if not quiet:
@@ -600,6 +604,108 @@ def _process_directories_parallel(
                 f"  [dim]→ Docstring processing: {tokens} tokens "
                 f"(~${estimated_cost:.4f})[/dim]"
             )
+
+    # ========== Phase 2: AI enrichment (--ai flag) ==========
+    if ai and config.ai_command:
+        _enrich_directories_with_ai(dirs, tree, config, quiet, timeout)
+
+
+def _enrich_directories_with_ai(
+    dirs: list[Path],
+    tree: DirectoryTree,
+    config: Config,
+    quiet: bool,
+    timeout: int,
+) -> None:
+    """Phase 2: Enrich non-leaf directories with AI-generated descriptions.
+
+    For each overview/navigation directory, extracts symbol names and file names,
+    sends a minimal prompt to AI, and injects the one-line description as a
+    blockquote in the directory's README_AI.md.
+
+    Args:
+        dirs: All directories that were processed in Phase 1
+        tree: DirectoryTree for level information
+        config: Configuration (must have ai_command)
+        quiet: Suppress progress messages
+        timeout: AI CLI timeout in seconds
+    """
+    from .enricher import (
+        build_enrich_prompt,
+        extract_symbol_summary,
+        inject_blockquote,
+        should_enrich,
+    )
+    from .invoker import invoke_ai_cli
+
+    # Filter to only enrichable directories
+    enrich_dirs = [d for d in dirs if should_enrich(tree.get_level(d))]
+
+    if not enrich_dirs:
+        return
+
+    if not quiet:
+        console.print(
+            f"\n[bold]🤖 Phase 2: AI enrichment "
+            f"({len(enrich_dirs)} directories)...[/bold]"
+        )
+
+    enriched_count = 0
+    for dir_path in enrich_dirs:
+        # Scan and parse to get symbol names
+        result = scan_directory(dir_path, config, recursive=False)
+        parse_results = []
+        if result.files:
+            parse_results = parse_files_parallel(result.files, config, quiet=True)
+
+        # Build minimal prompt
+        summary = extract_symbol_summary(parse_results)
+        if not summary:
+            # Also try reading child README_AI.md for subdirectory names
+            child_dirs = tree.get_children(dir_path)
+            child_names = [d.name for d in child_dirs]
+            if child_names:
+                summary = f"Subdirectories: {', '.join(child_names)}"
+
+        if not summary:
+            continue
+
+        prompt = build_enrich_prompt(dir_path.name, summary)
+
+        # Invoke AI CLI
+        invoke_result = invoke_ai_cli(config.ai_command, prompt, timeout=timeout)
+
+        if not invoke_result.success:
+            if not quiet:
+                console.print(f"[yellow]⚠[/yellow] {dir_path.name}: AI error")
+            continue
+
+        # Clean AI output (strip whitespace, quotes, markdown)
+        description = invoke_result.output.strip()
+        description = description.strip('"\'`')
+        # Remove markdown formatting if AI added any
+        if description.startswith("# ") or description.startswith("> "):
+            description = description.lstrip("#> ").strip()
+        # Truncate if too long
+        if len(description) > 80:
+            description = description[:77] + "..."
+
+        if not description:
+            continue
+
+        # Inject into README_AI.md
+        readme_path = dir_path / config.output_file
+        if readme_path.exists():
+            inject_blockquote(readme_path, description)
+            enriched_count += 1
+            if not quiet:
+                console.print(f"[green]✓[/green] {dir_path.name}: {description}")
+
+    if not quiet:
+        console.print(
+            f"[dim]→ Phase 2 complete: "
+            f"{enriched_count}/{len(enrich_dirs)} enriched[/dim]"
+        )
 
 
 # ========== Helper functions for scan_all (extracted from nested functions) ==========
@@ -745,7 +851,10 @@ def scan(
 @click.option("--root", type=click.Path(exists=True, file_okay=False, path_type=Path), default=".")
 @click.option("--parallel", "-p", type=int, help="Override parallel workers")
 @click.option("--timeout", default=120, help="Timeout per directory in seconds")
-@click.option("--ai", is_flag=True, help="Enable AI-enhanced documentation (requires ai_command in config)")
+@click.option(
+    "--ai", is_flag=True,
+    help="Enable AI-enriched module descriptions (requires ai_command in config)",
+)
 @click.option("--no-ai", is_flag=True, hidden=True, help="[Deprecated] Structural mode is now the default")
 @click.option("--fallback", is_flag=True, hidden=True, help="[Deprecated] Structural mode is now the default")
 @click.option("--quiet", "-q", is_flag=True, help="Minimal output")
@@ -795,6 +904,13 @@ def scan_all(
     # Load configuration
     config, docstring_processor = _load_scanall_config(root, output, parallel, docstring_mode)
 
+    # --ai requires ai_command in config
+    if ai and not config.ai_command:
+        console.print("[red]Error: --ai requires ai_command in .codeindex.yaml[/red]")
+        console.print("  Add ai_command to your config, for example:")
+        console.print('  ai_command: \'claude -p "{prompt}" --allowedTools "Read"\'')
+        raise SystemExit(1)
+
     # Use hierarchical processing if requested
     if hierarchical:
         if not quiet:
@@ -825,5 +941,8 @@ def scan_all(
 
     dirs = tree.get_processing_order()
 
-    # Process directories in parallel
-    _process_directories_parallel(dirs, tree, config, docstring_processor, quiet, show_cost)
+    # Process directories in parallel (Phase 1: structural, Phase 2: AI enrich if --ai)
+    _process_directories_parallel(
+        dirs, tree, config, docstring_processor, quiet, show_cost,
+        ai=ai, timeout=timeout,
+    )
