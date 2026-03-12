@@ -434,7 +434,7 @@ See [Release Automation Guide](docs/development/QUICK_START_RELEASE.md) for deta
 
 ## Roadmap
 
-**Current version**: v0.22.2
+**Current version**: v0.23.0
 
 **Recent milestones**:
 - v0.22.2 — Auto-update CLAUDE.md on `pip upgrade`, `/codeindex-update-guide` skill
