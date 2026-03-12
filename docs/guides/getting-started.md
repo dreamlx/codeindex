@@ -83,7 +83,7 @@ Generate documentation for a single directory:
 # Structural documentation (default, no AI needed)
 codeindex scan ./src/auth
 
-# AI-enhanced documentation (requires ai_command in config)
+# Full AI-generated README for a single directory (requires ai_command)
 codeindex scan ./src/auth --ai
 ```
 
@@ -115,14 +115,17 @@ Scan all directories at once:
 
 ```bash
 # Structural documentation for entire project
+# When ai_command is configured, automatically includes AI module descriptions
 codeindex scan-all
 
-# AI-enhanced documentation for entire project
-codeindex scan-all --ai
+# Disable AI enrichment (structural only)
+codeindex scan-all --no-ai
 
 # Traditional parallel scanning
 codeindex list-dirs | xargs -P 4 -I {} codeindex scan {}
 ```
+
+> **Note**: When `ai_command` is configured in `.codeindex.yaml`, `scan-all` automatically runs a two-phase pipeline: Phase 1 generates structural README_AI.md, Phase 2 adds a short AI-generated functional description (`> ...`) to each non-leaf directory. Use `--no-ai` to skip Phase 2. This is different from `scan --ai`, which uses AI to generate the entire README for a single directory.
 
 ### 6. Symbol Indexes (v0.1.2+)
 

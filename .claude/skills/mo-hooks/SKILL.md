@@ -9,13 +9,21 @@ Set up Git hooks so README_AI.md files automatically update when code changes ar
 
 ## How It Works
 
-When a developer commits code changes:
-1. **post-commit hook** detects which directories were affected
-2. `codeindex affected --json` analyzes the change scope
-3. `codeindex scan` regenerates README_AI.md for affected directories
-4. Updated README_AI.md files are auto-committed
+**Architecture**: Thin wrapper shell script → Python logic (auto-upgradeable via pip)
 
-This keeps documentation always in sync with code — zero manual effort.
+When a developer commits code changes:
+1. Shell wrapper skips doc-only commits (loop guard), activates venv
+2. Delegates to `codeindex hooks run post-commit` (Python)
+3. `codeindex affected --json` analyzes the change scope
+4. `codeindex scan` regenerates structural README_AI.md for affected directories
+5. Updated README_AI.md files are auto-committed
+
+**Key**: Hook only updates structural content. AI blockquote descriptions
+(module purpose) are not regenerated per-commit — run `codeindex scan-all`
+to refresh those.
+
+**Upgrade**: `pip install --upgrade ai-codeindex` auto-updates hook logic.
+No need to reinstall hooks after package upgrade.
 
 ## Prerequisites
 
@@ -137,6 +145,16 @@ codeindex hooks uninstall post-commit
 codeindex hooks uninstall --all
 ```
 
+## Upgrading Hooks
+
+```bash
+# Usually NOT needed — pip upgrade auto-updates Python logic
+pip install --upgrade ai-codeindex
+
+# Only if release notes say "reinstall hooks":
+codeindex hooks install post-commit --force
+```
+
 ## Troubleshooting
 
 | Problem | Solution |
@@ -146,6 +164,7 @@ codeindex hooks uninstall --all
 | Hook too slow | Set `mode: async` in .codeindex.yaml hooks config |
 | Want manual control | Set `mode: prompt` — shows notification, you decide when to update |
 | Virtual env not found | Ensure `.venv/` or `venv/` exists at project root |
+| Old hook with AI prompts | Run `codeindex hooks install post-commit --force` to upgrade to thin wrapper |
 
 ## Advanced: CLAUDE.md Integration
 
