@@ -257,6 +257,12 @@ Changed files:
 Changed files:
 - `skill_helpers.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `enricher.py`
+
 ---
 
 ## Recent Changes
@@ -264,4 +270,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `enricher.py`
+- `cli_scan.py`

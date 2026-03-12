@@ -260,6 +260,12 @@ Changed files:
 Changed files:
 - `test_skill_helpers.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `test_enricher.py`
+
 ---
 
 ## Recent Changes
@@ -267,4 +273,4 @@ Changed files:
 **Commit ``**: 
 
 Changed files:
-- `test_enricher.py`
+- `test_enricher_integration.py`
