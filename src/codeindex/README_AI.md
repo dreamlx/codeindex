@@ -263,6 +263,12 @@ Changed files:
 Changed files:
 - `enricher.py`
 
+
+**Commit ``**: 
+
+Changed files:
+- `cli_scan.py`
+
 ---
 
 ## Recent Changes
@@ -271,3 +277,4 @@ Changed files:
 
 Changed files:
 - `cli_scan.py`
+- `enricher.py`
