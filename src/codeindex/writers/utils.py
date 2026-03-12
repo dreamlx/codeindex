@@ -42,6 +42,7 @@ def extract_module_description(
     """Extract brief description from a child module's README.
 
     Strategies (in order):
+    0. AI-generated blockquote description (> description) — highest priority
     1. Parse structured stats (Files/Symbols) + class names from README_AI.md
     2. Find first free-text line (non-header, non-list)
     3. Fallback to "Module directory"
@@ -52,6 +53,13 @@ def extract_module_description(
 
     try:
         content = readme_path.read_text(encoding="utf-8", errors="replace")
+
+        # Strategy 0: AI-generated blockquote description (Epic 25)
+        bq_match = re.search(r'^>[ \t]*(\S[^\n]*)$', content, re.MULTILINE)
+        if bq_match:
+            desc = bq_match.group(1).strip()
+            if desc:
+                return desc
 
         # Strategy 1: Structured info from codeindex output
         files_match = re.search(r'\*\*Files\*\*:\s*(\d+)', content)
