@@ -1,13 +1,15 @@
 # codeindex
 
+[🇬🇧 English](README.md) | [🇨🇳 中文](README_zh.md)
+
 [![PyPI version](https://badge.fury.io/py/ai-codeindex.svg)](https://badge.fury.io/py/ai-codeindex)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://github.com/dreamlx/codeindex/workflows/Tests/badge.svg)](https://github.com/dreamlx/codeindex/actions)
 
-**Enterprise-grade Code Intelligence Platform — Multi-language AST parser for AI-assisted development, code quality analysis, and knowledge graph integration.**
+**Enterprise-grade Code Intelligence Platform — Make AI agents understand your codebase through semantic navigation, not grep.**
 
-codeindex extracts symbols, inheritance relationships, call graphs, and imports from Python, PHP, Java, TypeScript, JavaScript, Swift, and Objective-C using tree-sitter. Designed for **enterprise environments** with intranet isolation, providing structured code data for AI tools, knowledge graphs, and code intelligence platforms.
+codeindex generates AI-readable documentation with **two-phase pipeline**: structural indexing (AST parsing via tree-sitter) + AI-powered module descriptions. AI agents can browse README_AI.md hierarchy, see module purposes at a glance, and navigate directly to the right code — across Python, PHP, Java, TypeScript, JavaScript, Swift, and Objective-C. Designed for **enterprise environments** with intranet isolation.
 
 **🏢 Enterprise Ready**: ✅ Intranet compatible ✅ Self-contained ✅ Version stable ✅ Data sovereignty
 
@@ -19,18 +21,28 @@ codeindex extracts symbols, inheritance relationships, call graphs, and imports 
 
 ## Features
 
+### Core: Code Understanding for AI Agents
+
+- **Two-phase documentation pipeline** (v0.23.0) — Phase 1: structural README_AI.md via SmartWriter; Phase 2: AI generates one-line functional descriptions per module. AI agents can browse README_AI.md hierarchy and find the right module **without grep**.
+- **Smart indexing** — Tiered documentation (overview → navigation → detailed) optimized for AI agents, ≤50KB per file
+- **Auto-AI enrichment** — When `ai_command` is configured, `scan-all` automatically enables AI module descriptions. Use `--no-ai` to opt out
+- **Auto-update hooks** — Post-commit hook automatically regenerates README_AI.md for changed directories. Thin wrapper pattern: `pip upgrade` auto-updates hook logic
+
+### Parsing & Analysis
+
 - **Multi-language AST parsing** — Python, PHP, Java, TypeScript, JavaScript, Swift, Objective-C via tree-sitter (Go, Rust, C# planned)
-- **AI-powered documentation** — Generate README files using Claude, GPT, or any AI CLI
-- **Single file parse** — `codeindex parse <file>` with JSON output for tool integration
-- **Structured JSON output** — `--output json` for CI/CD, knowledge graphs, and downstream tools
 - **Call relationship extraction** — Function/method call graphs across Python, Java, PHP, TypeScript, JavaScript
 - **Inheritance extraction** — Class hierarchy and interface relationships
 - **Framework route extraction** — ThinkPHP and Spring Boot route tables (more planned)
-- **Technical debt analysis** — Detect large files, god classes, symbol overload
-- **Smart indexing** — Tiered documentation (overview → navigation → detailed) optimized for AI agents
+- **Technical debt analysis** — Detect large files, god classes, symbol overload, test smells
+- **Single file parse** — `codeindex parse <file>` with JSON output for tool integration
+- **Structured JSON output** — `--output json` for CI/CD, knowledge graphs, and downstream tools
+
+### Developer Experience
+
 - **Adaptive symbol extraction** — Dynamic 5–150 symbols per file based on size
-- **CLAUDE.md injection** — `codeindex init` auto-configures Claude Code integration (v0.17.0)
-- **Auto-update guide** — Post-install hook automatically updates `~/.claude/CLAUDE.md` after `pip upgrade` (v0.22.2)
+- **CLAUDE.md injection** — `codeindex init` auto-configures Claude Code integration
+- **Auto-update guide** — Post-install hook automatically updates `~/.claude/CLAUDE.md` after `pip upgrade`
 - **Template-based test generation** — YAML + Jinja2 for rapid language support (88–91% time savings)
 - **Parallel scanning** — Concurrent directory processing with configurable workers
 
@@ -45,18 +57,19 @@ codeindex extracts symbols, inheritance relationships, call graphs, and imports 
 ```bash
 # Enterprise developer workflow
 git clone <internal-repo>
-codeindex scan-all --fallback       # Generate complete index
-# Read README_AI.md for architecture understanding
-# Check PROJECT_SYMBOLS.md for symbol lookup
+codeindex init                       # Configure project
+codeindex scan-all                   # Structural + AI descriptions (auto)
+# AI agent reads README_AI.md → sees module purposes → navigates directly
+# No grep needed for code discovery
 codeindex tech-debt src/ --output review.md  # Code quality analysis
 ```
 
 **Why enterprises choose codeindex**:
+- ✅ **Semantic navigation** — AI agents understand module purposes from README_AI.md hierarchy
 - ✅ **Intranet compatible** — no external dependencies, fully offline
 - ✅ **Self-contained** — no upstream MCP servers required
 - ✅ **Version stable** — enterprise-controlled release cycle
 - ✅ **Data sovereignty** — code never leaves internal network
-- ✅ **Customizable** — extensible for internal languages/frameworks
 
 ---
 
@@ -86,18 +99,18 @@ Without codeindex, LoomGraph cannot function. See [LoomGraph Integration Guide](
 
 **With Serena MCP**: For individual developers using Claude Code + Serena MCP, codeindex provides **complementary value**:
 
+- **codeindex** (build-time): Semantic architecture map (README_AI.md with module descriptions) + quality analysis
 - **Serena** (real-time): Precise symbol navigation (`find_symbol`, `find_referencing_symbols`)
-- **codeindex** (build-time): Architecture overview (README_AI.md) + quality analysis (tech-debt)
 
 ```bash
 # Personal developer workflow
 codeindex init                    # Setup CLAUDE.md integration
-codeindex scan-all --fallback     # Generate architecture docs
-# Claude Code reads README_AI.md first, then uses Serena for precise navigation
-codeindex tech-debt src/          # Detect technical debt
+codeindex scan-all                # Structural + AI descriptions (auto)
+codeindex hooks install post-commit  # Auto-update on commit
+# Claude Code reads README_AI.md → understands module purpose → uses Serena for details
 ```
 
-**Relationship**: codeindex and Serena are **not competitors** but **complementary tools** — codeindex provides the "map," Serena provides the "GPS navigation."
+**Relationship**: codeindex provides the "map with labels," Serena provides the "GPS navigation."
 
 ---
 
@@ -154,17 +167,16 @@ This creates:
 ### 2. Scan Your Codebase
 
 ```bash
-# Scan all directories (structural documentation, no AI needed)
+# Scan all directories
+# When ai_command is configured → auto Phase 1 (structural) + Phase 2 (AI descriptions)
+# Without ai_command → Phase 1 only (structural)
 codeindex scan-all
+
+# Structural only (skip AI enrichment)
+codeindex scan-all --no-ai
 
 # Scan a single directory
 codeindex scan ./src/auth
-
-# When ai_command is configured, auto-enables AI module descriptions
-codeindex scan-all
-
-# Disable AI enrichment (structural only)
-codeindex scan-all --no-ai
 
 # Full AI-generated README for a single directory
 codeindex scan ./src/auth --ai
@@ -332,16 +344,44 @@ codeindex debt-scan ./src --format json
 
 ## How It Works
 
-### Standalone Mode
+### Two-Phase Pipeline (v0.23.0)
 
 ```
-Directory → Scanner → Parser (tree-sitter) → Smart Writer → README_AI.md
+Phase 1 (Structural):
+  Directory → Scanner → Parser (tree-sitter) → SmartWriter → README_AI.md
+
+Phase 2 (AI Enrichment, automatic when ai_command configured):
+  README_AI.md → symbol names + file names → AI → one-line description → blockquote injection
 ```
 
+**Phase 1: Structural generation** (always runs)
 1. **Scanner** — walks directories, filters by config patterns
 2. **Parser** — extracts symbols (classes, functions, imports, calls, inheritance) via tree-sitter
-3. **Smart Writer** — generates tiered documentation with size limits (≤50KB)
+3. **SmartWriter** — generates tiered documentation with size limits (≤50KB)
 4. **Output** — `README_AI.md` optimized for AI consumption, or JSON for tool integration
+
+**Phase 2: AI enrichment** (auto-enabled when `ai_command` configured)
+- Generates a one-line functional description for each non-leaf module
+- Writes as blockquote: `> 会员等级管理、积分兑换、权益卡券`
+- ~200-400 tokens per directory, 10-20x cheaper than full AI generation
+- Parent directories read child descriptions for hierarchical navigation
+
+### Before vs After: Code Navigation
+
+```
+Before (structural only):
+  └── Application/
+      ├── Vip/           — 48 files | 386 symbols     ← AI agent cannot determine purpose
+      ├── Pay/           — 23 files | 178 symbols
+      └── SmallProgramApi/ — 31 files | 245 symbols
+
+After (structural + AI enrichment):
+  └── Application/
+      ├── Vip/           — 会员等级管理、积分兑换、权益卡券 | 48 files
+      ├── Pay/           — 支付网关（支付宝/微信/退款） | 23 files
+      └── SmallProgramApi/ — 小程序端API（登录、头像、商品） | 31 files
+                             ↑ AI agent can navigate directly
+```
 
 ### Three-Repo Architecture (Enterprise Knowledge Graph)
 
@@ -437,11 +477,11 @@ See [Release Automation Guide](docs/development/QUICK_START_RELEASE.md) for deta
 **Current version**: v0.23.0
 
 **Recent milestones**:
+- v0.23.0 — **AI-Enhanced Module Descriptions**: two-phase pipeline, auto-AI enrichment, post-commit thin wrapper
 - v0.22.2 — Auto-update CLAUDE.md on `pip upgrade`, `/codeindex-update-guide` skill
 - v0.22.0 — Unified tech-debt + test smells analysis
 - v0.21.0 — Swift & Objective-C language support
 - v0.19.0 — TypeScript/JavaScript support with call extraction
-- v0.17.0 — CLAUDE.md injection via `codeindex init`
 
 **Next**:
 - Framework routes expansion: Express, Laravel, FastAPI, Django (Epic 17)
