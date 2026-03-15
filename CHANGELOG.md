@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.1] - 2026-03-15
+
+### Added
+
+- **`codeindex claude-md update/status` CLI commands**: Manage codeindex section in project CLAUDE.md with version tracking.
+- **Startup version-outdated hint**: Every `codeindex` CLI invocation checks if CLAUDE.md section is outdated and prints a reminder.
+- **Unified `claude_md.py` module**: Single source of truth for CLAUDE.md injection, replacing fragmented hooks.py + init_wizard.py logic.
+
+### Changed
+
+- **CLAUDE.md template simplified**: 130 lines → 22 lines. Removed hardcoded paths, language support table, and verbose configuration examples.
+- **Unified marker format**: `<!-- codeindex:start v{version} -->` with backward compatibility for old markers without version.
+- **`init_wizard.py` injection**: Now delegates to `claude_md.py` module instead of inline template.
+
+### Fixed
+
+- **Dead code cleanup**: Removed `hooks.py` `post_install_update_guide()` (181 lines) that was never wired to pip entry points.
+- **Dead import fix**: `cli_config.py` referenced non-existent `install_hooks` from `hooks.py`, now uses correct `install_hook` from `cli_hooks.py`.
+
 ## [0.23.0] - 2026-03-12
 
 ### Added
