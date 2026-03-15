@@ -147,9 +147,9 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
     # Install Git Hooks if requested
     if result.enable_hooks:
         try:
-            from .hooks import install_hooks
+            from .cli_hooks import install_hook
 
-            install_hooks()
+            install_hook("post-commit")
             result.hooks_installed = True
             console.print("[green]✓ Git Hooks installed[/green]")
         except Exception as e:

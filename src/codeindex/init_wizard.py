@@ -14,7 +14,6 @@ Design Philosophy:
 """
 
 import os
-import re
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -26,24 +25,8 @@ import click
 # CLAUDE.md Injection
 # ============================================================================
 
-CLAUDE_MD_MARKER_START = "<!-- codeindex:start -->"
+CLAUDE_MD_MARKER_START = "<!-- codeindex:start"  # Prefix only (version follows)
 CLAUDE_MD_MARKER_END = "<!-- codeindex:end -->"
-
-CLAUDE_MD_SECTION = """<!-- codeindex:start -->
-## codeindex
-
-This project uses codeindex for AI-friendly code documentation.
-
-**First-time setup** (if no README_AI.md files exist):
-1. Review `.codeindex.yaml` — verify `include`/`exclude` patterns match this project's structure
-2. Run `codeindex scan-all` to generate indexes
-3. Optional: `codeindex hooks install post-commit` for auto-updates on commit
-
-**Daily usage**:
-- **Always read README_AI.md** before exploring source code in any directory
-- If README_AI.md is missing or outdated, run: `codeindex scan <dir>`
-- Check documentation coverage: `codeindex status`
-<!-- codeindex:end -->"""
 
 
 @dataclass
@@ -392,9 +375,7 @@ def count_files(project_dir: Path, patterns: List[str]) -> int:
 def inject_claude_md(project_dir: Path) -> Path:
     """Inject codeindex instructions into CLAUDE.md.
 
-    - Creates CLAUDE.md if it doesn't exist
-    - Prepends section if no existing injection found
-    - Replaces between markers if already injected (idempotent)
+    Delegates to claude_md module for unified marker-based injection.
 
     Args:
         project_dir: Project root directory
@@ -402,27 +383,10 @@ def inject_claude_md(project_dir: Path) -> Path:
     Returns:
         Path to CLAUDE.md
     """
+    from .claude_md import inject
+
     claude_md_path = project_dir / "CLAUDE.md"
-
-    if not claude_md_path.exists():
-        claude_md_path.write_text(CLAUDE_MD_SECTION + "\n")
-        return claude_md_path
-
-    content = claude_md_path.read_text()
-
-    if CLAUDE_MD_MARKER_START in content:
-        # Replace existing section between markers (idempotent update)
-        pattern = re.compile(
-            re.escape(CLAUDE_MD_MARKER_START) + r".*?" + re.escape(CLAUDE_MD_MARKER_END),
-            re.DOTALL,
-        )
-        new_content = pattern.sub(CLAUDE_MD_SECTION, content)
-        claude_md_path.write_text(new_content)
-    else:
-        # Prepend section to existing content
-        new_content = CLAUDE_MD_SECTION + "\n\n" + content
-        claude_md_path.write_text(new_content)
-
+    inject(claude_md_path)
     return claude_md_path
 
 

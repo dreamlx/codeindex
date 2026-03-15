@@ -8,6 +8,7 @@ codebase organized and maintainable.
 import click
 
 from . import __version__
+from .cli_claude_md import claude_md, print_outdated_warning
 from .cli_config import init, list_dirs, status
 from .cli_config_commands import config
 from .cli_docs import docs
@@ -22,7 +23,10 @@ from .cli_tech_debt import tech_debt
 @click.version_option(version=__version__, prog_name="codeindex")
 def main():
     """codeindex - AI-native code indexing tool for large codebases."""
-    pass
+    try:
+        print_outdated_warning()
+    except Exception:
+        pass  # Never let version check break CLI
 
 
 # Register commands from specialized modules
@@ -40,6 +44,7 @@ main.add_command(tech_debt)
 main.add_command(tech_debt, name="debt-scan")  # Alias for backward compatibility (v0.22.0+)
 main.add_command(hooks)
 main.add_command(docs)
+main.add_command(claude_md)
 
 
 if __name__ == "__main__":

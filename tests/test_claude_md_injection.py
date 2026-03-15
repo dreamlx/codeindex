@@ -2,10 +2,10 @@
 
 import pytest
 
+from codeindex.claude_md import build_section
 from codeindex.init_wizard import (
     CLAUDE_MD_MARKER_END,
     CLAUDE_MD_MARKER_START,
-    CLAUDE_MD_SECTION,
     has_claude_md_injection,
     inject_claude_md,
 )
@@ -34,26 +34,21 @@ class TestInjectClaudeMd:
         content = (project_dir / "CLAUDE.md").read_text()
         assert CLAUDE_MD_MARKER_START in content
         assert CLAUDE_MD_MARKER_END in content
-        assert "Always read README_AI.md" in content
-        assert "codeindex status" in content
+        assert "README_AI.md" in content
         assert "codeindex scan-all" in content
 
-    def test_prepends_to_existing_file(self, project_dir):
-        """Should prepend section to existing CLAUDE.md."""
+    def test_appends_to_existing_file(self, project_dir):
+        """Should append section to existing CLAUDE.md."""
         existing = "# My Project\n\nExisting content here.\n"
         (project_dir / "CLAUDE.md").write_text(existing)
 
         inject_claude_md(project_dir)
         content = (project_dir / "CLAUDE.md").read_text()
 
-        # Section should come first
-        marker_pos = content.index(CLAUDE_MD_MARKER_START)
-        existing_pos = content.index("Existing content here.")
-        assert marker_pos < existing_pos
-
         # Original content preserved
         assert "# My Project" in content
         assert "Existing content here." in content
+        assert CLAUDE_MD_MARKER_START in content
 
     def test_idempotent_replace_between_markers(self, project_dir):
         """Re-running should replace section, not duplicate it."""
@@ -116,6 +111,7 @@ class TestHasClaudeMdInjection:
 
     def test_returns_true_with_marker_in_existing(self, project_dir):
         """Should return True when marker exists in file."""
-        content = f"# Project\n\n{CLAUDE_MD_SECTION}\n\nOther stuff.\n"
+        section = build_section("0.23.0")
+        content = f"# Project\n\n{section}\n\nOther stuff.\n"
         (project_dir / "CLAUDE.md").write_text(content)
         assert has_claude_md_injection(project_dir) is True

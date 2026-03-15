@@ -727,7 +727,7 @@ def has_codeindex_marker(wizard_context):
 def has_readme_instruction(wizard_context):
     """Verify CLAUDE.md contains the README_AI.md instruction."""
     content = (wizard_context["project_dir"] / "CLAUDE.md").read_text()
-    assert "Always read README_AI.md" in content
+    assert "README_AI.md" in content
 
 
 @then("CLAUDE.md should contain the codeindex section")
@@ -757,7 +757,7 @@ def exactly_one_section(wizard_context):
 def markers_content_updated(wizard_context):
     """Verify content between markers contains expected instructions."""
     content = (wizard_context["project_dir"] / "CLAUDE.md").read_text()
-    assert "Always read README_AI.md" in content
+    assert "README_AI.md" in content
     assert has_claude_md_injection(wizard_context["project_dir"])
 
 
