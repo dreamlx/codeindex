@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env bash
 # Common utilities for Git hooks
 # Source this file in all hooks to reduce code duplication
 

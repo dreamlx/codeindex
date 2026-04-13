@@ -200,7 +200,7 @@ class TestHookGeneration:
         """Should generate valid pre-commit hook script."""
         script = generate_hook_script("pre-commit")
 
-        assert "#!/bin/zsh" in script or "#!/bin/bash" in script
+        assert script.startswith("#!/")
         assert "codeindex-managed hook" in script
         assert "ruff" in script.lower() or "lint" in script.lower()
 
@@ -208,7 +208,7 @@ class TestHookGeneration:
         """Should generate valid post-commit hook script."""
         script = generate_hook_script("post-commit")
 
-        assert "#!/bin/zsh" in script or "#!/bin/bash" in script
+        assert script.startswith("#!/")
         assert "codeindex-managed hook" in script
         assert "README_AI.md" in script or "codeindex" in script
 

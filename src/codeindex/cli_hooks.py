@@ -212,7 +212,7 @@ def _generate_pre_commit_script(config: dict) -> str:
     """Generate pre-commit hook script."""
     lint_enabled = config.get("lint_enabled", True)
 
-    script = """#!/bin/zsh
+    script = """#!/usr/bin/env bash
 # codeindex-managed hook
 # Pre-commit hook for codeindex
 # L1: Lint check (ruff)
@@ -357,13 +357,13 @@ def _generate_post_commit_script(config: dict) -> str:  # noqa: E501
     auto_update = config.get("auto_update", True)
 
     if not auto_update:
-        return """#!/bin/zsh
+        return """#!/usr/bin/env bash
 # codeindex-managed hook
 # Post-commit hook (disabled)
 exit 0
 """
 
-    return """#!/bin/zsh
+    return """#!/usr/bin/env bash
 # codeindex-managed hook
 # Post-commit hook for codeindex
 # Thin wrapper — all logic in Python (auto-updated via pip)
@@ -400,7 +400,7 @@ codeindex hooks run post-commit 2>>"$LOG_FILE" || true
 
 def _generate_pre_push_script(config: dict) -> str:
     """Generate pre-push hook script."""
-    return """#!/bin/zsh
+    return """#!/usr/bin/env bash
 # codeindex-managed hook
 # Pre-push hook for codeindex
 
