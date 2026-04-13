@@ -375,8 +375,14 @@ elif [ -f "$REPO_ROOT/venv/bin/activate" ]; then
     source "$REPO_ROOT/venv/bin/activate"
 fi
 
+# Ensure log directory exists
+LOG_DIR="$HOME/.codeindex/hooks"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/post-commit.log"
+
 # Delegate to Python (upgradeable via pip)
-codeindex hooks run post-commit 2>/dev/null || true
+# Errors go to log file instead of being silently discarded
+codeindex hooks run post-commit 2>>"$LOG_FILE" || true
 """
 
 
