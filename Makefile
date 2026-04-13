@@ -63,6 +63,9 @@ lint:  ## Run linter (ruff)
 lint-fix:  ## Auto-fix linting issues
 	ruff check --fix src/ tests/
 
+typecheck:  ## Run mypy type check on core modules
+	mypy src/codeindex/parser.py src/codeindex/scanner.py src/codeindex/config.py
+
 format:  ## Format code with ruff
 	ruff format src/ tests/
 

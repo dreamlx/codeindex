@@ -62,6 +62,7 @@ dev = [
     "pytest-bdd>=7.0",
     "pytest-cov>=4.0",
     "ruff>=0.1",
+    "mypy>=1.0",
 ]
 
 [project.scripts]
@@ -82,7 +83,20 @@ extend-exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W"]
+select = ["E", "F", "I", "N", "W", "T"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/codeindex/cli_*.py" = ["T201"]  # CLI files legitimately use print()
+"scripts/*.py" = ["T201"]
+"tests/**/*.py" = ["T201"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+check_untyped_defs = false
+disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -60,11 +60,15 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install ruff
-      run: pip install ruff
+    - name: Install lint tools
+      run: pip install ruff mypy
 
     - name: Run ruff check
       run: ruff check src/ tests/ test_generator/
+
+    - name: Run mypy type check (informational)
+      run: mypy src/codeindex/parser.py src/codeindex/scanner.py src/codeindex/config.py
+      continue-on-error: true
 
   build-check:
     runs-on: ubuntu-latest

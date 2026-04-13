@@ -286,61 +286,9 @@ fi
 """
 
     script += """
-# ============================================
-# L2: Forbid debug code
-# ============================================
-echo "\\n${YELLOW}[L2] Checking for debug code...${NC}"
-
-DEBUG_PATTERNS=(
-    'print\\s*\\('           # print() statements
-    'breakpoint\\s*\\('      # breakpoint() calls
-    'pdb\\.set_trace\\s*\\('  # pdb debugger
-    'import\\s+pdb'         # pdb import
-    'from\\s+pdb\\s+import'  # from pdb import
-)
-
-FOUND_DEBUG=0
-for file in $STAGED_PY_FILES; do
-    # Skip CLI files and modules that use print() for legitimate output
-    if [[ "$file" == *"/cli"* ]] || [[ "$file" == *"/cli_"* ]] || \\
-       [[ "$file" == *"hierarchical.py"* ]] || \\
-       [[ "$file" == *"directory_tree.py"* ]] || \\
-       [[ "$file" == *"adaptive_selector.py"* ]]; then
-        continue
-    fi
-
-    # Get only staged content (not working directory)
-    STAGED_CONTENT=$(git show ":$file" 2>/dev/null || true)
-
-    if [ -z "$STAGED_CONTENT" ]; then
-        continue
-    fi
-
-    for pattern in $DEBUG_PATTERNS; do
-        # Find matches, excluding console.print() and docstring examples
-        MATCHES=$(echo "$STAGED_CONTENT" | \\
-            grep -n -E "$pattern" | \\
-            grep -v "console\\.print" | \\
-            grep -v "^[[:space:]]*>>>" || true)
-        if [ -n "$MATCHES" ]; then
-            if [ $FOUND_DEBUG -eq 0 ]; then
-                echo "${RED}✗ Debug code found:${NC}"
-                FOUND_DEBUG=1
-            fi
-            echo "   ${file}:"
-            echo "$MATCHES" | while read line; do
-                echo "      $line"
-            done
-        fi
-    done
-done
-
-if [ $FOUND_DEBUG -eq 1 ]; then
-    echo "\\n${RED}✗ Remove debug code before committing.${NC}"
-    echo "   Tip: Use logging module instead of print()"
-    exit 1
-fi
-echo "${GREEN}✓ No debug code found${NC}"
+# Note: Debug code detection (print/breakpoint/pdb) is now handled by
+# ruff rules T201 (print) and T100 (debugger) in the lint check above.
+# Per-file-ignores in pyproject.toml exempt CLI files.
 
 # ============================================
 # All checks passed
