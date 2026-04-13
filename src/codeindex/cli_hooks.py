@@ -124,7 +124,19 @@ class HookManager:
         hook_path.write_text(script)
         hook_path.chmod(0o755)  # Make executable
 
+        # Ensure hook-common.sh is installed (used by pre-commit/pre-push)
+        self._ensure_hook_common()
+
         return True
+
+    def _ensure_hook_common(self) -> None:
+        """Copy hook-common.sh to .git/hooks/ if bundled version exists."""
+        common_dest = self.hooks_dir / "hook-common.sh"
+        # Source from scripts/hooks/ in the repo
+        common_src = self.repo_path / "scripts" / "hooks" / "hook-common.sh"
+        if common_src.exists():
+            shutil.copy(common_src, common_dest)
+            common_dest.chmod(0o755)
 
     def uninstall_hook(
         self, hook_name: str, restore_backup: bool = True

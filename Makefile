@@ -39,11 +39,9 @@ install:  ## Install package in editable mode
 install-dev:  ## Install with dev dependencies
 	pip install -e ".[dev,all]"
 
-install-hooks:  ## Install Git hooks (pre-commit, pre-push)
+install-hooks:  ## Install Git hooks via codeindex CLI
 	@echo "$(CYAN)Installing Git hooks...$(RESET)"
-	@mkdir -p .git/hooks
-	@cp scripts/hooks/pre-push .git/hooks/pre-push
-	@chmod +x .git/hooks/pre-push
+	@codeindex hooks install --all --force
 	@echo "$(GREEN)✓ Git hooks installed$(RESET)"
 
 # ============================================================================
