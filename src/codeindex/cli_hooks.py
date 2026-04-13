@@ -124,7 +124,19 @@ class HookManager:
         hook_path.write_text(script)
         hook_path.chmod(0o755)  # Make executable
 
+        # Ensure hook-common.sh is installed (used by pre-commit/pre-push)
+        self._ensure_hook_common()
+
         return True
+
+    def _ensure_hook_common(self) -> None:
+        """Copy hook-common.sh to .git/hooks/ if bundled version exists."""
+        common_dest = self.hooks_dir / "hook-common.sh"
+        # Source from scripts/hooks/ in the repo
+        common_src = self.repo_path / "scripts" / "hooks" / "hook-common.sh"
+        if common_src.exists():
+            shutil.copy(common_src, common_dest)
+            common_dest.chmod(0o755)
 
     def uninstall_hook(
         self, hook_name: str, restore_backup: bool = True
@@ -200,7 +212,7 @@ def _generate_pre_commit_script(config: dict) -> str:
     """Generate pre-commit hook script."""
     lint_enabled = config.get("lint_enabled", True)
 
-    script = """#!/bin/zsh
+    script = """#!/usr/bin/env bash
 # codeindex-managed hook
 # Pre-commit hook for codeindex
 # L1: Lint check (ruff)
@@ -274,61 +286,9 @@ fi
 """
 
     script += """
-# ============================================
-# L2: Forbid debug code
-# ============================================
-echo "\\n${YELLOW}[L2] Checking for debug code...${NC}"
-
-DEBUG_PATTERNS=(
-    'print\\s*\\('           # print() statements
-    'breakpoint\\s*\\('      # breakpoint() calls
-    'pdb\\.set_trace\\s*\\('  # pdb debugger
-    'import\\s+pdb'         # pdb import
-    'from\\s+pdb\\s+import'  # from pdb import
-)
-
-FOUND_DEBUG=0
-for file in $STAGED_PY_FILES; do
-    # Skip CLI files and modules that use print() for legitimate output
-    if [[ "$file" == *"/cli"* ]] || [[ "$file" == *"/cli_"* ]] || \\
-       [[ "$file" == *"hierarchical.py"* ]] || \\
-       [[ "$file" == *"directory_tree.py"* ]] || \\
-       [[ "$file" == *"adaptive_selector.py"* ]]; then
-        continue
-    fi
-
-    # Get only staged content (not working directory)
-    STAGED_CONTENT=$(git show ":$file" 2>/dev/null || true)
-
-    if [ -z "$STAGED_CONTENT" ]; then
-        continue
-    fi
-
-    for pattern in $DEBUG_PATTERNS; do
-        # Find matches, excluding console.print() and docstring examples
-        MATCHES=$(echo "$STAGED_CONTENT" | \\
-            grep -n -E "$pattern" | \\
-            grep -v "console\\.print" | \\
-            grep -v "^[[:space:]]*>>>" || true)
-        if [ -n "$MATCHES" ]; then
-            if [ $FOUND_DEBUG -eq 0 ]; then
-                echo "${RED}✗ Debug code found:${NC}"
-                FOUND_DEBUG=1
-            fi
-            echo "   ${file}:"
-            echo "$MATCHES" | while read line; do
-                echo "      $line"
-            done
-        fi
-    done
-done
-
-if [ $FOUND_DEBUG -eq 1 ]; then
-    echo "\\n${RED}✗ Remove debug code before committing.${NC}"
-    echo "   Tip: Use logging module instead of print()"
-    exit 1
-fi
-echo "${GREEN}✓ No debug code found${NC}"
+# Note: Debug code detection (print/breakpoint/pdb) is now handled by
+# ruff rules T201 (print) and T100 (debugger) in the lint check above.
+# Per-file-ignores in pyproject.toml exempt CLI files.
 
 # ============================================
 # All checks passed
@@ -345,13 +305,13 @@ def _generate_post_commit_script(config: dict) -> str:  # noqa: E501
     auto_update = config.get("auto_update", True)
 
     if not auto_update:
-        return """#!/bin/zsh
+        return """#!/usr/bin/env bash
 # codeindex-managed hook
 # Post-commit hook (disabled)
 exit 0
 """
 
-    return """#!/bin/zsh
+    return """#!/usr/bin/env bash
 # codeindex-managed hook
 # Post-commit hook for codeindex
 # Thin wrapper — all logic in Python (auto-updated via pip)
@@ -375,14 +335,20 @@ elif [ -f "$REPO_ROOT/venv/bin/activate" ]; then
     source "$REPO_ROOT/venv/bin/activate"
 fi
 
+# Ensure log directory exists
+LOG_DIR="$HOME/.codeindex/hooks"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/post-commit.log"
+
 # Delegate to Python (upgradeable via pip)
-codeindex hooks run post-commit 2>/dev/null || true
+# Errors go to log file instead of being silently discarded
+codeindex hooks run post-commit 2>>"$LOG_FILE" || true
 """
 
 
 def _generate_pre_push_script(config: dict) -> str:
     """Generate pre-push hook script."""
-    return """#!/bin/zsh
+    return """#!/usr/bin/env bash
 # codeindex-managed hook
 # Pre-push hook for codeindex
 
