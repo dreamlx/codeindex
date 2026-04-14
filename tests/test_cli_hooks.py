@@ -99,6 +99,26 @@ class TestHookManager:
         assert (hooks_dir / "pre-commit").exists()
         assert (hooks_dir / "pre-commit").stat().st_mode & 0o111  # Executable
 
+    def test_install_hook_copies_hook_common(self, tmp_path):
+        """Should copy hook-common.sh when scripts/hooks/hook-common.sh exists."""
+        repo_path = tmp_path / "test_repo"
+        hooks_dir = repo_path / ".git" / "hooks"
+        hooks_dir.mkdir(parents=True)
+
+        # Create scripts/hooks/hook-common.sh in the repo
+        scripts_hooks = repo_path / "scripts" / "hooks"
+        scripts_hooks.mkdir(parents=True)
+        common_src = scripts_hooks / "hook-common.sh"
+        common_src.write_text("#!/bin/bash\n# common utilities\n")
+
+        manager = HookManager(repo_path)
+        manager.install_hook("pre-commit")
+
+        common_dest = hooks_dir / "hook-common.sh"
+        assert common_dest.exists()
+        assert common_dest.read_text() == "#!/bin/bash\n# common utilities\n"
+        assert common_dest.stat().st_mode & 0o111  # Executable
+
     def test_install_hook_with_backup(self, tmp_path):
         """Should backup existing custom hook before installing."""
         repo_path = tmp_path / "test_repo"
@@ -180,7 +200,7 @@ class TestHookGeneration:
         """Should generate valid pre-commit hook script."""
         script = generate_hook_script("pre-commit")
 
-        assert "#!/bin/zsh" in script or "#!/bin/bash" in script
+        assert script.startswith("#!/")
         assert "codeindex-managed hook" in script
         assert "ruff" in script.lower() or "lint" in script.lower()
 
@@ -188,7 +208,7 @@ class TestHookGeneration:
         """Should generate valid post-commit hook script."""
         script = generate_hook_script("post-commit")
 
-        assert "#!/bin/zsh" in script or "#!/bin/bash" in script
+        assert script.startswith("#!/")
         assert "codeindex-managed hook" in script
         assert "README_AI.md" in script or "codeindex" in script
 

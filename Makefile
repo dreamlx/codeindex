@@ -39,11 +39,9 @@ install:  ## Install package in editable mode
 install-dev:  ## Install with dev dependencies
 	pip install -e ".[dev,all]"
 
-install-hooks:  ## Install Git hooks (pre-commit, pre-push)
+install-hooks:  ## Install Git hooks via codeindex CLI
 	@echo "$(CYAN)Installing Git hooks...$(RESET)"
-	@mkdir -p .git/hooks
-	@cp scripts/hooks/pre-push .git/hooks/pre-push
-	@chmod +x .git/hooks/pre-push
+	@codeindex hooks install --all --force
 	@echo "$(GREEN)✓ Git hooks installed$(RESET)"
 
 # ============================================================================
@@ -64,6 +62,9 @@ lint:  ## Run linter (ruff)
 
 lint-fix:  ## Auto-fix linting issues
 	ruff check --fix src/ tests/
+
+typecheck:  ## Run mypy type check on core modules
+	mypy src/codeindex/parser.py src/codeindex/scanner.py src/codeindex/config.py
 
 format:  ## Format code with ruff
 	ruff format src/ tests/

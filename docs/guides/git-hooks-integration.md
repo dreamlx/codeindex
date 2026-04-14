@@ -192,6 +192,7 @@ Code Change Commit
 Shell wrapper (loop guard + venv)
     ↓
 codeindex hooks run post-commit  (Python)
+    ↓                            stderr → ~/.codeindex/hooks/post-commit.log
     ↓
 codeindex affected --json → affected directories
     ↓

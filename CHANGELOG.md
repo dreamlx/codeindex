@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.2] - 2026-04-14
+
+### Changed
+
+- **Hook shebangs**: `#!/bin/zsh` → `#!/usr/bin/env bash` for cross-platform portability.
+- **Unified hook install**: `make install-hooks` now delegates to `codeindex hooks install --all`.
+- **Post-commit logging**: stderr redirected to `~/.codeindex/hooks/post-commit.log` instead of `/dev/null`.
+- **Debug detection**: Replaced ~50 lines of regex-based L2 check with ruff `T201`/`T100` rules.
+
+### Added
+
+- **`hook-common.sh` versioned**: Added to `scripts/hooks/` and auto-copied on `codeindex hooks install`.
+- **mypy**: Added as dev dependency with baseline config; CI runs informational type check on core modules.
+- **Coverage gate**: CI enforces `--cov-fail-under=78` to prevent coverage regression.
+- **`make typecheck`**: New Makefile target for mypy on core modules.
+
 ## [0.23.1] - 2026-03-15
 
 ### Added
