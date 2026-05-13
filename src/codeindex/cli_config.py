@@ -20,6 +20,26 @@ from .init_wizard import (
 from .scanner import find_all_directories
 
 
+def _update_gitignore(project_dir: Path) -> bool:
+    """Add README_AI.md to .gitignore if not already present. Returns True if modified."""
+    gitignore = project_dir / ".gitignore"
+    marker = "README_AI.md"
+
+    comment = "# codeindex - AI-generated indexes (regenerate with: codeindex scan-all)"
+    entry = f"{comment}\nREADME_AI.md\n"
+
+    if gitignore.exists():
+        content = gitignore.read_text()
+        if marker in content:
+            return False
+        prefix = "\n" if not content.endswith("\n") else ""
+        gitignore.write_text(content + prefix + "\n" + entry)
+    else:
+        gitignore.write_text(entry)
+
+    return True
+
+
 def _print_post_init_message():
     """Print post-init next steps message."""
     console.print("\n[bold]Next steps:[/bold]")
@@ -115,11 +135,16 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
         claude_md_path = inject_claude_md(project_dir)
         result.claude_md_injected = True
 
+        # Update .gitignore
+        gitignore_updated = _update_gitignore(project_dir)
+
         if not quiet:
             console.print(f"[green]✓ Created:[/green] {config_path}")
             if result.create_codeindex_md:
                 console.print("[green]✓ Created:[/green] CODEINDEX.md")
             console.print(f"[green]✓ Injected:[/green] {claude_md_path.name}")
+            if gitignore_updated:
+                console.print("[green]✓ Updated:[/green] .gitignore (added README_AI.md)")
             _print_post_init_message()
 
         return
@@ -154,6 +179,11 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
             console.print("[green]✓ Git Hooks installed[/green]")
         except Exception as e:
             console.print(f"[yellow]Warning:[/yellow] Could not install hooks: {e}")
+
+    # Update .gitignore
+    gitignore_updated = _update_gitignore(project_dir)
+    if gitignore_updated:
+        console.print("[green]✓ Updated:[/green] .gitignore (added README_AI.md)")
 
     # Success summary
     console.print("\n[green]✓ Setup complete![/green]")
