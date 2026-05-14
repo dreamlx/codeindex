@@ -5,6 +5,8 @@ import subprocess
 import pytest
 from pytest_bdd import given, parsers, scenarios, then, when
 
+pytestmark = pytest.mark.slow
+
 # Load all scenarios from the feature file
 scenarios("features/help_system.feature")
 

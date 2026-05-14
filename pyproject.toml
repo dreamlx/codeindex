@@ -104,4 +104,5 @@ pythonpath = ["src"]
 norecursedirs = ["examples"]
 markers = [
     "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+    "slow: marks tests that invoke subprocess or scan real project files (deselect with '-m \"not slow\"')",
 ]

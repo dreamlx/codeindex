@@ -129,6 +129,7 @@ class TestTechDebtCommand:
         assert "2 files analyzed" in result.output
 
 
+@pytest.mark.slow
 class TestTechDebtIntegration:
     """Integration tests for full tech-debt workflow."""
 

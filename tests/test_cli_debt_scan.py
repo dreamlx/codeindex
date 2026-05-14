@@ -180,6 +180,7 @@ class TestDebtScanEdgeCases:
         assert result.exit_code != 0  # Should fail
 
 
+@pytest.mark.slow
 class TestDebtScanIntegrationWithRealProject:
     """Test debt-scan on the codeindex project itself."""
 
