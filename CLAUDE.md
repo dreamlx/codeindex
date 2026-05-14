@@ -51,7 +51,8 @@ Without venv: pip fails (PEP 668), pre-push hooks fail (`ModuleNotFoundError`), 
 
 ```bash
 # Development
-pytest -v                          # Run tests
+pytest -m "not slow"               # Fast tests only (~2s, daily use)
+pytest -v                          # Full test suite (~7s, before PR)
 ruff check src/                    # Lint
 pytest --cov=src/codeindex         # Coverage
 

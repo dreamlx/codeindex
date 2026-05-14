@@ -134,10 +134,16 @@ class TestUpdateGitignore:
 ### Coverage floor
 Current: **78% minimum**, enforced in CI. If your PR drops coverage below 78%, CI fails.
 
-Check before pushing:
-```bash
-pytest --cov=src/codeindex --cov-report=term-missing
-```
+### Test speed tiers
+
+| Command | Tests | Time | When to use |
+|---------|-------|------|-------------|
+| `pytest -m "not slow"` | ~1527 | ~2s | During development (default) |
+| `pytest` | ~1546 | ~7s | Before opening a PR |
+| `pytest --cov=src/codeindex --cov-report=term-missing` | ~1546 | ~8s | Checking coverage |
+
+`slow` marks tests that invoke a real subprocess (CLI calls) or scan actual project files.
+They run in CI but are excluded from the fast loop to keep feedback tight.
 
 ---
 
