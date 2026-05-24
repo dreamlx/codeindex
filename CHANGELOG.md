@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`enricher.mark_enrichment_status()`**: Records AI enrichment outcome as `<!-- enrichment: ok | failed (reason: ...) -->` HTML comment under the Generated header in `README_AI.md`. Lets AI consumers distinguish "structural-only by config" (no marker) from "enrichment attempted and failed" (marker with reason).
 - **`enricher.build_safe_subdir_context()`**: Builds AI-enrichment prompt context from `DirectoryTree.get_children()` (bare subdir names only). Used by `_enrich_directories_with_ai` ahead of `extract_summary_from_readme`. Closes a prompt-injection chain where README markdown — containing AI-generated descriptions sourced from arbitrary source docstrings — was regex-extracted and fed into the next enrichment prompt. The README-parsing path remains as fallback for dirs without indexed children.
+- **Idempotent `scan-all --ai` re-runs**: Phase 2 now snapshots existing enrichment state (`enricher.extract_blockquote_description()` + `enricher.has_successful_enrichment()`) *before* Phase 1 rewrites READMEs, then re-injects cached descriptions for already-ok dirs without firing fresh AI calls. After a transient-failure scenario (e.g. claude-API rate limit on N/M dirs), the user just re-runs `codeindex scan-all --ai` and only the previously-failed dirs hit the AI backend; successes cost zero tokens. Use `--retry-all` to force a real AI call for every dir.
+- **Failure-summary hint**: When Phase 2 has any failed dirs, prints a short list plus actionable next steps (retry / `--retry-all` / switch `ai_command` to `claude --model haiku` / `opencode` / `gemini`). Per design: no auto-fallback — surface the options, let the user choose.
 
 ### Changed
 

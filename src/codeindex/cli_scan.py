@@ -545,6 +545,7 @@ def _process_directories_parallel(
     show_cost: bool,
     ai: bool = False,
     timeout: int = 120,
+    retry_all: bool = False,
 ) -> None:
     """Process directories in parallel using SmartWriter.
 
@@ -557,7 +558,28 @@ def _process_directories_parallel(
         show_cost: Show token cost information
         ai: Enable AI enrichment (Phase 2)
         timeout: AI CLI timeout in seconds
+        retry_all: Force re-enrichment of all dirs (else skip already-ok)
     """
+    # Snapshot prior enrichment state BEFORE Phase 1 rewrites READMEs and
+    # wipes both the `<!-- enrichment: ok -->` markers and the blockquote.
+    # Used in Phase 2 to skip already-ok dirs while re-injecting their
+    # cached descriptions, so re-runs cost no AI calls for successes.
+    enrichment_cache: dict[Path, str] = {}
+    if ai and config.ai_command and not retry_all:
+        from .enricher import (
+            extract_blockquote_description,
+            has_successful_enrichment,
+            should_enrich,
+        )
+        for d in dirs:
+            if not should_enrich(tree.get_level(d)):
+                continue
+            readme = d / config.output_file
+            if has_successful_enrichment(readme):
+                desc = extract_blockquote_description(readme)
+                if desc:
+                    enrichment_cache[d] = desc
+
     # ========== Phase 1: SmartWriter parallel generation ==========
     if not quiet:
         console.print("\n[bold]📝 Phase 1: Generating READMEs (SmartWriter)...[/bold]")
@@ -605,7 +627,11 @@ def _process_directories_parallel(
 
     # ========== Phase 2: AI enrichment (--ai flag) ==========
     if ai and config.ai_command:
-        _enrich_directories_with_ai(dirs, tree, config, quiet, timeout)
+        _enrich_directories_with_ai(
+            dirs, tree, config, quiet, timeout,
+            retry_all=retry_all,
+            enrichment_cache=enrichment_cache,
+        )
 
 
 def _enrich_directories_with_ai(
@@ -614,6 +640,8 @@ def _enrich_directories_with_ai(
     config: Config,
     quiet: bool,
     timeout: int,
+    retry_all: bool = False,
+    enrichment_cache: dict[Path, str] | None = None,
 ) -> None:
     """Phase 2: Enrich non-leaf directories with AI-generated descriptions.
 
@@ -621,12 +649,19 @@ def _enrich_directories_with_ai(
     sends a minimal prompt to AI, and injects the one-line description as a
     blockquote in the directory's README_AI.md.
 
+    Idempotent re-run behavior: dirs in `enrichment_cache` (snapshotted before
+    Phase 1 rewrote READMEs) get their cached description re-injected without
+    a fresh AI call. Use retry_all=True to force a real AI call for every dir
+    regardless of cache.
+
     Args:
         dirs: All directories that were processed in Phase 1
         tree: DirectoryTree for level information
         config: Configuration (must have ai_command)
         quiet: Suppress progress messages
         timeout: AI CLI timeout in seconds
+        retry_all: If True, ignore cache and re-enrich all
+        enrichment_cache: dir_path -> cached description from prior run
     """
     from .enricher import (
         build_enrich_prompt,
@@ -638,19 +673,44 @@ def _enrich_directories_with_ai(
     )
     from .invoker import invoke_ai_cli
 
+    cache = {} if (retry_all or enrichment_cache is None) else enrichment_cache
+
     # Filter to only enrichable directories
-    enrich_dirs = [d for d in dirs if should_enrich(tree.get_level(d))]
+    all_enrich_dirs = [d for d in dirs if should_enrich(tree.get_level(d))]
+
+    if not all_enrich_dirs:
+        return
+
+    # Re-inject cached descriptions for already-ok dirs (no AI call)
+    cached_reinjected = 0
+    for dir_path in all_enrich_dirs:
+        if dir_path in cache:
+            readme_path = dir_path / config.output_file
+            if readme_path.exists():
+                inject_blockquote(readme_path, cache[dir_path])
+                mark_enrichment_status(readme_path, "ok")
+                cached_reinjected += 1
+
+    # Dirs needing actual AI call = enrichable - cached
+    enrich_dirs = [d for d in all_enrich_dirs if d not in cache]
 
     if not enrich_dirs:
+        if not quiet:
+            console.print(
+                f"\n[dim]🤖 Phase 2: {cached_reinjected} dirs restored from cache, "
+                f"0 AI calls (use --retry-all to re-enrich)[/dim]"
+            )
         return
 
     if not quiet:
+        skip_note = f" ({cached_reinjected} restored from cache)" if cached_reinjected else ""
         console.print(
             f"\n[bold]🤖 Phase 2: AI enrichment "
-            f"({len(enrich_dirs)} directories)...[/bold]"
+            f"({len(enrich_dirs)} directories{skip_note})...[/bold]"
         )
 
     enriched_count = 0
+    failed_dirs: list[str] = []
     for dir_path in enrich_dirs:
         readme_path = dir_path / config.output_file
 
@@ -680,6 +740,7 @@ def _enrich_directories_with_ai(
                 console.print(f"[yellow]⚠[/yellow] {dir_path.name}: AI error — {reason}")
             if readme_path.exists():
                 mark_enrichment_status(readme_path, "failed", reason=reason)
+            failed_dirs.append(dir_path.name)
             continue
 
         # Clean AI output (strip whitespace, quotes, markdown)
@@ -695,6 +756,7 @@ def _enrich_directories_with_ai(
         if not description:
             if readme_path.exists():
                 mark_enrichment_status(readme_path, "failed", reason="empty AI response")
+            failed_dirs.append(dir_path.name)
             continue
 
         # Inject into README_AI.md
@@ -710,6 +772,30 @@ def _enrich_directories_with_ai(
             f"[dim]→ Phase 2 complete: "
             f"{enriched_count}/{len(enrich_dirs)} enriched[/dim]"
         )
+        if failed_dirs:
+            _print_enrichment_failure_hint(failed_dirs)
+
+
+def _print_enrichment_failure_hint(failed_dirs: list[str]) -> None:
+    """Print actionable suggestions after Phase 2 has any failures.
+
+    Per design: do not auto-fallback to another backend. Show options
+    so the user (a programmer) picks. Re-running `scan-all --ai` is
+    idempotent — only failed dirs will be retried.
+    """
+    failed_list = ", ".join(failed_dirs[:5])
+    if len(failed_dirs) > 5:
+        failed_list += f", ... ({len(failed_dirs) - 5} more)"
+    console.print(
+        f"\n[yellow]⚠ {len(failed_dirs)} dir(s) failed enrichment:[/yellow] {failed_list}\n"
+        f"[dim]Likely transient (rate limit / network). Options:[/dim]\n"
+        f"  • [cyan]codeindex scan-all --ai[/cyan]       Retry just the failures (idempotent)\n"
+        f"  • [cyan]codeindex scan-all --ai --retry-all[/cyan]  Re-enrich every dir from scratch\n"
+        f"  • Edit [cyan]ai_command[/cyan] in .codeindex.yaml to switch backend:\n"
+        f"      [dim]claude -p \"{{prompt}}\" --model haiku --allowedTools \"Read\"[/dim]   # cheaper\n"
+        f"      [dim]opencode run --model osperyai/glm-5.1 \"{{prompt}}\" | tail -1[/dim]\n"
+        f"      [dim]gemini -p \"{{prompt}}\"[/dim]"
+    )
 
 
 # ========== Helper functions for scan_all (extracted from nested functions) ==========
@@ -860,6 +946,13 @@ def scan(
     help="Enable AI enrichment (auto-detected when ai_command is configured)",
 )
 @click.option("--no-ai", is_flag=True, help="Disable automatic AI enrichment")
+@click.option(
+    "--retry-all",
+    is_flag=True,
+    help="Re-enrich every dir, including those already marked enrichment: ok. "
+    "Default: skip already-ok dirs so retry after transient failure only "
+    "re-runs the failed ones.",
+)
 @click.option("--fallback", is_flag=True, hidden=True, help="[Deprecated] Structural mode is now the default")
 @click.option("--quiet", "-q", is_flag=True, help="Minimal output")
 @click.option("--hierarchical", "-h", is_flag=True, help="Use hierarchical processing (bottom-up)")
@@ -887,6 +980,7 @@ def scan_all(
     timeout: int,
     ai: bool,
     no_ai: bool,
+    retry_all: bool,
     fallback: bool,
     quiet: bool,
     hierarchical: bool,
@@ -968,5 +1062,5 @@ def scan_all(
     # Process directories in parallel (Phase 1: structural, Phase 2: AI enrich if enabled)
     _process_directories_parallel(
         dirs, tree, config, docstring_processor, quiet, show_cost,
-        ai=effective_ai, timeout=timeout,
+        ai=effective_ai, timeout=timeout, retry_all=retry_all,
     )

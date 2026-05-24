@@ -211,6 +211,73 @@ def should_enrich(level: str) -> bool:
     return level in ("overview", "navigation")
 
 
+def extract_blockquote_description(readme_path: Path) -> str | None:
+    """Return the `> description` line that was injected after the title.
+
+    Lets Phase 2 cache the previously-AI-generated description before
+    Phase 1 rewrites the structural README (which would otherwise wipe
+    the blockquote), so on re-run the cached description is re-injected
+    without a fresh AI call.
+
+    Only looks at the first non-empty line directly after the first `# `
+    title — body-level `>` lines are ignored.
+
+    Args:
+        readme_path: Path to README_AI.md
+
+    Returns:
+        The description text (without leading `> ` and outer whitespace),
+        or None if the file is missing or has no blockquote in the title region.
+    """
+    if not readme_path.exists():
+        return None
+    try:
+        content = readme_path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return None
+
+    lines = content.split("\n")
+    title_idx = None
+    for i, line in enumerate(lines):
+        if line.startswith("# "):
+            title_idx = i
+            break
+    if title_idx is None:
+        return None
+
+    # Scan forward from title for the first non-empty line
+    for j in range(title_idx + 1, len(lines)):
+        candidate = lines[j].strip()
+        if not candidate:
+            continue
+        if candidate.startswith(">"):
+            return candidate.lstrip(">").strip() or None
+        return None  # first non-empty line wasn't a blockquote
+    return None
+
+
+def has_successful_enrichment(readme_path: Path) -> bool:
+    """Return True if README already has `<!-- enrichment: ok -->` marker.
+
+    Lets `scan-all --ai` skip already-enriched dirs on re-run, making
+    retry-after-transient-failure idempotent and cost-free for successes.
+
+    Args:
+        readme_path: Path to README_AI.md
+
+    Returns:
+        True iff the file exists AND contains the literal ok marker.
+        False for missing files, failed-marker files, or no-marker files.
+    """
+    if not readme_path.exists():
+        return False
+    try:
+        content = readme_path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return False
+    return "<!-- enrichment: ok -->" in content
+
+
 def mark_enrichment_status(readme_path: Path, status: str, reason: str = "") -> None:
     """Record AI enrichment outcome as an HTML comment in README_AI.md.
 
