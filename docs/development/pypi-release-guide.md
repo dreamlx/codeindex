@@ -185,7 +185,7 @@ codeindex --version
 
 # 测试核心功能
 codeindex init
-codeindex scan ./tests --fallback
+codeindex scan ./tests
 
 # 卸载测试版本
 pip uninstall codeindex -y

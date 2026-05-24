@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`enricher.mark_enrichment_status()`**: Records AI enrichment outcome as `<!-- enrichment: ok | failed (reason: ...) -->` HTML comment under the Generated header in `README_AI.md`. Lets AI consumers distinguish "structural-only by config" (no marker) from "enrichment attempted and failed" (marker with reason).
+- **`enricher.build_safe_subdir_context()`**: Builds AI-enrichment prompt context from `DirectoryTree.get_children()` (bare subdir names only). Used by `_enrich_directories_with_ai` ahead of `extract_summary_from_readme`. Closes a prompt-injection chain where README markdown — containing AI-generated descriptions sourced from arbitrary source docstrings — was regex-extracted and fed into the next enrichment prompt. The README-parsing path remains as fallback for dirs without indexed children.
+
+### Changed
+
+- **AI enrichment error surfaces stderr**: `scan-all --ai` previously logged opaque `⚠ <dir>: AI error` and dropped `invoke_result.error`. Now logs `⚠ <dir>: AI error — <first line of stderr>` and writes the same reason into the directory's README via `mark_enrichment_status(..., "failed", reason=...)`. Successful enrichment writes `<!-- enrichment: ok -->`.
+- **Documentation: removed `--fallback` from recommended commands** (CLAUDE.md, requirements-workflow.md, pypi-release-guide.md). Flag has been deprecated since structural mode became default; the hidden flag still accepts/warns for backward compat.
+
 ## [0.23.2] - 2026-04-14
 
 ### Changed

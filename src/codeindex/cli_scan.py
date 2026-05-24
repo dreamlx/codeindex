@@ -630,8 +630,10 @@ def _enrich_directories_with_ai(
     """
     from .enricher import (
         build_enrich_prompt,
+        build_safe_subdir_context,
         extract_summary_from_readme,
         inject_blockquote,
+        mark_enrichment_status,
         should_enrich,
     )
     from .invoker import invoke_ai_cli
@@ -650,16 +652,17 @@ def _enrich_directories_with_ai(
 
     enriched_count = 0
     for dir_path in enrich_dirs:
-        # Extract summary from the README_AI.md already generated in Phase 1
         readme_path = dir_path / config.output_file
-        summary = extract_summary_from_readme(readme_path)
+
+        # Prefer tree-derived context (subdir names only) to avoid the
+        # injection chain through markdown-embedded AI descriptions.
+        # Fall back to README parsing only for dirs without indexed children
+        # (rare for enrichable navigation/overview dirs).
+        child_dirs = tree.get_children(dir_path)
+        summary = build_safe_subdir_context(child_dirs)
 
         if not summary:
-            # Fallback: use child directory names
-            child_dirs = tree.get_children(dir_path)
-            child_names = [d.name for d in child_dirs]
-            if child_names:
-                summary = f"Subdirectories: {', '.join(child_names)}"
+            summary = extract_summary_from_readme(readme_path)
 
         if not summary:
             continue
@@ -672,8 +675,11 @@ def _enrich_directories_with_ai(
         invoke_result = invoke_ai_cli(config.ai_command, prompt, timeout=timeout)
 
         if not invoke_result.success:
+            reason = (invoke_result.error or "unknown").strip().split("\n")[0][:200]
             if not quiet:
-                console.print(f"[yellow]⚠[/yellow] {dir_path.name}: AI error")
+                console.print(f"[yellow]⚠[/yellow] {dir_path.name}: AI error — {reason}")
+            if readme_path.exists():
+                mark_enrichment_status(readme_path, "failed", reason=reason)
             continue
 
         # Clean AI output (strip whitespace, quotes, markdown)
@@ -687,12 +693,14 @@ def _enrich_directories_with_ai(
             description = description[:77] + "..."
 
         if not description:
+            if readme_path.exists():
+                mark_enrichment_status(readme_path, "failed", reason="empty AI response")
             continue
 
         # Inject into README_AI.md
-        readme_path = dir_path / config.output_file
         if readme_path.exists():
             inject_blockquote(readme_path, description)
+            mark_enrichment_status(readme_path, "ok")
             enriched_count += 1
             if not quiet:
                 console.print(f"[green]✓[/green] {dir_path.name}: {description}")
