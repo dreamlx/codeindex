@@ -58,7 +58,8 @@ pytest --cov=src/codeindex         # Coverage
 
 # codeindex usage
 codeindex scan-all                 # Generate all indexes (structural)
-codeindex scan-all --ai            # Generate all + AI enrichment (one-liner desc per module)
+codeindex scan-all --ai            # + AI enrichment; ok results cached, only new/failed dirs hit AI
+codeindex scan-all --ai --retry-all # Force re-enrich every dir, ignoring cache
 codeindex parse src/myfile.py      # Parse single file
 codeindex symbols                  # Global symbol index
 codeindex tech-debt ./src          # Code quality analysis
