@@ -73,10 +73,11 @@ version: 1
 # AI CLI command template
 # {prompt} will be replaced with the actual prompt
 # Examples:
-#   claude -p "{prompt}" --allowedTools "Read"
+#   claude -p "{prompt}" --model haiku --allowedTools "Read"   # fast/cheap default
+#   claude -p "{prompt}" --model sonnet --allowedTools "Read"  # higher quality
 #   opencode run "{prompt}"
 #   gemini "{prompt}"
-ai_command: 'claude -p "{prompt}" --allowedTools "Read"'
+ai_command: 'claude -p "{prompt}" --model haiku --allowedTools "Read"'
 
 # Directories to scan (tests included for better AI understanding)
 include:

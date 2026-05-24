@@ -492,7 +492,7 @@ def run_interactive_wizard(project_dir: Path) -> WizardResult:
         result.ai_tool = ai_tools[choice - 1] if 1 <= choice <= len(ai_tools) else "claude"
 
         if result.ai_tool == "claude":
-            result.ai_command = 'claude -p "{prompt}" --allowedTools "Read"'
+            result.ai_command = 'claude -p "{prompt}" --model haiku --allowedTools "Read"'
         elif result.ai_tool == "chatgpt":
             result.ai_command = 'chatgpt "{prompt}"'
         else:

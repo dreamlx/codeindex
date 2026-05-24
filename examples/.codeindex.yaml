@@ -12,11 +12,12 @@ version: 1
 # {prompt} will be replaced with the actual prompt
 #
 # Examples for different AI CLIs:
-#   claude -p "{prompt}" --allowedTools "Read"
+#   claude -p "{prompt}" --model haiku --allowedTools "Read"   # default: fast & cheap
+#   claude -p "{prompt}" --model sonnet --allowedTools "Read"  # higher quality
 #   opencode run "{prompt}"
 #   gemini "{prompt}"
 #   ollama run llama3 "{prompt}"
-ai_command: 'claude -p "{prompt}" --allowedTools "Read"'
+ai_command: 'claude -p "{prompt}" --model haiku --allowedTools "Read"'
 
 # Directories to scan (relative to project root)
 include:
