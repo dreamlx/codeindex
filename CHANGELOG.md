@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **AI enrichment error surfaces stderr**: `scan-all --ai` previously logged opaque `⚠ <dir>: AI error` and dropped `invoke_result.error`. Now logs `⚠ <dir>: AI error — <first line of stderr>` and writes the same reason into the directory's README via `mark_enrichment_status(..., "failed", reason=...)`. Successful enrichment writes `<!-- enrichment: ok -->`.
 - **Documentation: removed `--fallback` from recommended commands** (CLAUDE.md, requirements-workflow.md, pypi-release-guide.md). Flag has been deprecated since structural mode became default; the hidden flag still accepts/warns for backward compat.
 
+### Fixed
+
+- **Navigation-level READMEs double-counted files and symbols** (GH #45). `NavigationGenerator` was adding child-README aggregates on top of `parse_results`, but `cli_scan.py` runs navigation-level scans with `recursive=True` — so `parse_results` already covered descendants. Result: nav-level `**Files**`/`**Symbols**` were inflated (e.g. `src/codeindex/parsers/` showed `Files: 64` instead of the true 34). Overview-level aggregation is unchanged (that path scans non-recursively and legitimately needs to sum child stats). Bug introduced in 1355b0a (pre-v0.18.0); became more visible in v0.24.0 because the 10KB `max_readme_size` cap bumped more dirs into the navigation tier.
+
 ## [0.23.2] - 2026-04-14
 
 ### Changed
