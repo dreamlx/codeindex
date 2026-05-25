@@ -16,7 +16,7 @@ v0.24 is a **behavior-quality** release. No new languages, no new extractors —
 - Default `ai_command` in `codeindex init` switched to `claude --model haiku` (faster + cheaper, fewer rate-limit hits; you can swap to sonnet via one config line)
 - Per-directory enrichment status now recorded as `<!-- enrichment: ok | failed (reason: ...) -->` HTML marker
 
-**Test coverage**: 1547 tests passing (no regressions vs 0.23.2)
+**Test coverage**: 1566 tests passing (full suite incl. slow tests, no regressions vs 0.23.2)
 **Breaking changes**: none (all defaults; users with explicit config unchanged)
 **Backed by**: [ADR-005](../architecture/adr/005-navigation-disclaimer-and-readme-size-cap.md) + [2026-05 README impact benchmark](../benchmark/2026-05-readme-impact.md)
 
@@ -99,12 +99,11 @@ Reproducible Makefile + Python harness for measuring `README_AI.md` impact on ag
 
 ```bash
 pip install --upgrade ai-codeindex
+codeindex claude-md update    # required: refreshes your project CLAUDE.md
+codeindex scan-all --ai       # rescan to pick up the new README header + size cap
 ```
 
-The post-install hook auto-refreshes your project `CLAUDE.md` codeindex section (per ADR-004). To force a manual refresh:
-```bash
-codeindex claude-md update
-```
+> **Note**: the project `CLAUDE.md` refresh is **not currently automatic** on `pip install --upgrade` despite what ADR-004 describes. Run `codeindex claude-md update` explicitly after every upgrade. (Tracking item: implement the actual post-install hook so this becomes one-step.)
 
 ### What you will see on your next `scan-all`
 
