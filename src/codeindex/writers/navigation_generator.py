@@ -5,7 +5,7 @@ from pathlib import Path
 
 from ..config import IndexingConfig
 from ..parser import ParseResult
-from .utils import collect_recursive_stats, extract_module_description, get_key_symbols, group_files
+from .utils import extract_module_description, get_key_symbols, group_files
 
 
 class NavigationGenerator:
@@ -31,13 +31,13 @@ class NavigationGenerator:
             "",
         ]
 
-        # Statistics — aggregate from child READMEs for accurate totals
-        direct_files = len(parse_results)
-        direct_symbols = sum(len(r.symbols) for r in parse_results)
-
-        child_stats = collect_recursive_stats(child_dirs)
-        total_files = direct_files + child_stats["files"]
-        total_symbols = direct_symbols + child_stats["symbols"]
+        # Navigation level: cli_scan.py runs scan_directory with recursive=True,
+        # so parse_results already covers this dir AND every descendant. Adding
+        # child README stats on top would double-count — see GH #45.
+        # (Overview level is different: that path scans non-recursively and DOES
+        # need to aggregate child stats. See overview_generator.py.)
+        total_files = len(parse_results)
+        total_symbols = sum(len(r.symbols) for r in parse_results)
 
         lines.extend([
             "## Overview",

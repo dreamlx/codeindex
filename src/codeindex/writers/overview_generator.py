@@ -40,7 +40,9 @@ class OverviewGenerator:
                 "",
             ])
 
-        # Statistics — aggregate from child READMEs for accurate totals
+        # Overview level: cli_scan.py runs scan_directory with recursive=False,
+        # so parse_results contains only files DIRECTLY in this dir. Aggregate
+        # children's stats from their own READMEs to get the real total.
         direct_files = len(parse_results)
         direct_symbols = sum(len(r.symbols) for r in parse_results)
         total_modules = len(child_dirs)

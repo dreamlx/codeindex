@@ -145,6 +145,53 @@ class TestNavigationGenerator:
         content = gen.generate(Path("/test"), results, [])
         assert "Controller" in content
 
+    def test_stats_no_double_count_when_parse_results_is_recursive(self, tmp_path):
+        # Regression for GH #45. Navigation level: cli_scan.py runs scan with
+        # recursive=True, so parse_results already covers descendants. The
+        # generator must NOT add child README stats on top.
+        config = IndexingConfig()
+        gen = NavigationGenerator(config)
+
+        child = tmp_path / "sub"
+        child.mkdir()
+        (child / "README_AI.md").write_text(
+            "# sub\n- **Files**: 3\n- **Symbols**: 9\n"
+        )
+
+        # Simulate scanner having returned 2 files (recursive scan would put
+        # everything here — child README is just for the description path).
+        results = [
+            _make_result("a.py", [Symbol(name="A", kind="class", signature="class A")]),
+            _make_result("b.py", [Symbol(name="b1", kind="function", signature="def b1()")]),
+        ]
+
+        content = gen.generate(tmp_path, results, [child])
+        assert "- **Files**: 2" in content
+        assert "- **Symbols**: 2" in content
+
+
+class TestOverviewStatsAggregateFromChildren:
+    def test_overview_aggregates_when_parse_results_is_direct_only(self, tmp_path):
+        # GH #45 sanity check for the asymmetric semantics: overview level
+        # is scanned NON-recursively (cli_scan.py), so parse_results contains
+        # only direct files. Children's totals come from their READMEs.
+        config = IndexingConfig()
+        gen = OverviewGenerator(config)
+
+        child = tmp_path / "sub"
+        child.mkdir()
+        (child / "README_AI.md").write_text(
+            "# sub\n- **Files**: 4\n- **Symbols**: 12\n"
+        )
+
+        results = [
+            _make_result("x.py", [Symbol(name="X", kind="class", signature="class X")]),
+        ]
+
+        content = gen.generate(tmp_path, results, [child])
+        assert "- **Files**: 5" in content  # 1 direct + 4 from child
+        assert "- **Symbols**: 13" in content  # 1 direct + 12 from child
+
 
 # --- DetailedGenerator ---
 
