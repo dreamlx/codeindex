@@ -438,9 +438,17 @@ After (structural + AI enrichment):
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup, TDD workflow, code style |
 | [CLAUDE.md](CLAUDE.md) | Quick reference for Claude Code and contributors |
 | [Design Philosophy](docs/architecture/design-philosophy.md) | Core design principles and architecture |
+| [ADR-005](docs/architecture/adr/005-navigation-disclaimer-and-readme-size-cap.md) | 2026-05: navigation-contract disclaimer + size cap, backed by benchmark |
 | [Release Automation](docs/development/QUICK_START_RELEASE.md) | 5-minute automated release workflow |
 | [Multi-Language Support](docs/development/multi-language-support-workflow.md) | Adding new language parsers |
 | [Language Support Contribution](docs/development/multi-language-support-workflow.md) | Template-based test generation for new languages |
+
+### Evidence & benchmarks
+
+| Doc | What it shows |
+|---|---|
+| [2026-05 README impact benchmark](docs/benchmark/2026-05-readme-impact.md) | Measured agent comprehension delta WITH vs WITHOUT `README_AI.md` across 3 heterogeneous projects (15 graded questions). Headline: 19% faster / 28% fewer tokens on average, but speed gains masked quality drops on some detail questions — fix is shipped (see ADR-005). |
+| [`bench/`](bench/) | Reproducible harness (Makefile + python) used to produce the benchmark above; run your own with `cd bench && make setup && make run && make grade && make report`. |
 
 ### Planning
 

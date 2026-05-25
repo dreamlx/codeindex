@@ -1,0 +1,9 @@
+# Per-user benchmark config (paths to your local projects)
+targets.yaml
+questions.yaml
+.env
+
+# Per-run output
+results*.csv
+results*_graded.csv
+*.log
