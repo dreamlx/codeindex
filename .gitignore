@@ -31,5 +31,8 @@ htmlcov/
 # Project specific
 .codeindex.yaml
 
+# Serena MCP rewrites this on every project activation — keeps memories tracked.
+.serena/project.yml
+
 # Validation reports (generated)
 scripts/validation/reports/*.md
