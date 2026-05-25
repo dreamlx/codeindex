@@ -103,7 +103,7 @@ codeindex claude-md update    # required: refreshes your project CLAUDE.md
 codeindex scan-all --ai       # rescan to pick up the new README header + size cap
 ```
 
-> **Note**: the project `CLAUDE.md` refresh is **not currently automatic** on `pip install --upgrade` despite what ADR-004 describes. Run `codeindex claude-md update` explicitly after every upgrade. (Tracking item: implement the actual post-install hook so this becomes one-step.)
+> **Note**: `codeindex claude-md update` is the canonical refresh path — there is no pip post-install hook (ADR-004 was revised; the prototype was removed in this release). Run the command explicitly after every upgrade.
 
 ### What you will see on your next `scan-all`
 

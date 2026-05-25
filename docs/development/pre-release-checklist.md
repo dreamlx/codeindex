@@ -49,10 +49,11 @@ question to answer, not a tick-the-box ritual.
 
 ### [a] Upgrade simulation
 
-Real upgrade path verification. The post-install hook is supposed to refresh
-the user's project `CLAUDE.md`; the new defaults are supposed to apply only
-where users had no explicit override; the new disclaimer is supposed to be
-additive. Verify each.
+Real upgrade path verification. After upgrade, `codeindex claude-md update`
+should refresh the user's project `CLAUDE.md` (ADR-004 — there is no
+post-install hook; the CLI command is the canonical refresh path); the new
+defaults are supposed to apply only where users had no explicit override;
+the new disclaimer is supposed to be additive. Verify each.
 
 ```bash
 # Pick a target project that has been scanned with the previous version.
@@ -85,8 +86,8 @@ Acceptance:
       hit-the-cap dirs, no shrinkage = expected for everything else)
 - [ ] Explicit overrides in `.codeindex.yaml` were respected
 - [ ] `codeindex symbols` still produces a working `PROJECT_SYMBOLS.md`
-- [ ] The post-install `codeindex claude-md update` (or auto-hook)
-      correctly refreshed the project CLAUDE.md section
+- [ ] `codeindex claude-md update` correctly refreshed the project
+      CLAUDE.md section (per ADR-004)
 
 ### [b] Translation / docs parity
 
