@@ -36,8 +36,12 @@ DEFAULT_INCREMENTAL = {
 }
 
 # Indexing strategy defaults
+# max_readme_size=10KB: codeindex is a NAVIGATION index, not a technical doc.
+# Per design-philosophy.md, agents should use README for orientation then drill
+# into source via Read/Grep. Larger READMEs encourage agents to over-trust the
+# summary and skip source verification (validated by Phase F benchmark 2026-05).
 DEFAULT_INDEXING = {
-    "max_readme_size": 50 * 1024,  # 50KB
+    "max_readme_size": 10 * 1024,  # 10KB
     "symbols": {
         "max_per_file": 15,
         "include_visibility": ["public", "protected"],
@@ -118,7 +122,7 @@ incremental:
 
 # Smart indexing settings (控制 README 生成策略)
 indexing:
-  max_readme_size: 51200  # 50KB, 超过则拆分
+  max_readme_size: 10240  # 10KB navigation index (codeindex is for orientation, not authoritative source)
   symbols:
     max_per_file: 15      # 每文件最多列出的符号数
     include_visibility:   # 只包含这些可见性的符号
@@ -196,7 +200,7 @@ class SemanticConfig:
 @dataclass
 class IndexingConfig:
     """Configuration for smart indexing."""
-    max_readme_size: int = 50 * 1024  # 50KB
+    max_readme_size: int = 10 * 1024  # 10KB (navigation index, not tech doc — see design-philosophy.md)
     symbols: SymbolsConfig = field(default_factory=SymbolsConfig)
     grouping: GroupingConfig = field(default_factory=GroupingConfig)
     semantic: SemanticConfig = field(default_factory=SemanticConfig)
@@ -259,7 +263,7 @@ class IndexingConfig:
 
         levels = data.get("levels", {})
         return cls(
-            max_readme_size=data.get("max_readme_size", 50 * 1024),
+            max_readme_size=data.get("max_readme_size", 10 * 1024),
             symbols=symbols,
             grouping=grouping,
             semantic=semantic,

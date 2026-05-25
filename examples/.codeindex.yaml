@@ -55,7 +55,7 @@ batch_size: 50         # Files per batch
 
 # Smart indexing generates tiered documentation optimized for AI agents
 indexing:
-  max_readme_size: 51200      # 50KB limit per README_AI.md
+  max_readme_size: 10240      # 10KB limit per README_AI.md (navigation index, drill to source for details)
   root_level: "overview"       # Root directory: overview level
   module_level: "navigation"   # Module directories: navigation level
   leaf_level: "detailed"       # Leaf directories: detailed level
