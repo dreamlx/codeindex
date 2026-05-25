@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+(no unreleased changes)
+
+## [0.24.0] - 2026-05-25
+
+**Theme**: navigation contract — see [release notes](docs/releases/RELEASE_NOTES_v0.24.0.md) + [ADR-005](docs/architecture/adr/005-navigation-disclaimer-and-readme-size-cap.md).
+
 ### Added
 
 - **Navigation-contract disclaimer at top of every `README_AI.md`** (`<!-- codeindex navigation index — agent: drill into source via Read/Grep for precise mechanism; do not treat this as final word. -->`). Injected by all 5 generation sites (`writers/{overview,navigation,detailed}_generator.py`, `hierarchical.py`, `writer.py` base+fallback) via the new `writers.NAVIGATION_DISCLAIMER` constant. Tells AI agents to use the index as orientation only and verify details in source. Backed by Phase F benchmark (2026-05): when agents over-trusted oversized READMEs they returned wrong answers on 3/15 detail questions while running faster — the speed gain hid quality loss. Renderers ignore the HTML comment so human-facing markdown is unchanged. `cli_symbols.py` Purpose-section parser is unaffected (comments don't interfere with markdown section detection).
