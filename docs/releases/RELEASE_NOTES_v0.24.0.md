@@ -16,7 +16,7 @@ v0.24 is a **behavior-quality** release. No new languages, no new extractors —
 - Default `ai_command` in `codeindex init` switched to `claude --model haiku` (faster + cheaper, fewer rate-limit hits; you can swap to sonnet via one config line)
 - Per-directory enrichment status now recorded as `<!-- enrichment: ok | failed (reason: ...) -->` HTML marker
 
-**Test coverage**: 1566 tests passing (full suite incl. slow tests, no regressions vs 0.23.2)
+**Test coverage**: 1567 tests passing (full suite incl. slow tests, no regressions vs 0.23.2)
 **Breaking changes**: none (all defaults; users with explicit config unchanged)
 **Backed by**: [ADR-005](../architecture/adr/005-navigation-disclaimer-and-readme-size-cap.md) + [2026-05 README impact benchmark](../benchmark/2026-05-readme-impact.md)
 
@@ -91,6 +91,14 @@ Reproducible Makefile + Python harness for measuring `README_AI.md` impact on ag
 - `docs/architecture/adr/005-navigation-disclaimer-and-readme-size-cap.md` — design decision record
 - `docs/benchmark/2026-05-readme-impact.md` — anonymized public writeup of the 30-run experiment + the Phase F3 size-cap test + the Phase J 3-way disclaimer A/B
 
+## 🐛 Fixed
+
+### Navigation README double-counted files/symbols ([GH #45](https://github.com/dreamlx/codeindex/issues/45))
+
+`NavigationGenerator` was adding child-README aggregates on top of `parse_results`, but `cli_scan.py` runs navigation-level scans with `recursive=True` — so `parse_results` already covers descendants. Result: nav-level `**Files**` / `**Symbols**` counts were inflated (e.g. `src/codeindex/parsers/` showed `Files: 64` instead of the true 34). `OverviewGenerator` is unchanged (its scan path is non-recursive and legitimately needs to sum child stats). Bug dates to pre-v0.18.0; v0.24.0's 10KB `max_readme_size` cap made it visible by bumping more directories into the navigation tier.
+
+After upgrading, expect the `**Files**` and `**Symbols**` numbers on non-leaf `README_AI.md` files to **decrease** — they were wrong, they're now right.
+
 ---
 
 ## 📦 Upgrade Guide
@@ -120,13 +128,14 @@ codeindex scan-all --ai       # rescan to pick up the new README header + size c
    - +1 line at top (disclaimer)
    - +1 line below Generated (enrichment marker for AI-enriched dirs)
    - Possibly shorter body (if 10KB cap kicked in)
+   - On non-leaf (navigation-level) READMEs, `**Files**`/`**Symbols**` numbers will **decrease** to their true values (see [Fixed → GH #45](#-fixed))
    You can verify the structure is sane by spot-checking one file, then commit the regeneration as a single "docs: README_AI.md refresh after codeindex 0.24 upgrade" commit.
 
 ### No-action upgrades
 
 - **Existing `ai_command` in `.codeindex.yaml`**: unchanged behavior. Default change only affects new `codeindex init`.
 - **Existing `max_readme_size` in `.codeindex.yaml`**: unchanged. Your value wins.
-- **Tests / CI**: 1547 tests pass; no API changes to the codeindex Python package.
+- **Tests / CI**: 1567 tests pass; no API changes to the codeindex Python package.
 
 ---
 
