@@ -51,12 +51,15 @@ Without venv: pip fails (PEP 668), pre-push hooks fail (`ModuleNotFoundError`), 
 
 ```bash
 # Development
-pytest -v                          # Run tests
+pytest -m "not slow"               # Fast tests only (~2s, daily use)
+pytest -v                          # Full test suite (~7s, before PR)
 ruff check src/                    # Lint
 pytest --cov=src/codeindex         # Coverage
 
 # codeindex usage
-codeindex scan-all --fallback      # Generate all indexes
+codeindex scan-all                 # Generate all indexes (structural)
+codeindex scan-all --ai            # + AI enrichment; ok results cached, only new/failed dirs hit AI
+codeindex scan-all --ai --retry-all # Force re-enrich every dir, ignoring cache
 codeindex parse src/myfile.py      # Parse single file
 codeindex symbols                  # Global symbol index
 codeindex tech-debt ./src          # Code quality analysis
@@ -82,7 +85,7 @@ refactor(scope): refactor code
 | Config change | .codeindex.yaml example, CHANGELOG.md |
 | Major release | CHANGELOG.md, RELEASE_NOTES_vX.X.X.md |
 
-After code changes: `codeindex scan-all --fallback`
+After code changes: `codeindex scan-all`
 
 ### Epic Completion Workflow
 

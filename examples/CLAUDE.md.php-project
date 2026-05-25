@@ -28,7 +28,7 @@ codeindex status
 version: 1
 
 # AI CLI command (optional, --fallback mode doesn't need this)
-ai_command: 'claude -p "{prompt}" --allowedTools "Read"'
+ai_command: 'claude -p "{prompt}" --model haiku --allowedTools "Read"'
 
 # ✅ 只需指定顶层目录，自动递归扫描所有子目录
 include:

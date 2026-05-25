@@ -64,7 +64,7 @@ batch_size: 50
 
 # Smart indexing (tiered documentation)
 indexing:
-  max_readme_size: 51200     # 50KB limit per README
+  max_readme_size: 10240     # 10KB limit per README (navigation index, not tech doc)
   root_level: "overview"
   module_level: "navigation"
   leaf_level: "detailed"

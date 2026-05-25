@@ -1,0 +1,54 @@
+# Per-project questions + reference answers.
+#
+# The benchmark runs each question twice (or 3x with --variants wo,disclaimer,guide):
+#   wo:         agent has README_AI.md hidden (Read tool denied for those files)
+#   disclaimer: README accessible (current shipped state)
+#   guide:      README + a tool-selection hint injected via --append-system-prompt
+#
+# Reference answers should be 2-4 lines, concrete (file paths, symbol names,
+# line numbers) — they're what the LLM-as-judge grader compares responses
+# against. Avoid writing ref_answers by reading the project's README_AI.md
+# (that biases toward "WITH README looks correct"). Read actual source files.
+
+projects:
+
+  target_a:
+    path: /absolute/path/to/small-python-project
+    questions:
+      - id: q1
+        question: |
+          <Realistic question a new dev would ask. Mix structural ("where is X
+          implemented"), behavioral ("how does Y work"), and architectural
+          ("how do A and B relate"). NOT trivia.>
+        ref_answer: |
+          <2-4 lines. Concrete file paths, function/class names, key
+          mechanism. Grounded in source, not in README_AI.md.>
+      - id: q2
+        question: |
+          ...
+        ref_answer: |
+          ...
+      # add q3, q4, q5
+
+  target_b:
+    path: /absolute/path/to/medium-python-project
+    questions:
+      - id: q1
+        question: |
+          ...
+        ref_answer: |
+          ...
+      # add q2..q5
+
+  target_c:
+    path: /absolute/path/to/large-legacy-codebase
+    questions:
+      # For large legacy codebases, scope your questions to specific in-scope
+      # directories. The codeindex .codeindex.yaml's `include:` should cover
+      # everything your questions reference — otherwise WITH-README runs are
+      # confounded by "the question's answer lives outside what was indexed".
+      - id: q1
+        question: |
+          ...
+        ref_answer: |
+          ...

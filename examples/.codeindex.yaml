@@ -12,11 +12,12 @@ version: 1
 # {prompt} will be replaced with the actual prompt
 #
 # Examples for different AI CLIs:
-#   claude -p "{prompt}" --allowedTools "Read"
+#   claude -p "{prompt}" --model haiku --allowedTools "Read"   # default: fast & cheap
+#   claude -p "{prompt}" --model sonnet --allowedTools "Read"  # higher quality
 #   opencode run "{prompt}"
 #   gemini "{prompt}"
 #   ollama run llama3 "{prompt}"
-ai_command: 'claude -p "{prompt}" --allowedTools "Read"'
+ai_command: 'claude -p "{prompt}" --model haiku --allowedTools "Read"'
 
 # Directories to scan (relative to project root)
 include:
@@ -54,7 +55,7 @@ batch_size: 50         # Files per batch
 
 # Smart indexing generates tiered documentation optimized for AI agents
 indexing:
-  max_readme_size: 51200      # 50KB limit per README_AI.md
+  max_readme_size: 10240      # 10KB limit per README_AI.md (navigation index, drill to source for details)
   root_level: "overview"       # Root directory: overview level
   module_level: "navigation"   # Module directories: navigation level
   leaf_level: "detailed"       # Leaf directories: detailed level

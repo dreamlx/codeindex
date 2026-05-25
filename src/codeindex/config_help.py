@@ -55,10 +55,11 @@ CONFIG_PARAMS: Dict[str, Dict[str, str]] = {
         "default": "(not set)",
         "description": "AI CLI command template for documentation generation",
         "examples": """
-  • Claude: 'claude -p "{prompt}" --allowedTools "Read"'
+  • Claude (haiku, fast/cheap default): 'claude -p "{prompt}" --model haiku --allowedTools "Read"'
+  • Claude (sonnet, higher quality):    'claude -p "{prompt}" --model sonnet --allowedTools "Read"'
   • ChatGPT: 'chatgpt "{prompt}"'
   • Custom: 'your-ai-cli "{prompt}"'""",
-        "example": 'ai_command: \'claude -p "{prompt}" --allowedTools "Read"\'',
+        "example": 'ai_command: \'claude -p "{prompt}" --model haiku --allowedTools "Read"\'',
     },
     "languages": {
         "name": "languages",

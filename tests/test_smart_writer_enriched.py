@@ -79,7 +79,9 @@ class TestRecursiveStats:
             assert stats["symbols"] == 45
 
     def test_overview_shows_aggregated_stats(self):
-        """Overview output should show aggregated file/symbol counts."""
+        """Overview level: cli_scan.py runs scan with recursive=False, so
+        parse_results=[] is the realistic case for a pure container dir.
+        Totals must come from aggregating child READMEs."""
         writer = _make_writer()
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -93,28 +95,15 @@ class TestRecursiveStats:
                 child_dirs=[root / "auth", root / "pay"],
             )
             content = result.path.read_text()
-            # Should show aggregated totals, not 0
             assert "59" in content  # 42 + 17 files
             assert "402" in content  # 313 + 89 symbols
 
-    def test_navigation_shows_aggregated_stats(self):
-        """Navigation output should show aggregated file/symbol counts."""
-        writer = _make_writer()
-        with tempfile.TemporaryDirectory() as tmpdir:
-            root = Path(tmpdir)
-            _make_child_readme(root / "sub1", files=10, symbols=50)
-            _make_child_readme(root / "sub2", files=20, symbols=100)
-
-            result = writer.write_readme(
-                dir_path=root,
-                parse_results=[],
-                level="navigation",
-                child_dirs=[root / "sub1", root / "sub2"],
-            )
-            content = result.path.read_text()
-            # Should show aggregated totals
-            assert "30" in content  # 10 + 20 files
-            assert "150" in content  # 50 + 100 symbols
+    # Removed (GH #45): test_navigation_shows_aggregated_stats asserted
+    # that navigation-level READMEs sum child stats on top of parse_results.
+    # Production cli_scan.py runs navigation-level scan with recursive=True,
+    # so parse_results already covers descendants — adding child stats would
+    # double-count. See tests/writers/test_generators.py for the regression
+    # test that pins the new (correct) navigation semantics.
 
 
 # ---------------------------------------------------------------------------

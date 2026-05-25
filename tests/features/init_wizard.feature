@@ -105,7 +105,7 @@ Feature: Interactive Setup Wizard
     When I run the interactive wizard
     And I choose to configure AI CLI
     And I select Claude as the AI tool
-    Then ai_command should be 'claude -p "{prompt}" --allowedTools "Read"'
+    Then ai_command should be 'claude -p "{prompt}" --model haiku --allowedTools "Read"'
 
   # ============================================================================
   # Scenario Group 6: CODEINDEX.md Generation

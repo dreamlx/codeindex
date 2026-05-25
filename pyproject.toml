@@ -1,6 +1,6 @@
 [project]
 name = "ai-codeindex"
-version = "0.23.2"
+version = "0.24.0"
 description = "AI-native code indexing tool for large codebases"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -89,6 +89,7 @@ select = ["E", "F", "I", "N", "W", "T"]
 "src/codeindex/cli_*.py" = ["T201"]  # CLI files legitimately use print()
 "scripts/*.py" = ["T201"]
 "tests/**/*.py" = ["T201"]
+"bench/*.py" = ["T201", "E501"]  # bench scripts: print() for stdout, long prompt strings
 
 [tool.mypy]
 python_version = "3.10"
@@ -104,4 +105,5 @@ pythonpath = ["src"]
 norecursedirs = ["examples"]
 markers = [
     "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+    "slow: marks tests that invoke subprocess or scan real project files (deselect with '-m \"not slow\"')",
 ]

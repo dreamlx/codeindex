@@ -561,7 +561,7 @@ def ai_command_set(wizard_context, command):
                 result.configure_ai = True
                 ai_tool = choices.get("ai_tool", "claude")
                 if ai_tool == "claude":
-                    result.ai_command = 'claude -p "{prompt}" --allowedTools "Read"'
+                    result.ai_command = 'claude -p "{prompt}" --model haiku --allowedTools "Read"'
                 elif ai_tool == "chatgpt":
                     result.ai_command = 'chatgpt "{prompt}"'
 

@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+(no unreleased changes)
+
+## [0.24.0] - 2026-05-25
+
+**Theme**: navigation contract — see [release notes](docs/releases/RELEASE_NOTES_v0.24.0.md) + [ADR-005](docs/architecture/adr/005-navigation-disclaimer-and-readme-size-cap.md).
+
+### Added
+
+- **Navigation-contract disclaimer at top of every `README_AI.md`** (`<!-- codeindex navigation index — agent: drill into source via Read/Grep for precise mechanism; do not treat this as final word. -->`). Injected by all 5 generation sites (`writers/{overview,navigation,detailed}_generator.py`, `hierarchical.py`, `writer.py` base+fallback) via the new `writers.NAVIGATION_DISCLAIMER` constant. Tells AI agents to use the index as orientation only and verify details in source. Backed by Phase F benchmark (2026-05): when agents over-trusted oversized READMEs they returned wrong answers on 3/15 detail questions while running faster — the speed gain hid quality loss. Renderers ignore the HTML comment so human-facing markdown is unchanged. `cli_symbols.py` Purpose-section parser is unaffected (comments don't interfere with markdown section detection).
+- **`enricher.mark_enrichment_status()`**: Records AI enrichment outcome as `<!-- enrichment: ok | failed (reason: ...) -->` HTML comment under the Generated header in `README_AI.md`. Lets AI consumers distinguish "structural-only by config" (no marker) from "enrichment attempted and failed" (marker with reason).
+- **`enricher.build_safe_subdir_context()`**: Builds AI-enrichment prompt context from `DirectoryTree.get_children()` (bare subdir names only). Used by `_enrich_directories_with_ai` ahead of `extract_summary_from_readme`. Closes a prompt-injection chain where README markdown — containing AI-generated descriptions sourced from arbitrary source docstrings — was regex-extracted and fed into the next enrichment prompt. The README-parsing path remains as fallback for dirs without indexed children.
+- **Idempotent `scan-all --ai` re-runs**: Phase 2 now snapshots existing enrichment state (`enricher.extract_blockquote_description()` + `enricher.has_successful_enrichment()`) *before* Phase 1 rewrites READMEs, then re-injects cached descriptions for already-ok dirs without firing fresh AI calls. After a transient-failure scenario (e.g. claude-API rate limit on N/M dirs), the user just re-runs `codeindex scan-all --ai` and only the previously-failed dirs hit the AI backend; successes cost zero tokens. Use `--retry-all` to force a real AI call for every dir.
+- **Failure-summary hint**: When Phase 2 has any failed dirs, prints a short list plus actionable next steps (retry / `--retry-all` / switch `ai_command` to `claude --model haiku` / `opencode` / `gemini`). Per design: no auto-fallback — surface the options, let the user choose.
+
+### Changed
+
+- **AI enrichment error surfaces stderr**: `scan-all --ai` previously logged opaque `⚠ <dir>: AI error` and dropped `invoke_result.error`. Now logs `⚠ <dir>: AI error — <first line of stderr>` and writes the same reason into the directory's README via `mark_enrichment_status(..., "failed", reason=...)`. Successful enrichment writes `<!-- enrichment: ok -->`.
+- **Documentation: removed `--fallback` from recommended commands** (CLAUDE.md, requirements-workflow.md, pypi-release-guide.md). Flag has been deprecated since structural mode became default; the hidden flag still accepts/warns for backward compat.
+
+### Fixed
+
+- **Navigation-level READMEs double-counted files and symbols** (GH #45). `NavigationGenerator` was adding child-README aggregates on top of `parse_results`, but `cli_scan.py` runs navigation-level scans with `recursive=True` — so `parse_results` already covered descendants. Result: nav-level `**Files**`/`**Symbols**` were inflated (e.g. `src/codeindex/parsers/` showed `Files: 64` instead of the true 34). Overview-level aggregation is unchanged (that path scans non-recursively and legitimately needs to sum child stats). Bug introduced in 1355b0a (pre-v0.18.0); became more visible in v0.24.0 because the 10KB `max_readme_size` cap bumped more dirs into the navigation tier.
+
 ## [0.23.2] - 2026-04-14
 
 ### Changed

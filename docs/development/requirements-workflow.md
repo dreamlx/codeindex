@@ -406,7 +406,7 @@ vim CHANGELOG.md
 # Add entry under [Unreleased] or [X.Y.0]
 
 # Regenerate documentation
-codeindex scan-all --fallback
+codeindex scan-all
 
 # Commit documentation updates
 git add ROADMAP.md CHANGELOG.md src/codeindex/README_AI.md

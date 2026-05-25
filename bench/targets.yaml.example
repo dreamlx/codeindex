@@ -1,0 +1,26 @@
+# Define the projects this benchmark will scan + query against.
+# Pick 3+ projects that span a meaningful gradient (size, language, familiarity)
+# to surface real cross-project signal rather than per-codebase quirk.
+#
+# Each entry needs:
+#   key:    short stable identifier used in CSV output
+#   path:   absolute path to the project root
+#   notes:  free-text for your own bookkeeping (size hint, language, role)
+
+targets:
+  - key: target_a
+    path: /absolute/path/to/small-python-project
+    notes: |
+      Small (~10 dirs), Python, project you wrote — control case where
+      everything fits in head. README_AI.md should NOT change much vs source-only.
+  - key: target_b
+    path: /absolute/path/to/medium-python-project
+    notes: |
+      Medium (~50 dirs), Python, real working codebase. The "I touch this
+      weekly" case. README_AI.md helping or not should matter here.
+  - key: target_c
+    path: /absolute/path/to/large-legacy-codebase
+    notes: |
+      Large (100+ dirs), language other than Python or unfamiliar to you.
+      The "I would have to explore from scratch" case. Where the navigation
+      story for README_AI.md SHOULD pay off the most.
