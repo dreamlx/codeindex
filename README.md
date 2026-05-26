@@ -116,29 +116,45 @@ codeindex hooks install post-commit  # Auto-update on commit
 
 ## Installation
 
-codeindex uses **lazy loading** — language parsers are only imported when needed.
-
-### Quick Install
+codeindex is a CLI tool — install it with **pipx** (isolated, no dependency conflicts):
 
 ```bash
-# All languages (recommended)
-pip install ai-codeindex[all]
-
-# Or specific languages only
-pip install ai-codeindex[python]
-pip install ai-codeindex[php]
-pip install ai-codeindex[java]
-pip install ai-codeindex[typescript]
-pip install ai-codeindex[python,php]
-pip install ai-codeindex[swift]
-pip install ai-codeindex[ios]          # Swift + Objective-C
+pipx install ai-codeindex
 ```
 
-### Using pipx (Recommended for CLI use)
+> **Claude Code users** — also install the companion plugin for skills
+> (`codeindex:arch` / `:index` / `:hooks` / `:update-guide`):
+> ```
+> /plugin marketplace add dreamlx/codeindex-claude
+> /plugin install codeindex@codeindex-claude
+> ```
+> The plugin is optional and only for Claude Code. The CLI works standalone
+> in any editor / terminal. See [dreamlx/codeindex-claude](https://github.com/dreamlx/codeindex-claude).
+
+### Language parsers
+
+codeindex uses **lazy loading** — language parsers are imported only when needed.
+`pipx install ai-codeindex` pulls all of them by default. To inject extras into the
+pipx environment later, or to install a subset:
 
 ```bash
-pipx install ai-codeindex[all]
+pipx inject ai-codeindex tree-sitter-python tree-sitter-typescript   # add to pipx env
+# or pin a subset at install time:
+pipx install "ai-codeindex[python]"      # python only
+pipx install "ai-codeindex[ios]"         # Swift + Objective-C
 ```
+
+### Alternatives to pipx
+
+```bash
+pip install --user ai-codeindex          # if you don't have pipx
+```
+
+> **🇨🇳 China users**: if your default mirror (e.g. aliyun) hasn't synced the
+> latest release yet, install straight from upstream PyPI:
+> ```bash
+> pipx install --index-url https://pypi.org/simple/ ai-codeindex
+> ```
 
 ### From Source
 
@@ -226,25 +242,30 @@ codeindex affected --since HEAD~5
 
 ---
 
-## Claude Code Integration (Personal Developers)
+## Claude Code Integration
 
-**For personal developers using Claude Code + Serena MCP**:
+**The codeindex plugin** gives Claude Code four skills backed by the CLI:
 
-**v0.17.0**: `codeindex init` automatically injects instructions into your project's `CLAUDE.md`, so Claude Code reads `README_AI.md` files first — no manual setup required.
-
-```bash
-# One command sets everything up
-codeindex init
-
-# Claude Code will now:
-# ✅ Read README_AI.md for architecture understanding
-# ✅ Use Serena MCP tools for precise navigation (find_symbol, etc.)
-# ✅ Apply tech-debt analysis for code quality checks
 ```
+/plugin marketplace add dreamlx/codeindex-claude
+/plugin install codeindex@codeindex-claude
+```
+
+| Skill | What it does |
+|-------|--------------|
+| `codeindex:arch` | Answer architecture / "where is X" questions from `README_AI.md` |
+| `codeindex:index` | Walk you through `codeindex init` → `scan-all` |
+| `codeindex:hooks` | Set up the auto-update post-commit hook |
+| `codeindex:update-guide` | Refresh the codeindex section in your project's `CLAUDE.md` |
+
+`codeindex init` also injects a codeindex section into your project's `CLAUDE.md`
+so Claude Code reads `README_AI.md` files first. (As of v0.25.0, `init` only
+touches project-scoped files — see [ADR-006](docs/architecture/adr/006-distribution-architecture-split.md).)
 
 **For enterprise users without Serena**: README_AI.md and PROJECT_SYMBOLS.md become your **primary code navigation tools**.
 
-For manual setup, MCP skills (`/mo:arch`, `/mo:index`), and Git hooks integration, see the [Claude Code Integration Guide](docs/guides/claude-code-integration.md).
+> The `codeindex claude-md` and `codeindex hooks install` CLI subcommands still
+> work but are deprecated in favor of the plugin skills (removed in v1.0).
 
 ---
 

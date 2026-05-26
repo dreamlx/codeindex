@@ -1,7 +1,13 @@
 # CLAUDE.md
 
 **For**: Claude Code working with this repository
-**Version**: v0.23.1
+**Version**: v0.25.0 (in progress)
+
+> **Distribution** (ADR-006): codeindex ships as two artifacts — the
+> `ai-codeindex` CLI (PyPI, `pipx install ai-codeindex`) and the
+> `dreamlx/codeindex-claude` Claude Code plugin (skills + hooks). The CLI
+> wheel must never mutate `~/.claude/*` at install time. End users install
+> via pipx; Claude Code users add the plugin.
 
 ---
 
