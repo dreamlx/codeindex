@@ -2,7 +2,7 @@
 # Automated release and development workflow
 
 .PHONY: help install install-dev install-hooks \
-        test test-fast test-cov lint lint-fix format clean \
+        test test-fast test-cov lint lint-fix format clean readme-zh \
         check-version check-docs status build check-dist \
         pre-release-check release bump-version \
         validate-real-projects validate-l1 validate-l2 validate-l3 validate-save-baseline \
@@ -74,6 +74,21 @@ clean:  ## Clean build artifacts
 	@find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	@find . -type f -name "*.pyc" -delete
 	@echo "$(GREEN)✓ Cleaned$(RESET)"
+
+# ============================================================================
+# Documentation / i18n
+# ============================================================================
+
+# AI CLI used to (re)generate translated docs. Override to use a different agent
+# CLI, e.g. `make readme-zh AI_CMD='cursor-agent -p'`. Same split as codeindex
+# itself: the orchestration here is deterministic; the translation is delegated
+# to whatever agent CLI you point at — nothing binds this to one IDE.
+AI_CMD ?= claude -p
+
+readme-zh:  ## Regenerate README_zh.md from README.md via AI (override AI_CMD; review the diff)
+	@echo "$(CYAN)Translating README.md → README_zh.md via: $(AI_CMD)$(RESET)"
+	@$(AI_CMD) 'Read README.md and overwrite README_zh.md with a faithful Simplified-Chinese translation. Preserve ALL markdown structure, code blocks, inline code, URLs, file paths, badges, HTML comments, and tables verbatim — translate prose only. Keep established technical terms (tree-sitter, token, agent, CLI, README_AI.md, LoomGraph) untranslated where that reads naturally. Do not add, drop, or reorder sections; keep the language-switch line at the top as-is.' --allowedTools 'Read Write'
+	@echo "$(GREEN)✓ README_zh.md regenerated — git diff it before committing (AI translation is not authoritative)$(RESET)"
 
 # ============================================================================
 # Quality Checks
