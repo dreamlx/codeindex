@@ -24,9 +24,9 @@ codeindex generates AI-readable documentation with **two-phase pipeline**: struc
 ### Core: Code Understanding for AI Agents
 
 - **Two-phase documentation pipeline** (v0.23.0) — Phase 1: structural README_AI.md via SmartWriter; Phase 2: AI generates one-line functional descriptions per module. AI agents can browse README_AI.md hierarchy and find the right module **without grep**.
-- **Smart indexing** — Tiered documentation (overview → navigation → detailed) optimized for AI agents, ≤50KB per file
+- **Smart indexing** — Tiered documentation (overview → navigation → detailed) optimized for AI agents, ≤10KB per file (navigation index, not a tech doc — see [ADR-005](docs/architecture/adr/005-navigation-disclaimer-and-readme-size-cap.md))
 - **Auto-AI enrichment** — When `ai_command` is configured, `scan-all` automatically enables AI module descriptions. Use `--no-ai` to opt out
-- **Auto-update hooks** — Post-commit hook automatically regenerates README_AI.md for changed directories. Thin wrapper pattern: `pip upgrade` auto-updates hook logic
+- **Auto-update hooks** — Optional post-commit hook (`codeindex hooks install`) regenerates README_AI.md for changed directories. Thin wrapper pattern: `pipx upgrade ai-codeindex` auto-updates hook logic
 
 ### Parsing & Analysis
 
@@ -41,8 +41,8 @@ codeindex generates AI-readable documentation with **two-phase pipeline**: struc
 ### Developer Experience
 
 - **Adaptive symbol extraction** — Dynamic 5–150 symbols per file based on size
-- **CLAUDE.md injection** — `codeindex init` auto-configures Claude Code integration
-- **Auto-update guide** — Post-install hook automatically updates `~/.claude/CLAUDE.md` after `pip upgrade`
+- **CLAUDE.md injection** — `codeindex init` injects a codeindex section into your **project's** `CLAUDE.md` (never `~/.claude`)
+- **Claude Code plugin** — `codeindex:arch` / `:index` / `:hooks` / `:update-guide` skills via [dreamlx/codeindex-claude](https://github.com/dreamlx/codeindex-claude)
 - **Template-based test generation** — YAML + Jinja2 for rapid language support (88–91% time savings)
 - **Parallel scanning** — Concurrent directory processing with configurable workers
 
@@ -503,7 +503,7 @@ See [Release Automation Guide](docs/development/QUICK_START_RELEASE.md) for deta
 
 ## Roadmap
 
-**Current version**: v0.23.2
+**Current version**: v0.25.0
 
 **Recent milestones**:
 - v0.23.0 — **AI-Enhanced Module Descriptions**: two-phase pipeline, auto-AI enrichment, post-commit thin wrapper

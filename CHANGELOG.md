@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 (no unreleased changes)
 
+## [0.25.0] - 2026-05-26
+
+**Theme**: distribution split — `pipx` CLI + Claude Code plugin. See [release notes](docs/releases/RELEASE_NOTES_v0.25.0.md) + [ADR-006](docs/architecture/adr/006-distribution-architecture-split.md).
+
+### Changed
+
+- **`codeindex init` is now minimal** (B1): creates only project-scoped scaffolding — `.codeindex.yaml`, a codeindex section injected into the project's `CLAUDE.md`, and a `.gitignore` entry. It no longer creates `CODEINDEX.md` or installs git hooks. Hooks are opt-in via `codeindex hooks install`; Claude Code users get richer `CLAUDE.md` upkeep via the plugin. `init` has never touched `~/.claude/*` and a regression test now locks that invariant.
+- **Recommended install is `pipx install ai-codeindex`** (B2): the README leads with pipx (isolated CLI env, no dependency conflicts); `pip install --user` is the fallback. Added a China-mirror footnote (`pipx install --index-url https://pypi.org/simple/ ai-codeindex`) for when a local mirror lags upstream PyPI.
+
+### Added
+
+- **Claude Code plugin** ([dreamlx/codeindex-claude](https://github.com/dreamlx/codeindex-claude)): bundles the four skills (`codeindex:arch` / `:index` / `:hooks` / `:update-guide`) plus a SessionStart hook that checks the CLI is on `PATH`. Install with `/plugin marketplace add dreamlx/codeindex-claude` + `/plugin install codeindex@codeindex-claude`. This replaces the in-repo `skills/install.sh` mechanism.
+
+### Deprecated
+
+- **`codeindex claude-md update` / `claude-md status` / `hooks install`** (B3): still functional, but now print a one-line stderr deprecation notice pointing at the plugin skills. Suppress with `CODEINDEX_NO_DEPRECATION_WARNINGS=1`. Scheduled for removal in v1.0.
+- **`skills/` directory + `skills/install.sh`** (B4): the installer now warns and defaults to abort, pointing users to the plugin. The directory is removed in v1.0.
+
 ## [0.24.0] - 2026-05-25
 
 **Theme**: navigation contract — see [release notes](docs/releases/RELEASE_NOTES_v0.24.0.md) + [ADR-005](docs/architecture/adr/005-navigation-disclaimer-and-readme-size-cap.md).
