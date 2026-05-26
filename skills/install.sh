@@ -20,6 +20,24 @@ CYAN='\033[0;36m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# ── DEPRECATED (v0.25.0 / ADR-006) ──────────────────────────────────────────
+# codeindex skills now ship as a Claude Code plugin. This script copies skills
+# into .claude/skills/ the old way; it will be removed in v1.0.
+if [[ "$1" != "--help" && "$1" != "-h" ]]; then
+    echo -e "${YELLOW}⚠  This installer is deprecated (removed in v1.0).${NC}"
+    echo -e "   codeindex skills now ship as a Claude Code plugin:"
+    echo -e "     ${CYAN}/plugin marketplace add dreamlx/codeindex-claude${NC}"
+    echo -e "     ${CYAN}/plugin install codeindex@codeindex-claude${NC}"
+    echo -e "   See https://github.com/dreamlx/codeindex-claude"
+    echo
+    read -r -p "Continue with legacy install anyway? (y/N): " _yn
+    case "$_yn" in
+        [Yy]*) echo ;;
+        *) echo "Aborted. Use the plugin instead."; exit 0 ;;
+    esac
+fi
+# ────────────────────────────────────────────────────────────────────────────
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 SKILLS_SRC="$SCRIPT_DIR/src"

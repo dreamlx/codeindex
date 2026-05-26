@@ -1,5 +1,17 @@
 # codeindex Skills for Claude Code
 
+> **⚠ DEPRECATED in v0.25.0 — moving to a Claude Code plugin.**
+> These skills have moved to the dedicated plugin repo
+> [**dreamlx/codeindex-claude**](https://github.com/dreamlx/codeindex-claude).
+> Install via the platform's plugin mechanism instead of `./install.sh`:
+> ```
+> /plugin marketplace add dreamlx/codeindex-claude
+> /plugin install codeindex@codeindex-claude
+> ```
+> Skill names become `codeindex:arch` / `codeindex:index` / `codeindex:hooks` /
+> `codeindex:update-guide`. This `skills/` directory (and `install.sh`) will be
+> removed in v1.0. See [ADR-006](../docs/architecture/adr/006-distribution-architecture-split.md).
+
 Claude Code skills that enhance your AI-assisted development workflow with codeindex.
 
 ## Directory Structure
