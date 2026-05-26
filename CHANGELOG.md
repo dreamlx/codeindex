@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 (no unreleased changes)
 
+## [0.25.0] - 2026-05-26
+
+**Theme**: distribution split — `pipx` CLI + Claude Code plugin. See [release notes](docs/releases/RELEASE_NOTES_v0.25.0.md) + [ADR-006](docs/architecture/adr/006-distribution-architecture-split.md).
+
+### Changed
+
+- **`codeindex init` is now minimal** (B1): creates only project-scoped scaffolding — `.codeindex.yaml`, a codeindex section injected into the project's `CLAUDE.md`, and a `.gitignore` entry. It no longer creates `CODEINDEX.md` or installs git hooks. Hooks are opt-in via `codeindex hooks install`; Claude Code users get richer `CLAUDE.md` upkeep via the plugin. `init` has never touched `~/.claude/*` and a regression test now locks that invariant.
+- **Recommended install is `pipx install ai-codeindex`** (B2): the README leads with pipx (isolated CLI env, no dependency conflicts); `pip install --user` is the fallback. Added a China-mirror footnote (`pipx install --index-url https://pypi.org/simple/ ai-codeindex`) for when a local mirror lags upstream PyPI.
+
+### Added
+
+- **Claude Code plugin** ([dreamlx/codeindex-claude](https://github.com/dreamlx/codeindex-claude)): bundles the four skills (`codeindex:arch` / `:index` / `:hooks` / `:update-guide`) plus a SessionStart hook that checks the CLI is on `PATH`. Install with `/plugin marketplace add dreamlx/codeindex-claude` + `/plugin install codeindex@codeindex-claude`. This replaces the in-repo `skills/install.sh` mechanism. The plugin skills orchestrate the CLI — e.g. `codeindex:update-guide` drives `codeindex claude-md update`, `codeindex:hooks` drives `codeindex hooks install` — so the CLI commands remain first-class (see [ADR-006](docs/architecture/adr/006-distribution-architecture-split.md) "engine vs affordance").
+- **`codeindex doctor`**: read-only health/sync diagnostic. Reports the installed CLI version, `.codeindex.yaml` presence + language-parser health, the project `CLAUDE.md` codeindex-section version vs the CLI, and — when a Claude Code environment is detected — the installed `codeindex-claude` plugin version. Each problem prints an actionable fix (`pipx inject …` for missing parsers, `codeindex claude-md update` for a stale section, `/plugin install …` when the plugin is absent). Editor-agnostic: the plugin section is skipped silently when `~/.claude/plugins` doesn't exist, so Cursor / bare-CLI users get a clean report. Exits non-zero when an error-level finding (e.g. a configured language with no installed parser) is present, so it's CI-usable. Never mutates anything. This is the single place that answers "am I up to date across the two artifacts, and what do I upgrade?"
+
+### Deprecated
+
+- **`skills/` directory + `skills/install.sh`** (B4): the old skill installer now warns and defaults to abort, pointing users to the plugin. The directory is removed in v1.0. (Note: the `codeindex claude-md` and `codeindex hooks` *CLI commands* are **not** deprecated — they are the engine the plugin skills ride on. An earlier plan to deprecate them was reverted; see ADR-006.)
+
 ## [0.24.0] - 2026-05-25
 
 **Theme**: navigation contract — see [release notes](docs/releases/RELEASE_NOTES_v0.24.0.md) + [ADR-005](docs/architecture/adr/005-navigation-disclaimer-and-readme-size-cap.md).

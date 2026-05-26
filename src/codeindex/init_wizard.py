@@ -469,16 +469,12 @@ def run_interactive_wizard(project_dir: Path) -> WizardResult:
         "   Inject codeindex instructions into CLAUDE.md?", default=True
     )
 
-    # Step 6: Optional features
-    click.echo("\n🔧 Step 6/6: Optional features...")
+    # Step 6: Optional AI CLI configuration (writes ai_command into .codeindex.yaml)
+    click.echo("\n🔧 Step 6/6: Optional AI enrichment...")
 
-    # Ask about Git Hooks
-    result.enable_hooks = click.confirm("   Enable Git Hooks for auto-documentation?", default=False)
-    if result.enable_hooks:
-        result.hooks_mode = "auto"
-
-    # Ask about CODEINDEX.md
-    result.create_codeindex_md = click.confirm("   Create CODEINDEX.md guide for AI agents?", default=True)
+    # Git hooks and CLAUDE.md-guide files are no longer set up by `init` (B1 /
+    # ADR-006). Hooks: run `codeindex hooks install`. Claude Code users get the
+    # richer guidance via the codeindex plugin (`codeindex:update-guide` skill).
 
     # Ask about AI CLI
     result.configure_ai = click.confirm("   Configure AI CLI integration?", default=False)

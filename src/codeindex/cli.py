@@ -9,7 +9,7 @@ import click
 
 from . import __version__
 from .cli_claude_md import claude_md, print_outdated_warning
-from .cli_config import init, list_dirs, status
+from .cli_config import doctor, init, list_dirs, status
 from .cli_config_commands import config
 from .cli_docs import docs
 from .cli_hooks import hooks
@@ -37,6 +37,7 @@ main.add_command(init)
 main.add_command(config)
 main.add_command(status)
 main.add_command(list_dirs)
+main.add_command(doctor)
 main.add_command(index)
 main.add_command(symbols)
 main.add_command(affected)

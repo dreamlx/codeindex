@@ -12,7 +12,6 @@ from rich.table import Table
 from .cli_common import console
 from .config import DEFAULT_CONFIG_NAME, Config
 from .init_wizard import (
-    create_codeindex_md,
     generate_config_yaml,
     inject_claude_md,
     run_interactive_wizard,
@@ -46,6 +45,11 @@ def _print_post_init_message():
     console.print("  1. [cyan]Review .codeindex.yaml[/cyan]    → Verify include/exclude patterns")
     console.print("  2. [cyan]codeindex scan-all[/cyan]        → Generate documentation indexes")
     console.print("  3. [cyan]codeindex status[/cyan]           → Check coverage")
+    console.print("\n[dim]Optional:[/dim]")
+    console.print("  • [cyan]codeindex hooks install[/cyan]  → Auto-update README_AI.md on commit")
+    console.print(
+        "  • [dim]Claude Code:[/dim] [cyan]/plugin install codeindex@codeindex-claude[/cyan]"
+    )
 
 @click.command()
 @click.option("--force", "-f", is_flag=True, help="Overwrite existing config")
@@ -118,8 +122,8 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
             detected_frameworks=detected_frameworks,
             parallel_workers=parallel_workers,
             batch_size=batch_size,
-            enable_hooks=False,  # Conservative default for non-interactive
-            create_codeindex_md=True,  # Helpful for AI agents
+            enable_hooks=False,  # Hooks are opt-in via `codeindex hooks install`
+            create_codeindex_md=False,  # Dropped from init (B1/ADR-006); CLAUDE.md is the guide
             configure_ai=False,  # Skip in non-interactive (AI is opt-in)
         )
 
@@ -127,11 +131,8 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
         yaml_content = generate_config_yaml(result, project_dir)
         config_path.write_text(yaml_content)
 
-        # Create CODEINDEX.md
-        if result.create_codeindex_md:
-            create_codeindex_md(project_dir)
-
-        # Inject CLAUDE.md (safe default for non-interactive)
+        # Inject codeindex section into the project's CLAUDE.md (project-scoped,
+        # never ~/.claude — see ADR-006). Safe default for non-interactive.
         claude_md_path = inject_claude_md(project_dir)
         result.claude_md_injected = True
 
@@ -140,8 +141,6 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
 
         if not quiet:
             console.print(f"[green]✓ Created:[/green] {config_path}")
-            if result.create_codeindex_md:
-                console.print("[green]✓ Created:[/green] CODEINDEX.md")
             console.print(f"[green]✓ Injected:[/green] {claude_md_path.name}")
             if gitignore_updated:
                 console.print("[green]✓ Updated:[/green] .gitignore (added README_AI.md)")
@@ -157,28 +156,12 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
     config_path.write_text(yaml_content)
     result.config_created = True
 
-    # Create CODEINDEX.md if requested
-    if result.create_codeindex_md:
-        codeindex_path = create_codeindex_md(project_dir)
-        result.codeindex_md_created = True
-        console.print(f"\n[green]✓ Created:[/green] {codeindex_path}")
-
-    # Inject CLAUDE.md if requested
+    # Inject codeindex section into the project's CLAUDE.md if requested.
+    # Project-scoped only (never ~/.claude) — see ADR-006.
     if result.inject_claude_md:
         claude_md_path = inject_claude_md(project_dir)
         result.claude_md_injected = True
         console.print(f"[green]✓ Injected:[/green] {claude_md_path.name}")
-
-    # Install Git Hooks if requested
-    if result.enable_hooks:
-        try:
-            from .cli_hooks import install_hook
-
-            install_hook("post-commit")
-            result.hooks_installed = True
-            console.print("[green]✓ Git Hooks installed[/green]")
-        except Exception as e:
-            console.print(f"[yellow]Warning:[/yellow] Could not install hooks: {e}")
 
     # Update .gitignore
     gitignore_updated = _update_gitignore(project_dir)
@@ -256,3 +239,56 @@ def list_dirs(root: Path):
     for d in dirs:
         rel = d.relative_to(root)
         print(rel)
+
+
+_STATUS_GLYPH = {
+    "ok": "[green]✓[/green]",
+    "warn": "[yellow]⚠[/yellow]",
+    "error": "[red]✗[/red]",
+    "info": "[dim]·[/dim]",
+}
+
+
+@click.command()
+def doctor():
+    """Report codeindex health: CLI, parsers, CLAUDE.md, and plugin sync.
+
+    Read-only. Useful when you're unsure whether the CLI, the project config,
+    the CLAUDE.md section, and the Claude Code plugin are all in sync — and
+    what to upgrade if not.
+    """
+    from .doctor import has_errors, run_doctor
+
+    findings = run_doctor()
+
+    console.print("\n[bold]codeindex doctor[/bold]\n")
+
+    current_section = None
+    fixes: list[str] = []
+    for f in findings:
+        if f.section != current_section:
+            console.print(f"[bold]{f.section}[/bold]")
+            current_section = f.section
+        glyph = _STATUS_GLYPH.get(f.status, "·")
+        console.print(f"  {glyph} {f.message}")
+        if f.fix:
+            console.print(f"      [dim]→ {f.fix}[/dim]")
+            fixes.append(f.fix)
+
+    warn_count = sum(1 for f in findings if f.status == "warn")
+    error_count = sum(1 for f in findings if f.status == "error")
+
+    console.print()
+    tail = "see suggested commands above."
+    if error_count:
+        console.print(
+            f"[red]{error_count} error(s)[/red], "
+            f"[yellow]{warn_count} warning(s)[/yellow] — {tail}"
+        )
+    elif warn_count:
+        console.print(f"[yellow]{warn_count} warning(s)[/yellow] — {tail}")
+    else:
+        console.print("[green]All clear.[/green]")
+
+    if has_errors(findings):
+        raise SystemExit(1)
