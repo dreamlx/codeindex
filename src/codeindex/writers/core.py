@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Optional
 
+from .. import enricher
 from ..adaptive_selector import AdaptiveSymbolSelector
 from ..config import IndexingConfig
 from ..framework_detect import RouteInfo
@@ -141,8 +142,27 @@ class SmartWriter:
                 content, truncated = truncate_content(content, self.max_size)
                 content_bytes = content.encode('utf-8')
 
+            # Preserve AI enrichment across structural rewrites (GH #38).
+            # `scan-all --ai` injects an "ok" marker + `> description` blockquote;
+            # a later structural-only write (post-commit hook, or Phase 1 of the
+            # next --ai run) must not wipe them, or the idempotent cache goes cold
+            # and the next --ai re-pays the full N AI calls. Capture before
+            # overwrite, re-inject after.
+            preserve_enrichment = enricher.has_successful_enrichment(output_path)
+            preserved_description = (
+                enricher.extract_blockquote_description(output_path)
+                if preserve_enrichment
+                else None
+            )
+
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(content)
+
+            if preserve_enrichment:
+                enricher.mark_enrichment_status(output_path, "ok")
+                if preserved_description:
+                    enricher.inject_blockquote(output_path, preserved_description)
+                content_bytes = output_path.read_bytes()
 
             return WriteResult(
                 path=output_path,
