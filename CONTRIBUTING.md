@@ -189,9 +189,9 @@ Closes #123
 
 ---
 
-docs(guides): update git-commit-guide.md
+docs(guides): clarify scan-all caching behavior
 
-Added examples for multi-line commit messages.
+Added a note on how the enrichment cache survives structural rewrites.
 ```
 
 ### Reference Issues
@@ -439,8 +439,8 @@ make release VERSION=X.X.X
 ```
 
 **Documentation**:
-- **[Quick Start Release Guide](docs/development/QUICK_START_RELEASE.md)** - 5-minute automated release workflow
-- **[Complete Release Workflow](docs/development/release-workflow.md)** - Detailed release process documentation
+- **[Quick Start Release Guide](docs/development/QUICK_START_RELEASE.md)** - the release runbook (`make release`)
+- **[Pre-release Checklist](docs/development/pre-release-checklist.md)** - judgment steps before shipping; run `make help` for every target
 
 **What `make release` does**:
 1. Pre-release checks (tests, lint, version files)
@@ -477,7 +477,7 @@ Please read and follow our [Code of Conduct](CODE_OF_CONDUCT.md). We are committ
 
 **For contributors new to**:
 - **TDD**: [Test-Driven Development Guide](https://docs.python-guide.org/writing/tests/)
-- **Git workflow**: [docs/internal/git-commit-guide.md](docs/internal/git-commit-guide.md)
+- **Git workflow**: [docs/development/gitflow-workflow.md](docs/development/gitflow-workflow.md)
 - **Tree-sitter**: [Tree-sitter Documentation](https://tree-sitter.github.io/tree-sitter/)
 - **Conventional Commits**: [conventionalcommits.org](https://www.conventionalcommits.org/)
 

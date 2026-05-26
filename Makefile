@@ -2,10 +2,9 @@
 # Automated release and development workflow
 
 .PHONY: help install install-dev install-hooks \
-        test test-fast test-cov lint lint-fix format clean \
+        test test-fast test-cov lint lint-fix format clean readme-zh \
         check-version check-docs status build check-dist \
         pre-release-check release bump-version \
-        validate-real-projects validate-l1 validate-l2 validate-l3 validate-save-baseline \
         ci-install ci-test ci-build
 
 # Colors
@@ -76,6 +75,21 @@ clean:  ## Clean build artifacts
 	@echo "$(GREEN)✓ Cleaned$(RESET)"
 
 # ============================================================================
+# Documentation / i18n
+# ============================================================================
+
+# AI CLI used to (re)generate translated docs. Override to use a different agent
+# CLI, e.g. `make readme-zh AI_CMD='cursor-agent -p'`. Same split as codeindex
+# itself: the orchestration here is deterministic; the translation is delegated
+# to whatever agent CLI you point at — nothing binds this to one IDE.
+AI_CMD ?= claude -p
+
+readme-zh:  ## Regenerate README_zh.md from README.md via AI (override AI_CMD; review the diff)
+	@echo "$(CYAN)Translating README.md → README_zh.md via: $(AI_CMD)$(RESET)"
+	@$(AI_CMD) 'Read README.md and overwrite README_zh.md with a faithful Simplified-Chinese translation. Preserve ALL markdown structure, code blocks, inline code, URLs, file paths, badges, HTML comments, and tables verbatim — translate prose only. Keep established technical terms (tree-sitter, token, agent, CLI, README_AI.md, LoomGraph) untranslated where that reads naturally. Do not add, drop, or reorder sections; keep the language-switch line at the top as-is.' --allowedTools 'Read Write'
+	@echo "$(GREEN)✓ README_zh.md regenerated — git diff it before committing (AI translation is not authoritative)$(RESET)"
+
+# ============================================================================
 # Quality Checks
 # ============================================================================
 
@@ -134,57 +148,15 @@ endif
 	@echo "$(GREEN)✓ Updated pyproject.toml$(RESET)"
 	@git diff pyproject.toml
 
-pre-release-check:  ## Pre-release checks (tests, lint, version, docs)
+pre-release-check:  ## Pre-release checks — single source of truth: scripts/pre_release_check.sh
 ifndef VERSION
 	@echo "$(RED)Error: VERSION not specified$(RESET)"
 	@echo "Usage: make release VERSION=0.20.0"
 	@exit 1
 endif
-	@echo "$(CYAN)=== Pre-release checks for v$(VERSION) ===$(RESET)"
-	@echo ""
-	@echo "$(CYAN)[1/7] Checking Git status...$(RESET)"
-	@if [ -n "$$(git status --porcelain)" ]; then \
-		echo "$(RED)Error: Working directory not clean$(RESET)"; \
-		git status --short; \
-		exit 1; \
-	fi
-	@echo "$(GREEN)✓ Working directory clean$(RESET)"
-	@echo ""
-	@echo "$(CYAN)[2/7] Checking branch...$(RESET)"
-	@BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
-	if [ "$$BRANCH" != "master" ]; then \
-		echo "$(RED)Error: Not on master branch (current: $$BRANCH)$(RESET)"; \
-		exit 1; \
-	fi
-	@echo "$(GREEN)✓ On master branch$(RESET)"
-	@echo ""
-	@echo "$(CYAN)[3/7] Running tests...$(RESET)"
-	@pytest -v --tb=short || (echo "$(RED)✗ Tests failed$(RESET)"; exit 1)
-	@echo "$(GREEN)✓ All tests passed$(RESET)"
-	@echo ""
-	@echo "$(CYAN)[4/7] Running linter...$(RESET)"
-	@ruff check src/ tests/ || (echo "$(RED)✗ Lint errors found$(RESET)"; exit 1)
-	@echo "$(GREEN)✓ No lint errors$(RESET)"
-	@echo ""
-	@echo "$(CYAN)[5/7] Checking release notes...$(RESET)"
-	@if [ ! -f "RELEASE_NOTES_v$(VERSION).md" ]; then \
-		echo "$(RED)Error: RELEASE_NOTES_v$(VERSION).md not found$(RESET)"; \
-		exit 1; \
-	fi
-	@echo "$(GREEN)✓ Release notes found$(RESET)"
-	@echo ""
-	@echo "$(CYAN)[6/7] Checking version consistency...$(RESET)"
-	@python3 scripts/check_version_consistency.py || \
-		(echo "$(RED)✗ Version inconsistency found$(RESET)"; \
-		echo "Run: python3 scripts/check_version_consistency.py --fix"; exit 1)
-	@echo "$(GREEN)✓ Version consistency OK$(RESET)"
-	@echo ""
-	@echo "$(CYAN)[7/7] Checking documentation consistency...$(RESET)"
-	@python3 scripts/check_docs_release.py || true
-	@echo ""
-	@echo "$(GREEN)=== All pre-release checks passed ===$(RESET)"
+	@bash scripts/pre_release_check.sh $(VERSION)
 
-release: pre-release-check bump-version  ## Full release (usage: make release VERSION=X.Y.Z)
+release: bump-version pre-release-check  ## Full release (usage: make release VERSION=X.Y.Z)
 	@echo ""
 	@echo "$(CYAN)=== Creating release v$(VERSION) ===$(RESET)"
 	@echo ""
@@ -212,23 +184,14 @@ release: pre-release-check bump-version  ## Full release (usage: make release VE
 	@echo "$(YELLOW)→ Monitor:$(RESET) https://github.com/$$(git config --get remote.origin.url | sed 's/.*github.com[:/]\(.*\)\.git/\1/')/actions"
 
 # ============================================================================
-# Validation (real project testing)
+# Benchmark / validation
 # ============================================================================
-
-validate-real-projects:  ## Run all validation layers on real projects
-	python scripts/validate_real_projects.py
-
-validate-l1:  ## L1 functional validation (fast, no AI)
-	python scripts/validate_real_projects.py --layer l1
-
-validate-l2:  ## L2 quality validation (metrics + AI)
-	python scripts/validate_real_projects.py --layer l2
-
-validate-l3:  ## L3 experience validation (AI only)
-	python scripts/validate_real_projects.py --layer l3
-
-validate-save-baseline:  ## Save validation results as baseline
-	python scripts/validate_real_projects.py --save-baseline
+# The real-project validation framework (scripts/validate_real_projects.py +
+# make validate-*) was retired (GH #39-#41): it measured structural counts —
+# the wrong axis — and duplicated what pytest + the CI matrix already cover.
+# Agent-comprehension validation (the actual product value) now lives in bench/,
+# which has its own Makefile:
+#   cd bench && make setup && make run && make grade && make report
 
 # ============================================================================
 # CI (used by GitHub Actions)

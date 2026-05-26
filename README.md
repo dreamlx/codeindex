@@ -7,11 +7,27 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://github.com/dreamlx/codeindex/workflows/Tests/badge.svg)](https://github.com/dreamlx/codeindex/actions)
 
-**Enterprise-grade Code Intelligence Platform — Make AI agents understand your codebase through semantic navigation, not grep.**
+**Make AI coding agents navigate your codebase by reading, not grepping.**
 
-codeindex generates AI-readable documentation with **two-phase pipeline**: structural indexing (AST parsing via tree-sitter) + AI-powered module descriptions. AI agents can browse README_AI.md hierarchy, see module purposes at a glance, and navigate directly to the right code — across Python, PHP, Java, TypeScript, JavaScript, Swift, and Objective-C. Designed for **enterprise environments** with intranet isolation.
+codeindex is an **open-source CLI** that turns any codebase into AI-readable navigation indexes (`README_AI.md`) via a **two-phase pipeline** — structural indexing (tree-sitter AST) + optional one-line AI module descriptions. Agents browse the README_AI.md hierarchy, see what each module does, and jump straight to the right file — across Python, PHP, Java, TypeScript, JavaScript, Swift, and Objective-C. The measured payoff is efficiency, not magic (benchmark below).
 
-**🏢 Enterprise Ready**: ✅ Intranet compatible ✅ Self-contained ✅ Version stable ✅ Data sovereignty
+**Runs fully offline.** Structural indexing needs no AI at all; AI descriptions use *your* local agent CLI (e.g. `claude -p`), so no code leaves your network — fine for air-gapped intranets. MIT-licensed, free, and meant to stay that way: codeindex is the open-source *navigate* layer; the reason/retrieval layer lives in [LoomGraph](FOR_LOOMGRAPH.md).
+
+---
+
+## Does this actually help an agent? We measured it.
+
+Most "AI code understanding" tools assert value. We A/B-tested ours — and published the unflattering parts.
+
+Across **15 graded navigation questions on 3 heterogeneous real projects**, a coding agent **with** `README_AI.md` vs **without**:
+
+- **−28% tokens, −19% wall-time** on average — agents reach the right file faster and cheaper.
+- **Answer quality is a wash.** It does *not* make answers more *correct* — the win is efficiency, not capability. (An undisciplined index even hurt a few precise-mechanism questions; fixed in [ADR-005](docs/architecture/adr/005-navigation-disclaimer-and-readme-size-cap.md).)
+- **Smallest win on the largest codebases.** On a 250-directory legacy system the token win nearly vanished — a flat index points you to files but can't synthesize cross-module semantics. codeindex is the *navigate* layer, not the *understand-everything* layer (pair it with source-reading / [Serena](https://github.com/oraios/serena) for precise mechanism).
+
+Full data incl. the failure cases: **[2026-05 benchmark](docs/benchmark/2026-05-readme-impact.md)**. Reproduce on your own repos: **[`bench/`](bench/)** (`make setup && make run && make grade`).
+
+> Why publish the parts that don't flatter the tool: a navigation index that quietly degrades answer quality is worse than none. Knowing *exactly* where it helps — and where to drop to source — is the point.
 
 ---
 
@@ -30,7 +46,7 @@ codeindex generates AI-readable documentation with **two-phase pipeline**: struc
 
 ### Parsing & Analysis
 
-- **Multi-language AST parsing** — Python, PHP, Java, TypeScript, JavaScript, Swift, Objective-C via tree-sitter (Go, Rust, C# planned)
+- **Multi-language AST parsing** — Python, PHP, Java, TypeScript, JavaScript, Swift, Objective-C via tree-sitter; more languages plug in via the extractor API (`src/codeindex/extractors/`, community-contributed)
 - **Call relationship extraction** — Function/method call graphs across Python, Java, PHP, TypeScript, JavaScript
 - **Inheritance extraction** — Class hierarchy and interface relationships
 - **Framework route extraction** — ThinkPHP and Spring Boot route tables (more planned)

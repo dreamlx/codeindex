@@ -51,11 +51,14 @@ else
     fail "CHANGELOG.md missing [$VERSION] section"
 fi
 
+# RELEASE_NOTES are OPTIONAL — CHANGELOG (above) is the mandatory per-release
+# record. Write a RELEASE_NOTES only for a major / breaking / announced release
+# (there it doubles as the announcement). A patch or routine minor needs none.
 NOTES_FILE="docs/releases/RELEASE_NOTES_v${VERSION}.md"
 if [[ -f "$NOTES_FILE" ]]; then
     pass "$NOTES_FILE exists"
 else
-    fail "$NOTES_FILE missing — write release notes first"
+    warn "$NOTES_FILE absent — fine for a patch/minor; write one only for a major or breaking release"
 fi
 
 if git rev-parse "v$VERSION" >/dev/null 2>&1; then

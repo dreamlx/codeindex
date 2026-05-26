@@ -89,7 +89,16 @@ refactor(scope): refactor code
 | New feature | CHANGELOG.md, README.md, relevant README_AI.md |
 | Bug fix | CHANGELOG.md |
 | Config change | .codeindex.yaml example, CHANGELOG.md |
-| Major release | CHANGELOG.md, RELEASE_NOTES_vX.X.X.md |
+| Major release | CHANGELOG.md, docs/releases/RELEASE_NOTES_vX.X.X.md |
+
+**CHANGELOG vs RELEASE_NOTES policy**: `CHANGELOG.md` is the mandatory,
+complete, every-release ledger (terse, categorized — the "what changed"
+lookup). `docs/releases/RELEASE_NOTES_vX.Y.Z.md` is **optional**, written only
+for a major / breaking / announced release — a curated narrative + migration
+guide that doubles as the public announcement. A patch or routine minor needs
+no RELEASE_NOTES; writing one per version is ceremony. The pre-release gate
+(`scripts/pre_release_check.sh`) enforces CHANGELOG and only *warns* on a
+missing RELEASE_NOTES.
 
 After code changes: `codeindex scan-all`
 

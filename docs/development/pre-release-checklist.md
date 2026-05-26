@@ -30,12 +30,12 @@ The script enforces what it can; the rest is judgment that needs a human.
 
 | # | Check | What it verifies |
 |---|---|---|
-| 1 | Version consistency | `pyproject.toml`, `CHANGELOG.md [VERSION]`, `RELEASE_NOTES_vVERSION.md` present, tag doesn't already exist |
+| 1 | Version consistency | `pyproject.toml` = VERSION, `CHANGELOG.md [VERSION]` present (required), tag doesn't already exist. `RELEASE_NOTES_vVERSION.md` is **optional** (warn only) — write one only for a major/breaking release |
 | 2 | Working tree state | Clean tree, on master branch |
 | 3 | Full test suite | `pytest -q` (includes slow tests) passes |
 | 4 | Ruff lint | `ruff check src/ bench/` clean |
 | 5 | Wheel build | `python -m build` produces `dist/ai_codeindex-VERSION-py3-none-any.whl` |
-| 6 | Clean-venv install | Fresh venv, `pip install dist/*.whl`, `codeindex --version` matches, `codeindex --help` runs |
+| 6 | Clean-venv install | Fresh venv, `pip install "$(ls dist/*.whl)[all]"` (the `[all]` extras pull language parsers — GH #46), `codeindex --version` matches, `codeindex --help` runs |
 | 7 | CI status | `gh run list` shows latest run on current branch succeeded (best-effort) |
 
 If any FAIL, the script exits non-zero and you do not proceed.
@@ -64,11 +64,18 @@ TARGET=/path/to/some/project
 cd $TARGET
 git stash -u   # if it's git, stash anything uncommitted
 
-# Install the candidate version into a sandbox venv
+# Install the candidate version into a sandbox venv.
+# NOTE (GH #46): the `[all]` extras pull the tree-sitter language parsers. A
+# bare `pip install <wheel>` installs only the entrypoint — no parsers — so
+# scan-all emits structural-only READMEs and the upgrade-sim diff won't match
+# what a real `pipx install ai-codeindex[all]` user sees. Quote the arg so the
+# shell doesn't glob `[all]`. Do NOT retrofit with `pip install ai-codeindex[all]`
+# (no --no-deps) — that re-pulls ai-codeindex from PyPI and silently downgrades
+# the sandbox.
 SANDBOX=/tmp/codeindex_upgrade_test
 rm -rf $SANDBOX && python3 -m venv $SANDBOX
-$SANDBOX/bin/pip install dist/ai_codeindex-0.24.0-py3-none-any.whl
-$SANDBOX/bin/codeindex --version    # should print 0.24.0
+$SANDBOX/bin/pip install "$(ls dist/ai_codeindex-*-py3-none-any.whl)[all]"
+$SANDBOX/bin/codeindex --version    # should print the candidate version
 
 # Re-scan
 $SANDBOX/bin/codeindex scan-all --ai
@@ -97,8 +104,12 @@ codeindex's docs are mixed Chinese/English by historical accident:
 - CHANGELOG: English
 - Recent release notes: English
 
-Check whether *this* release should add Chinese versions:
+Check whether *this* release should add/refresh Chinese versions:
 
+- [ ] **README parity**: if `README.md` changed since `README_zh.md` was last
+      synced, run `make readme-zh`, review the diff, and commit. `README_zh.md`
+      is a *derived* artifact — regenerate it, don't hand-edit (see ADR / the
+      `readme-zh` target). Same for `*.zh.md` doc pairs.
 - [ ] Compare against the last 3 releases — if any had Chinese parallel
       docs (e.g. `RELEASE_NOTES_v0.X.0_zh.md`), this one should too
 - [ ] If the release touches user-facing strings (CLI output, error
