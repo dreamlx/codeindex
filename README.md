@@ -7,11 +7,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://github.com/dreamlx/codeindex/workflows/Tests/badge.svg)](https://github.com/dreamlx/codeindex/actions)
 
-**Enterprise-grade Code Intelligence Platform — Make AI agents understand your codebase through semantic navigation, not grep.**
+**Make AI coding agents navigate your codebase by reading, not grepping.**
 
-codeindex generates AI-readable documentation with **two-phase pipeline**: structural indexing (AST parsing via tree-sitter) + AI-powered module descriptions. AI agents can browse README_AI.md hierarchy, see module purposes at a glance, and navigate directly to the right code — across Python, PHP, Java, TypeScript, JavaScript, Swift, and Objective-C. Designed for **enterprise environments** with intranet isolation.
+codeindex is an **open-source CLI** that turns any codebase into AI-readable navigation indexes (`README_AI.md`) via a **two-phase pipeline** — structural indexing (tree-sitter AST) + optional one-line AI module descriptions. Agents browse the README_AI.md hierarchy, see what each module does, and jump straight to the right file — across Python, PHP, Java, TypeScript, JavaScript, Swift, and Objective-C. The measured payoff is efficiency, not magic (benchmark below).
 
-**🏢 Enterprise Ready**: ✅ Intranet compatible ✅ Self-contained ✅ Version stable ✅ Data sovereignty
+**Runs fully offline.** Structural indexing needs no AI at all; AI descriptions use *your* local agent CLI (e.g. `claude -p`), so no code leaves your network — fine for air-gapped intranets. MIT-licensed, free, and meant to stay that way: codeindex is the open-source *navigate* layer; the reason/retrieval layer lives in [LoomGraph](FOR_LOOMGRAPH.md).
 
 ---
 
