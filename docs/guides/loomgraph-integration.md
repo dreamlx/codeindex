@@ -647,7 +647,6 @@ CMD ["codeindex", "parse", "/input/file.py"]
 - **codeindex GitHub**: https://github.com/dreamlx/codeindex
 - **PyPI Package**: https://pypi.org/project/ai-codeindex/
 - **示例脚本**: `examples/parse_integration_example.sh`
-- **验证报告**: `docs/evaluation/epic12-story12.1-validation.md`
 
 ---
 
