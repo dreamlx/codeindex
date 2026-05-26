@@ -104,8 +104,12 @@ codeindex's docs are mixed Chinese/English by historical accident:
 - CHANGELOG: English
 - Recent release notes: English
 
-Check whether *this* release should add Chinese versions:
+Check whether *this* release should add/refresh Chinese versions:
 
+- [ ] **README parity**: if `README.md` changed since `README_zh.md` was last
+      synced, run `make readme-zh`, review the diff, and commit. `README_zh.md`
+      is a *derived* artifact — regenerate it, don't hand-edit (see ADR / the
+      `readme-zh` target). Same for `*.zh.md` doc pairs.
 - [ ] Compare against the last 3 releases — if any had Chinese parallel
       docs (e.g. `RELEASE_NOTES_v0.X.0_zh.md`), this one should too
 - [ ] If the release touches user-facing strings (CLI output, error

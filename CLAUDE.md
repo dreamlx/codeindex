@@ -89,7 +89,7 @@ refactor(scope): refactor code
 | New feature | CHANGELOG.md, README.md, relevant README_AI.md |
 | Bug fix | CHANGELOG.md |
 | Config change | .codeindex.yaml example, CHANGELOG.md |
-| Major release | CHANGELOG.md, RELEASE_NOTES_vX.X.X.md |
+| Major release | CHANGELOG.md, docs/releases/RELEASE_NOTES_vX.X.X.md |
 
 After code changes: `codeindex scan-all`
 
