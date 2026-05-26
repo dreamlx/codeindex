@@ -25,5 +25,4 @@ Review these files periodically:
 
 ## History
 
-Moved from root directory as part of Phase 1 cleanup.
-See: `docs/project-cleanup-plan.md`
+Moved from root directory during an early project cleanup.

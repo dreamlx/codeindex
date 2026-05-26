@@ -75,7 +75,6 @@ python scripts/utils/my-tool.py
 
 - **Development Guide**: [CLAUDE.md](../CLAUDE.md)
 - **Git Hooks**: [docs/guides/git-hooks-integration.md](../docs/guides/git-hooks-integration.md)
-- **Project Cleanup**: [docs/project-cleanup-plan.md](../docs/project-cleanup-plan.md)
 
 ---
 
