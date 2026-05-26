@@ -239,3 +239,56 @@ def list_dirs(root: Path):
     for d in dirs:
         rel = d.relative_to(root)
         print(rel)
+
+
+_STATUS_GLYPH = {
+    "ok": "[green]✓[/green]",
+    "warn": "[yellow]⚠[/yellow]",
+    "error": "[red]✗[/red]",
+    "info": "[dim]·[/dim]",
+}
+
+
+@click.command()
+def doctor():
+    """Report codeindex health: CLI, parsers, CLAUDE.md, and plugin sync.
+
+    Read-only. Useful when you're unsure whether the CLI, the project config,
+    the CLAUDE.md section, and the Claude Code plugin are all in sync — and
+    what to upgrade if not.
+    """
+    from .doctor import has_errors, run_doctor
+
+    findings = run_doctor()
+
+    console.print("\n[bold]codeindex doctor[/bold]\n")
+
+    current_section = None
+    fixes: list[str] = []
+    for f in findings:
+        if f.section != current_section:
+            console.print(f"[bold]{f.section}[/bold]")
+            current_section = f.section
+        glyph = _STATUS_GLYPH.get(f.status, "·")
+        console.print(f"  {glyph} {f.message}")
+        if f.fix:
+            console.print(f"      [dim]→ {f.fix}[/dim]")
+            fixes.append(f.fix)
+
+    warn_count = sum(1 for f in findings if f.status == "warn")
+    error_count = sum(1 for f in findings if f.status == "error")
+
+    console.print()
+    tail = "see suggested commands above."
+    if error_count:
+        console.print(
+            f"[red]{error_count} error(s)[/red], "
+            f"[yellow]{warn_count} warning(s)[/yellow] — {tail}"
+        )
+    elif warn_count:
+        console.print(f"[yellow]{warn_count} warning(s)[/yellow] — {tail}")
+    else:
+        console.print("[green]All clear.[/green]")
+
+    if has_errors(findings):
+        raise SystemExit(1)
