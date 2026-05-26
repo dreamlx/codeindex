@@ -20,7 +20,7 @@ from typing import Optional
 
 import click
 
-from .cli_common import console, print_deprecation_notice
+from .cli_common import console
 
 logger = logging.getLogger(__name__)
 
@@ -560,12 +560,6 @@ def install(hook_name: Optional[str], install_all: bool, force: bool):
         codeindex hooks install --all
         codeindex hooks install --all --force
     """
-    print_deprecation_notice(
-        "`codeindex hooks install`",
-        "Claude Code users: install the codeindex plugin "
-        "(/plugin install codeindex@codeindex-claude) and use the "
-        "codeindex:hooks skill to set up hooks instead.",
-    )
     try:
         manager = HookManager()
 

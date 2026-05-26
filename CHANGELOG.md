@@ -20,12 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Claude Code plugin** ([dreamlx/codeindex-claude](https://github.com/dreamlx/codeindex-claude)): bundles the four skills (`codeindex:arch` / `:index` / `:hooks` / `:update-guide`) plus a SessionStart hook that checks the CLI is on `PATH`. Install with `/plugin marketplace add dreamlx/codeindex-claude` + `/plugin install codeindex@codeindex-claude`. This replaces the in-repo `skills/install.sh` mechanism.
+- **Claude Code plugin** ([dreamlx/codeindex-claude](https://github.com/dreamlx/codeindex-claude)): bundles the four skills (`codeindex:arch` / `:index` / `:hooks` / `:update-guide`) plus a SessionStart hook that checks the CLI is on `PATH`. Install with `/plugin marketplace add dreamlx/codeindex-claude` + `/plugin install codeindex@codeindex-claude`. This replaces the in-repo `skills/install.sh` mechanism. The plugin skills orchestrate the CLI — e.g. `codeindex:update-guide` drives `codeindex claude-md update`, `codeindex:hooks` drives `codeindex hooks install` — so the CLI commands remain first-class (see [ADR-006](docs/architecture/adr/006-distribution-architecture-split.md) "engine vs affordance").
 
 ### Deprecated
 
-- **`codeindex claude-md update` / `claude-md status` / `hooks install`** (B3): still functional, but now print a one-line stderr deprecation notice pointing at the plugin skills. Suppress with `CODEINDEX_NO_DEPRECATION_WARNINGS=1`. Scheduled for removal in v1.0.
-- **`skills/` directory + `skills/install.sh`** (B4): the installer now warns and defaults to abort, pointing users to the plugin. The directory is removed in v1.0.
+- **`skills/` directory + `skills/install.sh`** (B4): the old skill installer now warns and defaults to abort, pointing users to the plugin. The directory is removed in v1.0. (Note: the `codeindex claude-md` and `codeindex hooks` *CLI commands* are **not** deprecated — they are the engine the plugin skills ride on. An earlier plan to deprecate them was reverted; see ADR-006.)
 
 ## [0.24.0] - 2026-05-25
 

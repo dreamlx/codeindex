@@ -2,7 +2,7 @@
 
 ## 状态
 
-已采纳 (Accepted) — 2026-05-25
+已采纳 (Accepted) — 2026-05-25；已修订 (Revised) — 2026-05-26（撤销 B3 对引擎命令的弃用，见"引擎 vs 触达层"）
 
 ## 背景
 
@@ -29,6 +29,22 @@ v0.24.0 发布过程中，三件事同时浮出水面：
 | `dreamlx/codeindex-claude` | Claude Code Plugin，bundle 4 个 Skill + SessionStart 自检 hook + CLAUDE.md template fragment | GitHub（之后提交到 `anthropics/claude-plugins-community`） | `/plugin install codeindex@codeindex-claude`（私有 marketplace 阶段）；通过 community 之后变 `/plugin install codeindex@claude-community` |
 
 **核心原则**：CLI wheel 禁止任何 install-time 修改 `~/.claude/*` 或 `<project>/.claude/*` 的逻辑。Skill / Plugin 配置全部走 Plugin repo + Claude Code 原生 plugin 机制。
+
+### 引擎 vs 触达层（2026-05-26 修订，撤销 B3 弃用）
+
+原 B3 计划给 `codeindex claude-md update` / `codeindex hooks install` 加 deprecation 提示并在 v1.0 移除。**此计划撤销**，原因是混淆了两个层：
+
+- **引擎（CLI 命令）**：确定性机制——marker-based CLAUDE.md 注入、hook 脚本写入、AST 解析。只能住在 CLI 里（Skill 是 markdown prompt，不持有逻辑）。
+- **触达层（Plugin skill）**：教 agent 何时/如何调引擎、如何编排、如何解释结果、如何 show diff 征求确认。
+
+`codeindex:update-guide` skill 内部**正是 shell out 调 `codeindex claude-md update`**；`codeindex:hooks` skill 调 `codeindex hooks install`。所以：
+
+1. 弃用引擎命令会造成字面闭环（命令提示"改用 plugin" → plugin 又调该命令）
+2. v1.0 真删除命令会**直接打断 plugin 的 skill**
+
+**结论**：`claude-md` / `hooks` 子命令是**永久基础设施**，不弃用、不移除。CLI-only 用户（Cursor / 脚本）直接调；Claude Code 用户用 skill，skill 再调同一命令。唯一被弃用的是**旧分发方式** `skills/install.sh`（B4，被 plugin 取代）。
+
+> 这是 agent-native middleware 的通用范式：**能力做成 editor-agnostic 的引擎，触达做成薄 plugin，触达层永不持有机制逻辑**。codeindex/codeindex-claude 是第一个实例，该原则同样适用 loomgraph / IntentSpec。
 
 ### Skill 命名简化
 
@@ -114,7 +130,7 @@ fi
 - **A4**：Plugin README 明确写 prereq（先 `pipx install ai-codeindex`）+ 截图引导
 - **B1**：codeindex repo: `codeindex init` 砍掉所有 `~/.claude` 副作用，只生成 `.codeindex.yaml`
 - **B2**：codeindex repo README 主推 `pipx install` + 引导 plugin install
-- **B3**：`codeindex claude-md update` / `codeindex hooks install` 加 deprecation 提示（"will be plugin-managed in v1.0"），但保留命令
+- **B3**：~~给 `claude-md` / `hooks install` 加 deprecation 提示~~ **已撤销（2026-05-26 修订，见下方"引擎 vs 触达层"）**。这两组是引擎命令，plugin skill 骑在它们上面，不弃用、不在 v1.0 移除。
 - **B4**：CHANGELOG.md + RELEASE_NOTES_v0.25.0.md 写迁移指南
 - **C**：同步发版 codeindex v0.25.0 + codeindex-claude v0.1.0
 
@@ -123,7 +139,8 @@ fi
 ### 代码变更（codeindex repo）
 
 - `src/codeindex/cli_config.py::init`：砍掉 `_update_gitignore` 之外的 `~/.claude` 副作用（如果有）
-- `skills/` 目录：标记 deprecation，CHANGELOG 引导用户改装 plugin
+- `skills/` 目录 + `skills/install.sh`：标记 deprecation（这是**旧的分发方式**，被 plugin 取代），CHANGELOG 引导用户改装 plugin
+- **不弃用** `codeindex claude-md` / `hooks` 子命令——它们是引擎（见下）
 - `README.md` / `CLAUDE.md`：主推 `pipx install`，加 plugin install 一段
 - `CHANGELOG.md` + `RELEASE_NOTES_v0.25.0.md`：迁移指南
 

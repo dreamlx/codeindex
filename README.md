@@ -264,8 +264,9 @@ touches project-scoped files — see [ADR-006](docs/architecture/adr/006-distrib
 
 **For enterprise users without Serena**: README_AI.md and PROJECT_SYMBOLS.md become your **primary code navigation tools**.
 
-> The `codeindex claude-md` and `codeindex hooks install` CLI subcommands still
-> work but are deprecated in favor of the plugin skills (removed in v1.0).
+> The plugin skills don't replace the `codeindex claude-md` / `codeindex hooks`
+> CLI commands — they orchestrate them. The commands stay first-class for
+> CLI-only users (Cursor, scripts); the skills add a guided Claude Code UX on top.
 
 ---
 
