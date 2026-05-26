@@ -7,15 +7,8 @@ from rich.console import Console
 
 from . import __version__
 from .claude_md import check_outdated, extract_version, inject
-from .cli_common import print_deprecation_notice
 
 console = Console()
-
-_PLUGIN_HINT = (
-    "Claude Code users: install the codeindex plugin "
-    "(/plugin install codeindex@codeindex-claude) and use the "
-    "codeindex:update-guide skill instead."
-)
 
 
 @click.group("claude-md")
@@ -33,7 +26,6 @@ def claude_md():
 )
 def update(project_dir: Path):
     """Update codeindex section in project CLAUDE.md."""
-    print_deprecation_notice("`codeindex claude-md update`", _PLUGIN_HINT)
     project_dir = project_dir.resolve()
     claude_md_path = project_dir / "CLAUDE.md"
 
@@ -66,7 +58,6 @@ def update(project_dir: Path):
 )
 def status(project_dir: Path):
     """Check if codeindex section in CLAUDE.md is up-to-date."""
-    print_deprecation_notice("`codeindex claude-md status`", _PLUGIN_HINT)
     project_dir = project_dir.resolve()
     claude_md_path = project_dir / "CLAUDE.md"
 

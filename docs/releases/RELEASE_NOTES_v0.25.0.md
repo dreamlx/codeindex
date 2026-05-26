@@ -85,13 +85,11 @@ Skill names change: `/mo-arch` → `codeindex:arch`, `/mo-index` → `codeindex:
 
 ### You have codeindex git hooks installed
 
-No action required — installed hooks keep working. `codeindex hooks install` is still supported (now with a deprecation hint). Going forward, the `codeindex:hooks` plugin skill walks you through the same setup.
+No action required — installed hooks keep working, and `codeindex hooks install` remains a first-class command. Claude Code users can alternatively use the `codeindex:hooks` plugin skill, which walks you through the same setup (it calls the same CLI command under the hood).
 
 ### You rely on `codeindex claude-md update`
 
-Still works, now prints a deprecation notice. Two paths forward:
-- **CLI-only users**: keep using it; suppress the notice with `CODEINDEX_NO_DEPRECATION_WARNINGS=1`. (Removed in v1.0.)
-- **Claude Code users**: use the `codeindex:update-guide` skill from the plugin.
+No change — it stays a first-class command. CLI-only users (Cursor, scripts) keep calling it directly. Claude Code users can use the `codeindex:update-guide` skill for a guided experience (diff preview, project-aware suggestions); the skill drives the same `codeindex claude-md update` underneath.
 
 ### 🇨🇳 China users
 
@@ -109,11 +107,9 @@ The plugin is hosted on GitHub, so it isn't affected by PyPI mirror lag.
 
 | Deprecated | Use instead |
 |------------|-------------|
-| `codeindex claude-md update` / `status` | `codeindex:update-guide` skill (plugin) |
-| `codeindex hooks install` | `codeindex:hooks` skill (plugin) — the underlying command still works |
-| `skills/` directory + `skills/install.sh` | `/plugin install codeindex@codeindex-claude` |
+| `skills/` directory + `skills/install.sh` (the old skill installer) | `/plugin install codeindex@codeindex-claude` |
 
-All deprecated CLI commands remain fully functional in the v0.x line; the notices are advisory.
+That's the only deprecation. The `codeindex claude-md` and `codeindex hooks` **CLI commands are NOT deprecated** — they're the engine the plugin skills orchestrate. An earlier plan to deprecate them was reverted before release; see [ADR-006 "engine vs affordance"](../architecture/adr/006-distribution-architecture-split.md). CLI-only users (Cursor / scripts) call them directly; Claude Code users get a guided experience via the plugin skills that wrap them.
 
 ---
 
