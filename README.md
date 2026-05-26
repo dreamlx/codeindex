@@ -24,9 +24,9 @@ codeindex generates AI-readable documentation with **two-phase pipeline**: struc
 ### Core: Code Understanding for AI Agents
 
 - **Two-phase documentation pipeline** (v0.23.0) — Phase 1: structural README_AI.md via SmartWriter; Phase 2: AI generates one-line functional descriptions per module. AI agents can browse README_AI.md hierarchy and find the right module **without grep**.
-- **Smart indexing** — Tiered documentation (overview → navigation → detailed) optimized for AI agents, ≤50KB per file
+- **Smart indexing** — Tiered documentation (overview → navigation → detailed) optimized for AI agents, ≤10KB per file (navigation index, not a tech doc — see [ADR-005](docs/architecture/adr/005-navigation-disclaimer-and-readme-size-cap.md))
 - **Auto-AI enrichment** — When `ai_command` is configured, `scan-all` automatically enables AI module descriptions. Use `--no-ai` to opt out
-- **Auto-update hooks** — Post-commit hook automatically regenerates README_AI.md for changed directories. Thin wrapper pattern: `pip upgrade` auto-updates hook logic
+- **Auto-update hooks** — Optional post-commit hook (`codeindex hooks install`) regenerates README_AI.md for changed directories. Thin wrapper pattern: `pipx upgrade ai-codeindex` auto-updates hook logic
 
 ### Parsing & Analysis
 
@@ -41,8 +41,8 @@ codeindex generates AI-readable documentation with **two-phase pipeline**: struc
 ### Developer Experience
 
 - **Adaptive symbol extraction** — Dynamic 5–150 symbols per file based on size
-- **CLAUDE.md injection** — `codeindex init` auto-configures Claude Code integration
-- **Auto-update guide** — Post-install hook automatically updates `~/.claude/CLAUDE.md` after `pip upgrade`
+- **CLAUDE.md injection** — `codeindex init` injects a codeindex section into your **project's** `CLAUDE.md` (never `~/.claude`)
+- **Claude Code plugin** — `codeindex:arch` / `:index` / `:hooks` / `:update-guide` skills via [dreamlx/codeindex-claude](https://github.com/dreamlx/codeindex-claude)
 - **Template-based test generation** — YAML + Jinja2 for rapid language support (88–91% time savings)
 - **Parallel scanning** — Concurrent directory processing with configurable workers
 
@@ -116,29 +116,45 @@ codeindex hooks install post-commit  # Auto-update on commit
 
 ## Installation
 
-codeindex uses **lazy loading** — language parsers are only imported when needed.
-
-### Quick Install
+codeindex is a CLI tool — install it with **pipx** (isolated, no dependency conflicts):
 
 ```bash
-# All languages (recommended)
-pip install ai-codeindex[all]
-
-# Or specific languages only
-pip install ai-codeindex[python]
-pip install ai-codeindex[php]
-pip install ai-codeindex[java]
-pip install ai-codeindex[typescript]
-pip install ai-codeindex[python,php]
-pip install ai-codeindex[swift]
-pip install ai-codeindex[ios]          # Swift + Objective-C
+pipx install ai-codeindex
 ```
 
-### Using pipx (Recommended for CLI use)
+> **Claude Code users** — also install the companion plugin for skills
+> (`codeindex:arch` / `:index` / `:hooks` / `:update-guide`):
+> ```
+> /plugin marketplace add dreamlx/codeindex-claude
+> /plugin install codeindex@codeindex-claude
+> ```
+> The plugin is optional and only for Claude Code. The CLI works standalone
+> in any editor / terminal. See [dreamlx/codeindex-claude](https://github.com/dreamlx/codeindex-claude).
+
+### Language parsers
+
+codeindex uses **lazy loading** — language parsers are imported only when needed.
+`pipx install ai-codeindex` pulls all of them by default. To inject extras into the
+pipx environment later, or to install a subset:
 
 ```bash
-pipx install ai-codeindex[all]
+pipx inject ai-codeindex tree-sitter-python tree-sitter-typescript   # add to pipx env
+# or pin a subset at install time:
+pipx install "ai-codeindex[python]"      # python only
+pipx install "ai-codeindex[ios]"         # Swift + Objective-C
 ```
+
+### Alternatives to pipx
+
+```bash
+pip install --user ai-codeindex          # if you don't have pipx
+```
+
+> **🇨🇳 China users**: if your default mirror (e.g. aliyun) hasn't synced the
+> latest release yet, install straight from upstream PyPI:
+> ```bash
+> pipx install --index-url https://pypi.org/simple/ ai-codeindex
+> ```
 
 ### From Source
 
@@ -226,25 +242,30 @@ codeindex affected --since HEAD~5
 
 ---
 
-## Claude Code Integration (Personal Developers)
+## Claude Code Integration
 
-**For personal developers using Claude Code + Serena MCP**:
+**The codeindex plugin** gives Claude Code four skills backed by the CLI:
 
-**v0.17.0**: `codeindex init` automatically injects instructions into your project's `CLAUDE.md`, so Claude Code reads `README_AI.md` files first — no manual setup required.
-
-```bash
-# One command sets everything up
-codeindex init
-
-# Claude Code will now:
-# ✅ Read README_AI.md for architecture understanding
-# ✅ Use Serena MCP tools for precise navigation (find_symbol, etc.)
-# ✅ Apply tech-debt analysis for code quality checks
 ```
+/plugin marketplace add dreamlx/codeindex-claude
+/plugin install codeindex@codeindex-claude
+```
+
+| Skill | What it does |
+|-------|--------------|
+| `codeindex:arch` | Answer architecture / "where is X" questions from `README_AI.md` |
+| `codeindex:index` | Walk you through `codeindex init` → `scan-all` |
+| `codeindex:hooks` | Set up the auto-update post-commit hook |
+| `codeindex:update-guide` | Refresh the codeindex section in your project's `CLAUDE.md` |
+
+`codeindex init` also injects a codeindex section into your project's `CLAUDE.md`
+so Claude Code reads `README_AI.md` files first. (As of v0.25.0, `init` only
+touches project-scoped files — see [ADR-006](docs/architecture/adr/006-distribution-architecture-split.md).)
 
 **For enterprise users without Serena**: README_AI.md and PROJECT_SYMBOLS.md become your **primary code navigation tools**.
 
-For manual setup, MCP skills (`/mo:arch`, `/mo:index`), and Git hooks integration, see the [Claude Code Integration Guide](docs/guides/claude-code-integration.md).
+> The `codeindex claude-md` and `codeindex hooks install` CLI subcommands still
+> work but are deprecated in favor of the plugin skills (removed in v1.0).
 
 ---
 
@@ -482,7 +503,7 @@ See [Release Automation Guide](docs/development/QUICK_START_RELEASE.md) for deta
 
 ## Roadmap
 
-**Current version**: v0.23.2
+**Current version**: v0.25.0
 
 **Recent milestones**:
 - v0.23.0 — **AI-Enhanced Module Descriptions**: two-phase pipeline, auto-AI enrichment, post-commit thin wrapper
