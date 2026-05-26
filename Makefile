@@ -5,7 +5,6 @@
         test test-fast test-cov lint lint-fix format clean readme-zh \
         check-version check-docs status build check-dist \
         pre-release-check release bump-version \
-        validate-real-projects validate-l1 validate-l2 validate-l3 validate-save-baseline \
         ci-install ci-test ci-build
 
 # Colors
@@ -181,12 +180,13 @@ endif
 	@ruff check src/ tests/ || (echo "$(RED)✗ Lint errors found$(RESET)"; exit 1)
 	@echo "$(GREEN)✓ No lint errors$(RESET)"
 	@echo ""
-	@echo "$(CYAN)[5/7] Checking release notes...$(RESET)"
-	@if [ ! -f "RELEASE_NOTES_v$(VERSION).md" ]; then \
-		echo "$(RED)Error: RELEASE_NOTES_v$(VERSION).md not found$(RESET)"; \
+	@echo "$(CYAN)[5/7] Checking CHANGELOG entry...$(RESET)"
+	@if ! grep -q "^## \[$(VERSION)\]" CHANGELOG.md; then \
+		echo "$(RED)Error: no '## [$(VERSION)]' section in CHANGELOG.md$(RESET)"; \
+		echo "Move [Unreleased] → [$(VERSION)] before releasing."; \
 		exit 1; \
 	fi
-	@echo "$(GREEN)✓ Release notes found$(RESET)"
+	@echo "$(GREEN)✓ CHANGELOG has [$(VERSION)] section$(RESET)"
 	@echo ""
 	@echo "$(CYAN)[6/7] Checking version consistency...$(RESET)"
 	@python3 scripts/check_version_consistency.py || \
@@ -227,23 +227,14 @@ release: pre-release-check bump-version  ## Full release (usage: make release VE
 	@echo "$(YELLOW)→ Monitor:$(RESET) https://github.com/$$(git config --get remote.origin.url | sed 's/.*github.com[:/]\(.*\)\.git/\1/')/actions"
 
 # ============================================================================
-# Validation (real project testing)
+# Benchmark / validation
 # ============================================================================
-
-validate-real-projects:  ## Run all validation layers on real projects
-	python scripts/validate_real_projects.py
-
-validate-l1:  ## L1 functional validation (fast, no AI)
-	python scripts/validate_real_projects.py --layer l1
-
-validate-l2:  ## L2 quality validation (metrics + AI)
-	python scripts/validate_real_projects.py --layer l2
-
-validate-l3:  ## L3 experience validation (AI only)
-	python scripts/validate_real_projects.py --layer l3
-
-validate-save-baseline:  ## Save validation results as baseline
-	python scripts/validate_real_projects.py --save-baseline
+# The real-project validation framework (scripts/validate_real_projects.py +
+# make validate-*) was retired (GH #39-#41): it measured structural counts —
+# the wrong axis — and duplicated what pytest + the CI matrix already cover.
+# Agent-comprehension validation (the actual product value) now lives in bench/,
+# which has its own Makefile:
+#   cd bench && make setup && make run && make grade && make report
 
 # ============================================================================
 # CI (used by GitHub Actions)
