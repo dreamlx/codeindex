@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-(no unreleased changes)
+### Fixed
+
+- **Structural rewrites no longer wipe AI enrichment** (GH #38): a `scan-all --ai` run injects an `<!-- enrichment: ok -->` marker and a `> description` blockquote, but any later structural-only write — a post-commit hook running `scan-all` without `--ai`, or Phase 1 of the next `--ai` run — used to erase both. The idempotent cache then went cold, so the next `scan-all --ai` re-paid the full N AI calls instead of restoring from cache. `SmartWriter.write_readme` now captures the ok marker + blockquote before overwriting and re-injects them, so the cache stays warm across non-AI invocations. Unenriched READMEs are untouched (no fabricated marker).
 
 ## [0.25.0] - 2026-05-26
 
