@@ -30,7 +30,7 @@ The script enforces what it can; the rest is judgment that needs a human.
 
 | # | Check | What it verifies |
 |---|---|---|
-| 1 | Version consistency | `pyproject.toml`, `CHANGELOG.md [VERSION]`, `RELEASE_NOTES_vVERSION.md` present, tag doesn't already exist |
+| 1 | Version consistency | `pyproject.toml` = VERSION, `CHANGELOG.md [VERSION]` present (required), tag doesn't already exist. `RELEASE_NOTES_vVERSION.md` is **optional** (warn only) — write one only for a major/breaking release |
 | 2 | Working tree state | Clean tree, on master branch |
 | 3 | Full test suite | `pytest -q` (includes slow tests) passes |
 | 4 | Ruff lint | `ruff check src/ bench/` clean |

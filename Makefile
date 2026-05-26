@@ -148,58 +148,15 @@ endif
 	@echo "$(GREEN)✓ Updated pyproject.toml$(RESET)"
 	@git diff pyproject.toml
 
-pre-release-check:  ## Pre-release checks (tests, lint, version, docs)
+pre-release-check:  ## Pre-release checks — single source of truth: scripts/pre_release_check.sh
 ifndef VERSION
 	@echo "$(RED)Error: VERSION not specified$(RESET)"
 	@echo "Usage: make release VERSION=0.20.0"
 	@exit 1
 endif
-	@echo "$(CYAN)=== Pre-release checks for v$(VERSION) ===$(RESET)"
-	@echo ""
-	@echo "$(CYAN)[1/7] Checking Git status...$(RESET)"
-	@if [ -n "$$(git status --porcelain)" ]; then \
-		echo "$(RED)Error: Working directory not clean$(RESET)"; \
-		git status --short; \
-		exit 1; \
-	fi
-	@echo "$(GREEN)✓ Working directory clean$(RESET)"
-	@echo ""
-	@echo "$(CYAN)[2/7] Checking branch...$(RESET)"
-	@BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
-	if [ "$$BRANCH" != "master" ]; then \
-		echo "$(RED)Error: Not on master branch (current: $$BRANCH)$(RESET)"; \
-		exit 1; \
-	fi
-	@echo "$(GREEN)✓ On master branch$(RESET)"
-	@echo ""
-	@echo "$(CYAN)[3/7] Running tests...$(RESET)"
-	@pytest -v --tb=short || (echo "$(RED)✗ Tests failed$(RESET)"; exit 1)
-	@echo "$(GREEN)✓ All tests passed$(RESET)"
-	@echo ""
-	@echo "$(CYAN)[4/7] Running linter...$(RESET)"
-	@ruff check src/ tests/ || (echo "$(RED)✗ Lint errors found$(RESET)"; exit 1)
-	@echo "$(GREEN)✓ No lint errors$(RESET)"
-	@echo ""
-	@echo "$(CYAN)[5/7] Checking CHANGELOG entry...$(RESET)"
-	@if ! grep -q "^## \[$(VERSION)\]" CHANGELOG.md; then \
-		echo "$(RED)Error: no '## [$(VERSION)]' section in CHANGELOG.md$(RESET)"; \
-		echo "Move [Unreleased] → [$(VERSION)] before releasing."; \
-		exit 1; \
-	fi
-	@echo "$(GREEN)✓ CHANGELOG has [$(VERSION)] section$(RESET)"
-	@echo ""
-	@echo "$(CYAN)[6/7] Checking version consistency...$(RESET)"
-	@python3 scripts/check_version_consistency.py || \
-		(echo "$(RED)✗ Version inconsistency found$(RESET)"; \
-		echo "Run: python3 scripts/check_version_consistency.py --fix"; exit 1)
-	@echo "$(GREEN)✓ Version consistency OK$(RESET)"
-	@echo ""
-	@echo "$(CYAN)[7/7] Checking documentation consistency...$(RESET)"
-	@python3 scripts/check_docs_release.py || true
-	@echo ""
-	@echo "$(GREEN)=== All pre-release checks passed ===$(RESET)"
+	@bash scripts/pre_release_check.sh $(VERSION)
 
-release: pre-release-check bump-version  ## Full release (usage: make release VERSION=X.Y.Z)
+release: bump-version pre-release-check  ## Full release (usage: make release VERSION=X.Y.Z)
 	@echo ""
 	@echo "$(CYAN)=== Creating release v$(VERSION) ===$(RESET)"
 	@echo ""
