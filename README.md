@@ -238,6 +238,7 @@ codeindex affected --since HEAD~5
 | `codeindex tech-debt ./src` | Code quality analysis (debt + test smells) | Enhanced in v0.22.0 |
 | `codeindex debt-scan ./src` | Alias for tech-debt | Backward compatibility |
 | `codeindex hooks install` | Git hooks for auto-update | [Git Hooks Guide](docs/guides/git-hooks-integration.md) |
+| `codeindex doctor` | Health/sync check (CLI, parsers, CLAUDE.md, plugin) | Read-only diagnostic |
 | `codeindex config explain <param>` | Parameter help | [Configuration Guide](docs/guides/configuration.md) |
 
 ---

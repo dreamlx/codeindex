@@ -53,6 +53,25 @@ A SessionStart hook checks that the `codeindex` CLI is on `PATH` and prints an i
 
 `init` now writes only project-scoped scaffolding: `.codeindex.yaml`, a marker-based codeindex section in the project's `CLAUDE.md`, and a `.gitignore` entry for `README_AI.md`. It no longer creates `CODEINDEX.md` or installs git hooks (those are opt-in). It has never touched `~/.claude/` — a regression test now enforces that.
 
+### 4. `codeindex doctor`
+
+With the split into two artifacts (CLI + plugin), "am I up to date?" now spans more than one version. `codeindex doctor` is the single read-only command that reports it all:
+
+```
+$ codeindex doctor
+CLI
+  ✓ ai-codeindex 0.25.0
+Project
+  ✓ .codeindex.yaml present
+  ✓ parsers installed: python, typescript
+  ⚠ CLAUDE.md codeindex section is v0.24.0 (CLI is v0.25.0)
+      → codeindex claude-md update
+Claude Code plugin
+  ✓ codeindex-claude 0.1.3 installed
+```
+
+It also doubles as the answer to "did my upgrade actually take?" (handy behind a lagging mirror — it prints the real installed version). Editor-agnostic: the plugin section is skipped for non-Claude environments. Exits non-zero on an error-level finding, so CI can gate on it.
+
 ---
 
 ## 📦 Upgrade Guide
