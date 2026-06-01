@@ -17,9 +17,16 @@ def _make_result(
     module_docstring="",
     error=None,
     namespace=None,
+    parent_dir: Path | None = None,
 ) -> ParseResult:
+    # Production scanner always emits paths under the scanned dir_path. Tests
+    # that pass a real tmp_path as dir_path should also pass parent_dir=tmp_path
+    # so the path matches (otherwise filters keyed on `path.parent == dir_path`
+    # — e.g. NavigationGenerator's direct-children filter, GH #76 — silently
+    # exclude every fixture).
+    base = parent_dir if parent_dir is not None else Path("/test")
     return ParseResult(
-        path=Path(f"/test/{filename}"),
+        path=base / filename,
         symbols=symbols or [],
         imports=imports or [],
         module_docstring=module_docstring,
@@ -104,7 +111,7 @@ class TestNavigationGenerator:
             Symbol(name="UserController", kind="class", signature="class UserController"),
             Symbol(name="UserController::index", kind="method", signature="public function index()"),
         ]
-        results = [_make_result("UserController.php", symbols)]
+        results = [_make_result("UserController.php", symbols, parent_dir=tmp_path)]
 
         content = gen.generate(tmp_path, results, [])
         assert "navigation" in content
@@ -168,6 +175,46 @@ class TestNavigationGenerator:
         content = gen.generate(tmp_path, results, [child])
         assert "- **Files**: 2" in content
         assert "- **Symbols**: 2" in content
+
+    def test_files_section_lists_only_direct_children(self, tmp_path):
+        # Regression for GH #76. Navigation-level scans are recursive (GH #45),
+        # so parse_results includes descendants. The ## Files section must list
+        # ONLY this dir's direct children — subdir files belong in their own
+        # README_AI.md. Without this filter, agent reading dir/README_AI.md sees
+        # `deep.tsx` listed flat and tries to Read `dir/deep.tsx` → 404.
+        config = IndexingConfig()
+        gen = NavigationGenerator(config)
+
+        sub = tmp_path / "sub"
+        sub.mkdir()
+        (sub / "README_AI.md").write_text("# sub\n")
+
+        direct = ParseResult(
+            path=tmp_path / "main.tsx",
+            symbols=[Symbol(name="main", kind="function", signature="function main()")],
+            imports=[],
+            module_docstring="",
+            error=None,
+            file_lines=10,
+            namespace=None,
+        )
+        nested = ParseResult(
+            path=sub / "deep.tsx",
+            symbols=[Symbol(name="Deep", kind="class", signature="class Deep")],
+            imports=[],
+            module_docstring="",
+            error=None,
+            file_lines=10,
+            namespace=None,
+        )
+
+        content = gen.generate(tmp_path, [direct, nested], [sub])
+
+        # Direct child appears in ## Files
+        assert "main.tsx" in content
+        # Subdir file must NOT appear in ## Files (it lives in sub/, has its
+        # own README; surfacing it here loses the path and misleads the agent).
+        assert "deep.tsx" not in content
 
 
 class TestOverviewStatsAggregateFromChildren:
