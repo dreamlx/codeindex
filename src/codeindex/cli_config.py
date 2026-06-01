@@ -114,6 +114,7 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
                 )
 
         # Create minimal result
+        from .config import RECOMMENDED_AI_COMMAND
         from .init_wizard import WizardResult
 
         result = WizardResult(
@@ -124,7 +125,14 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
             batch_size=batch_size,
             enable_hooks=False,  # Hooks are opt-in via `codeindex hooks install`
             create_codeindex_md=False,  # Dropped from init (B1/ADR-006); CLAUDE.md is the guide
-            configure_ai=False,  # Skip in non-interactive (AI is opt-in)
+            # AI is opt-in at the CLI flag level (`scan --ai`), but seed the
+            # documented default into ``.codeindex.yaml`` so the user (or an
+            # agent driving the CLI) doesn't get "AI not configured" the first
+            # time they try `scan-all --ai` (GH #75). The recommended value
+            # lives in config.RECOMMENDED_AI_COMMAND alongside the matching
+            # documentation in DEFAULT_CONFIG_TEMPLATE.
+            configure_ai=False,
+            ai_command=RECOMMENDED_AI_COMMAND,
         )
 
         # Generate config
@@ -235,6 +243,45 @@ def list_dirs(root: Path):
     config = Config.load()
 
     dirs = find_all_directories(root, config)
+
+    if not dirs:
+        # GH #74: a silent empty result + exit 0 used to be indistinguishable
+        # from "nothing to index". If the project actually has source files
+        # that don't match ``config.languages``, diagnose the mismatch and
+        # exit non-zero so the user (and tooling) know to act.
+        from .scanner import diagnose_language_mismatch
+
+        diag = diagnose_language_mismatch(root, config)
+        present = diag["extensions_present"]
+        candidates = diag["candidate_languages"]
+
+        if present and candidates:
+            top = ", ".join(
+                f"{ext} ({n})" for ext, n in present.most_common(5)
+            )
+            cand = " / ".join(candidates)
+            raise click.ClickException(
+                "no indexable directories found.\n"
+                f"  Configured languages: {diag['configured_languages']}\n"
+                f"  Detected file types in include roots: {top}\n"
+                f"  Hint: add {cand} to .codeindex.yaml `languages:`\n"
+                "        (run: codeindex config explain languages)"
+            )
+        if present and not candidates:
+            top = ", ".join(
+                f"{ext} ({n})" for ext, n in present.most_common(5)
+            )
+            raise click.ClickException(
+                "no indexable directories found.\n"
+                f"  Configured languages: {diag['configured_languages']}\n"
+                "  Files are present but no codeindex-supported language "
+                "matches their extensions.\n"
+                f"  Top extensions: {top}"
+            )
+        # Truly empty include roots — keep the historical silent + exit 0
+        # so scripts that pipe ``codeindex list-dirs`` to check "anything
+        # to index?" continue to work.
+        return
 
     for d in dirs:
         rel = d.relative_to(root)

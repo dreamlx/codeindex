@@ -11,7 +11,7 @@ It is a **navigation index** — a per-directory summary written so you can orie
      for precise mechanism; do not treat this as final word. -->
 ```
 
-It is **not** authoritative technical documentation. Treat it as a map, then read the actual `.py` / `.php` / `.java` / etc. for precise behavior.
+It is **not** authoritative technical documentation. Treat it as a map, then read the source files for precise behavior.
 
 ### Code Navigation Priority
 
@@ -38,10 +38,7 @@ codeindex --help                         # Full command reference
 You will see lines like `⚠ <dir>: AI error — <reason>`. Likely transient (rate limit / network).
 
 - Re-run `codeindex scan-all --ai` — successful dirs are restored from cache (no AI cost), only failed ones retry
-- If failures persist, edit `ai_command` in `.codeindex.yaml` to switch backend:
-  - `claude -p "{prompt}" --allowedTools "Read" --model haiku` — cheaper
-  - `opencode run --model <provider>/<model> "{prompt}" | tail -1` — different agent
-  - `gemini -p "{prompt}"` — different vendor
+- If failures persist, swap the model or backend by editing `ai_command` in `.codeindex.yaml` (see `codeindex --help` for the recipe)
 
 ### What the markers mean
 

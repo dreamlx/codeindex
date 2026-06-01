@@ -13,10 +13,18 @@ def _create_mock_parse_result(
     symbols: list[Symbol] = None,
     imports: list[Import] = None,
     file_lines: int = 100,
+    parent_dir: Path | None = None,
 ) -> ParseResult:
-    """Create a mock ParseResult for testing."""
+    """Create a mock ParseResult for testing.
+
+    Production scanner emits paths under the scanned dir_path; tests that pass
+    a real tmpdir as dir_path should also pass ``parent_dir=dir_path`` so
+    path-parent filters (e.g. NavigationGenerator's direct-children filter,
+    GH #76) see the fixture as a direct child.
+    """
+    base = parent_dir if parent_dir is not None else Path("/test")
     return ParseResult(
-        path=Path(f"/test/{filename}"),
+        path=base / filename,
         symbols=symbols or [],
         imports=imports or [],
         module_docstring="",
@@ -77,10 +85,10 @@ def test_smart_writer_navigation_level():
             Symbol(name="UserController::index", kind="method", signature="public function index()"),
         ]
         parse_results = [
-            _create_mock_parse_result("UserController.php", symbols),
+            _create_mock_parse_result("UserController.php", symbols, parent_dir=dir_path),
             _create_mock_parse_result("OrderService.php", [
                 Symbol(name="OrderService", kind="class", signature="class OrderService"),
-            ]),
+            ], parent_dir=dir_path),
         ]
 
         result = writer.write_readme(
