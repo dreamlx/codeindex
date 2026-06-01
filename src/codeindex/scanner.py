@@ -1,6 +1,7 @@
 """Directory scanner for codeindex."""
 
 import fnmatch
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -266,3 +267,75 @@ def find_all_directories(root: Path, config: Config) -> list[Path]:
     # Otherwise, walk the entire directory tree from root
     walk_directory(root)
     return dirs_to_index
+
+
+# Walk-skip set shared by the diagnostic and the scanner — common noise dirs
+# we should never count when classifying a project's file types.
+_DIAGNOSTIC_SKIP_DIRS = {
+    "node_modules",
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    ".tox",
+    ".eggs",
+    "dist",
+    "build",
+}
+
+
+def diagnose_language_mismatch(root: Path, config: Config) -> dict:
+    """When ``find_all_directories`` returns empty, figure out why.
+
+    Walks the include roots, counts file extensions actually present, and
+    compares them against ``config.languages``'s expected extensions and the
+    canonical ``LANGUAGE_EXTENSIONS`` map (which covers every language the
+    scanner knows). Used by ``list-dirs`` to turn silent empty results into
+    actionable error messages (GH #74).
+
+    Returns:
+        Dict with keys:
+            - ``extensions_present``: Counter[str] — extension → file count
+              across the include roots, top-skipped.
+            - ``configured_languages``: list[str] — ``config.languages``.
+            - ``configured_extensions``: set[str] — extensions the current
+              ``languages`` setting accepts.
+            - ``candidate_languages``: list[str] — sorted languages NOT in
+              ``config.languages`` whose extensions appear in the project.
+              These are what the user likely wants to add.
+    """
+    extension_counts: Counter[str] = Counter()
+
+    include_roots = (
+        [root / p for p in config.include] if config.include else [root]
+    )
+    for include_root in include_roots:
+        if not include_root.exists() or not include_root.is_dir():
+            continue
+        for path in include_root.rglob("*"):
+            # Skip files under noisy dirs (node_modules etc.) so the
+            # diagnostic doesn't suggest "you have js" when it's all
+            # vendored.
+            if any(part in _DIAGNOSTIC_SKIP_DIRS for part in path.parts):
+                continue
+            if path.is_file():
+                ext = path.suffix.lower()
+                if ext:
+                    extension_counts[ext] += 1
+
+    configured_exts = get_language_extensions(config.languages)
+
+    # Which languages NOT in config would cover the seen extensions?
+    candidates: list[str] = []
+    for lang, exts in LANGUAGE_EXTENSIONS.items():
+        if lang in config.languages:
+            continue
+        if any(ext in extension_counts for ext in exts):
+            candidates.append(lang)
+
+    return {
+        "extensions_present": extension_counts,
+        "configured_languages": list(config.languages),
+        "configured_extensions": configured_exts,
+        "candidate_languages": sorted(candidates),
+    }
