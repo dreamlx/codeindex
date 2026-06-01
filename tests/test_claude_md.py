@@ -72,6 +72,45 @@ class TestBuildSection:
         section = build_section("0.23.0")
         assert "codeindex claude-md update" in section
 
+    def test_build_section_does_not_hardcode_language_extensions(self):
+        """Regression for GH #77.
+
+        The template used to say 'read the actual .py / .php / .java / etc.'
+        as a generic instruction — fine for Python/PHP/Java projects, but
+        on a pure TS/Swift/Go project it tells the agent to read files
+        that don't exist. Replace with language-neutral wording.
+        """
+        section = build_section("0.23.0")
+        # The original template embedded examples as inline markdown code:
+        # ``read the actual `.py` / `.php` / `.java` / etc.``
+        # Match the backtick-wrapped form so we catch the literal example
+        # but don't false-positive on a stray `.py` somewhere else.
+        for hardcoded in ("`.py`", "`.php`", "`.java`"):
+            assert hardcoded not in section, (
+                f"Template hardcodes {hardcoded} as a language example "
+                f"(GH #77). The injected section is project-locale-blind; "
+                f"hardcoded examples must be language-neutral."
+            )
+
+    def test_build_section_does_not_advertise_alternative_backends(self):
+        """Regression for GH #77.
+
+        The template used to list `opencode run` and `gemini -p` as
+        alternative ai_command backends in the failure-troubleshooting
+        block. For a user/project that picked a specific backend (claude),
+        these are noise that dilutes the section's signal density and
+        makes the injection feel like it doesn't understand the project.
+        Switching backends is now linked-to rather than inlined.
+        """
+        section = build_section("0.23.0")
+        for backend in ("opencode run", "gemini -p"):
+            assert backend not in section, (
+                f"Template hardcodes alternative backend {backend!r} "
+                f"in the injected CLAUDE.md section (GH #77). "
+                f"Backend swap belongs in `codeindex --help`, not in "
+                f"every project's CLAUDE.md."
+            )
+
 
 class TestInject:
     """Tests for CLAUDE.md injection."""
