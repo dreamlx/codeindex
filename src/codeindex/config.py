@@ -11,6 +11,13 @@ from codeindex.adaptive_config import DEFAULT_ADAPTIVE_CONFIG, AdaptiveSymbolsCo
 DEFAULT_CONFIG_NAME = ".codeindex.yaml"
 DEFAULT_OUTPUT_FILE = "README_AI.md"
 DEFAULT_AI_COMMAND = ""  # Empty by default; AI is opt-in (v0.16.0+)
+# Recommended seed for `codeindex init --yes` — fast/cheap claude-haiku setup
+# that gets `scan-all --ai` working out of the box. Swap the model or backend
+# (opencode / gemini / sonnet) by editing the resulting .codeindex.yaml.
+# Single source of truth: ``DEFAULT_CONFIG_TEMPLATE`` (below) and the
+# ``codeindex init --yes`` seeder reference this constant so the documented
+# default and the actually-written value can never drift (GH #75).
+RECOMMENDED_AI_COMMAND = 'claude -p "{prompt}" --model haiku --allowedTools "Read"'
 DEFAULT_INCLUDE = ["src/", "lib/", "tests/", "examples/"]
 DEFAULT_EXCLUDE = [
     "**/__pycache__/**",

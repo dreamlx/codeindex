@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`codeindex init --yes` now seeds the recommended `ai_command`** (GH #75): the generated `.codeindex.yaml` includes `ai_command: 'claude -p "{prompt}" --model haiku --allowedTools "Read"'` so the first `codeindex scan-all --ai` works without "AI not configured" — the path the `codeindex:index` skill recommends by default. The documented default in `DEFAULT_CONFIG_TEMPLATE` and the actually-written value now share a single source of truth (`config.RECOMMENDED_AI_COMMAND`). Contract change vs pre-0.26: AI used to be opt-in at both layers (yaml absent AND `--ai` flag required); now opt-in lives only at the CLI flag — `--ai` is still required to spend tokens, but the yaml no longer blocks first-try success. The pre-existing regression test `test_generated_config_no_ai_command` was renamed to `test_generated_config_seeds_recommended_ai_command` and inverted to lock the new contract.
+
 ### Fixed
 
 - **`codeindex list-dirs` no longer silently returns empty when configured `languages` doesn't match present files** (GH #74): previously, `list-dirs` printed nothing and exited 0 whenever the language filter excluded everything — indistinguishable from "nothing to index" and the single worst UX class (agents loop through `--help` / `docs` / `doctor` / `pipx list` debugging; humans give up). New `scanner.diagnose_language_mismatch` helper walks the include roots, counts actual file extensions, and identifies which codeindex-supported languages would cover them. When `list-dirs` returns empty AND files-with-known-extensions are present, it now raises a `ClickException` to stderr with the configured `languages`, the top file types seen, and the specific languages to add (e.g. "add `typescript / javascript` to `.codeindex.yaml` `languages:`"). Truly empty include roots stay silent + exit 0 — preserving scripts that pipe `list-dirs` as a "anything to index?" probe.

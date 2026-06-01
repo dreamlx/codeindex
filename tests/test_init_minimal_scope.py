@@ -37,6 +37,44 @@ class TestInitMinimalScope:
             # Never touches user home ~/.claude:
             assert not (fake_home / ".claude").exists(), "init must not create or write ~/.claude"
 
+    def test_yes_seeds_ai_command_default(self, tmp_path, monkeypatch):
+        """Regression for GH #75.
+
+        ``codeindex init --yes`` used to write a `.codeindex.yaml` with no
+        ``ai_command`` field, so a first ``scan-all --ai`` (the path
+        ``codeindex:index`` skill recommends) immediately failed with
+        "AI not configured". The recommended setup was documented in
+        ``DEFAULT_CONFIG_TEMPLATE`` but never reached the user's yaml.
+
+        Now ``--yes`` seeds ``config.RECOMMENDED_AI_COMMAND`` — the same
+        string the template advertises — so first-try ``scan --ai`` works
+        out of the box. Users can edit / comment the line if they don't
+        want claude haiku.
+        """
+        from codeindex.config import RECOMMENDED_AI_COMMAND
+
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        monkeypatch.setenv("HOME", str(fake_home))
+
+        runner = CliRunner()
+        with runner.isolated_filesystem(temp_dir=tmp_path) as proj:
+            proj = Path(proj)
+            (proj / "mod.py").write_text("x = 1\n")
+
+            result = runner.invoke(init, ["--yes"])
+            assert result.exit_code == 0, result.output
+
+            yaml = (proj / ".codeindex.yaml").read_text()
+            assert "ai_command:" in yaml, (
+                f"init --yes must seed ai_command so `scan --ai` works "
+                f"first-try (GH #75). yaml:\n{yaml}"
+            )
+            assert RECOMMENDED_AI_COMMAND in yaml, (
+                f"Seeded ai_command must match config.RECOMMENDED_AI_COMMAND "
+                f"(single source of truth). yaml:\n{yaml}"
+            )
+
     def test_yes_does_not_install_git_hooks(self, tmp_path, monkeypatch):
         fake_home = tmp_path / "home"
         fake_home.mkdir()

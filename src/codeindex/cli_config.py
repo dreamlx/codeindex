@@ -114,6 +114,7 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
                 )
 
         # Create minimal result
+        from .config import RECOMMENDED_AI_COMMAND
         from .init_wizard import WizardResult
 
         result = WizardResult(
@@ -124,7 +125,14 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
             batch_size=batch_size,
             enable_hooks=False,  # Hooks are opt-in via `codeindex hooks install`
             create_codeindex_md=False,  # Dropped from init (B1/ADR-006); CLAUDE.md is the guide
-            configure_ai=False,  # Skip in non-interactive (AI is opt-in)
+            # AI is opt-in at the CLI flag level (`scan --ai`), but seed the
+            # documented default into ``.codeindex.yaml`` so the user (or an
+            # agent driving the CLI) doesn't get "AI not configured" the first
+            # time they try `scan-all --ai` (GH #75). The recommended value
+            # lives in config.RECOMMENDED_AI_COMMAND alongside the matching
+            # documentation in DEFAULT_CONFIG_TEMPLATE.
+            configure_ai=False,
+            ai_command=RECOMMENDED_AI_COMMAND,
         )
 
         # Generate config
