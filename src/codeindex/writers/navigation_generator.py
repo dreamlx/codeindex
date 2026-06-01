@@ -59,9 +59,15 @@ class NavigationGenerator:
                 lines.append(f"- **{child.name}/** - {description}")
             lines.extend(["", ""])
 
-        # Grouped files
-        if parse_results:
-            grouped = group_files(parse_results, self.config)
+        # Grouped files — only this dir's direct children. Nav-level scans
+        # are recursive (see the GH #45 stats note above), so parse_results
+        # includes descendants. Surfacing them flat here loses path info and
+        # misleads agents that try to Read `<this dir>/<flat-name>` → 404
+        # (GH #76). Each subdir carries its own README_AI.md listing its own
+        # files.
+        direct_results = [r for r in parse_results if r.path.parent == dir_path]
+        if direct_results:
+            grouped = group_files(direct_results, self.config)
             lines.extend([
                 "## Files",
                 "",
