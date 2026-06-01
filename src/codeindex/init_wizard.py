@@ -17,9 +17,14 @@ import os
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 
 import click
+
+# Single source of truth for "what languages does the scanner know?" — see
+# the long-form note next to the (now removed) local LANGUAGE_EXTENSIONS
+# stub below. Imported at module load so detect_languages() picks it up.
+from .scanner import LANGUAGE_EXTENSIONS  # noqa: E402 (logical import-with-rationale, kept with other imports)
 
 # ============================================================================
 # CLAUDE.md Injection
@@ -55,21 +60,17 @@ class WizardResult:
 # Language Detection
 # ============================================================================
 
-# Language detection patterns
-# Note: Only Python, PHP, and Java have full parser support
-# Other languages are detected but will need parser implementation
-LANGUAGE_EXTENSIONS: Dict[str, Set[str]] = {
-    # Fully supported (with parser)
-    "python": {".py", ".pyw", ".pyx"},
-    "php": {".php"},
-    "java": {".java"},
-    # Planned support (detection only, no parser yet)
-    # "javascript": {".js", ".jsx"},
-    # "typescript": {".ts", ".tsx"},
-    # "go": {".go"},
-    # "rust": {".rs"},
-    # "ruby": {".rb"},
-}
+# Language detection map: see the import at the top of the file.
+#
+# Why imported from scanner instead of declared here: keeping a parallel
+# local copy caused GH #73. Scanner gained TypeScript / JavaScript parsers,
+# but init_wizard's local dict still listed only Python/PHP/Java behind a
+# "no parser yet" comment, so ``detect_languages`` returned ``[]`` on
+# TS-only repos. init then omitted the ``languages:`` block; at scan time
+# the runtime defaulted to ``DEFAULT_LANGUAGES=["python"]`` and matched
+# nothing. The structural regression test
+# ``test_init_language_set_covers_scanner_supported_set`` locks the
+# invariant: any language added to scanner.py stays detectable here.
 
 # Framework detection patterns
 FRAMEWORK_PATTERNS: Dict[str, Dict[str, str]] = {
