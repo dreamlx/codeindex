@@ -316,8 +316,11 @@ exit 0
 # Post-commit hook for codeindex
 # Thin wrapper — all logic in Python (auto-updated via pip)
 
-# Avoid infinite loop: skip if last commit only contains README_AI.md
-LAST_COMMIT_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD)
+# Avoid infinite loop: skip if last commit only contains README_AI.md.
+# -m is required so merge commits enumerate per-parent changes — without it
+# `git diff-tree -r HEAD` returns empty on every merge commit and the hook
+# silently skips every PR merge in a GitFlow project (GH #84).
+LAST_COMMIT_FILES=$(git diff-tree --no-commit-id --name-only -r -m HEAD)
 NON_DOC_FILES=$(echo "$LAST_COMMIT_FILES" | \\
     grep -v "README_AI.md" | grep -v "PROJECT_INDEX.md" || true)
 if [ -z "$NON_DOC_FILES" ]; then

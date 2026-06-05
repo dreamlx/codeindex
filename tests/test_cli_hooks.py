@@ -223,6 +223,40 @@ class TestHookGeneration:
 
         assert "codeindex-managed hook" in script
 
+    def test_post_commit_loop_guard_handles_merge_commits(self):
+        """Regression for GH #84.
+
+        ``git diff-tree --no-commit-id --name-only -r HEAD`` returns empty
+        on merge commits by default — it needs ``-m`` to enumerate the
+        per-parent changes. Without the flag, the loop guard sees zero
+        files on every merge commit, hits the "all docs" early-exit, and
+        the wrapper never delegates to ``codeindex hooks run post-commit``.
+
+        Net effect on GitFlow projects: ``README_AI.md`` files never
+        auto-update on PR merges (the commits that bring new code to
+        ``main`` / ``develop``). Reported live on fabricOS HEAD ``171702b``.
+        """
+        script = generate_hook_script("post-commit")
+
+        # The broken pattern: -r HEAD without -m. Asserted as a literal
+        # substring so future whitespace/format tweaks don't accidentally
+        # let it back in.
+        assert "diff-tree --no-commit-id --name-only -r HEAD" not in script, (
+            "Post-commit loop guard uses `git diff-tree -r HEAD` without -m. "
+            "On merge commits this returns empty and the hook silently skips "
+            "(GH #84). Use `-m` or `git show --name-only`."
+        )
+
+        # The fix: either -m on diff-tree OR git show --name-only. Both
+        # produce non-empty output on merge commits.
+        has_dash_m = "diff-tree" in script and " -m " in script
+        has_git_show = "git show --name-only" in script
+        assert has_dash_m or has_git_show, (
+            "Post-commit hook must enumerate files on merge commits. "
+            "Expected either `git diff-tree ... -m HEAD` or "
+            "`git show --name-only ... HEAD` in the loop guard (GH #84)."
+        )
+
 
 class TestBackupAndRestore:
     """Test backup and restore functionality."""
