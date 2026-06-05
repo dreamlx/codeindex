@@ -331,3 +331,85 @@ class TestCLIIntegration:
         """Should provide hooks status CLI command."""
         # This will be implemented with Click
         pass
+
+
+class TestPostCommitEnabledWarning:
+    """GH #87 — ``codeindex hooks install post-commit`` must surface the
+    runtime-disabled trap.
+
+    ``codeindex init`` writes ``.codeindex.yaml`` with
+    ``hooks.post_commit.enabled: false`` by default. Without a reminder at
+    install time, users see the install ✓, make commits, and nothing
+    happens because the wrapper checks the flag at runtime. These tests
+    cover the three meaningful states (disabled / enabled / no yaml)."""
+
+    def _yaml(self, enabled: bool) -> str:
+        return (
+            "version: 1\n"
+            "hooks:\n"
+            "  post_commit:\n"
+            f"    enabled: {str(enabled).lower()}\n"
+        )
+
+    def test_install_warns_when_yaml_disables_post_commit(self, tmp_path):
+        from click.testing import CliRunner
+
+        from codeindex.cli import main
+
+        (tmp_path / ".git" / "hooks").mkdir(parents=True)
+        (tmp_path / ".codeindex.yaml").write_text(self._yaml(enabled=False))
+
+        runner = CliRunner()
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(tmp_path)
+            result = runner.invoke(main, ["hooks", "install", "post-commit"])
+        finally:
+            os.chdir(original_cwd)
+
+        assert result.exit_code == 0, result.output
+        assert "post_commit.enabled is false" in result.output, result.output
+        # The user-visible fix (the yaml snippet) must be present.
+        assert "enabled: true" in result.output
+
+    def test_install_silent_when_yaml_enables_post_commit(self, tmp_path):
+        from click.testing import CliRunner
+
+        from codeindex.cli import main
+
+        (tmp_path / ".git" / "hooks").mkdir(parents=True)
+        (tmp_path / ".codeindex.yaml").write_text(self._yaml(enabled=True))
+
+        runner = CliRunner()
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(tmp_path)
+            result = runner.invoke(main, ["hooks", "install", "post-commit"])
+        finally:
+            os.chdir(original_cwd)
+
+        assert result.exit_code == 0, result.output
+        # No reminder when the user has explicitly enabled it.
+        assert "post_commit.enabled is false" not in result.output
+
+    def test_install_silent_when_no_yaml(self, tmp_path):
+        """Without ``.codeindex.yaml`` we don't know the project's intent;
+        the install itself succeeds, advisory stays silent — matches the
+        rule "don't mask the real result of a non-yaml-driven command"."""
+        from click.testing import CliRunner
+
+        from codeindex.cli import main
+
+        (tmp_path / ".git" / "hooks").mkdir(parents=True)
+        # No .codeindex.yaml.
+
+        runner = CliRunner()
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(tmp_path)
+            result = runner.invoke(main, ["hooks", "install", "post-commit"])
+        finally:
+            os.chdir(original_cwd)
+
+        assert result.exit_code == 0, result.output
+        assert "post_commit.enabled is false" not in result.output
