@@ -18,6 +18,46 @@ _MAX_SYMBOLS_PER_FILE = 5
 # Maximum total files to include in the prompt
 _MAX_FILES = 15
 
+# Refusal prefixes used to detect AI responses that decline to summarise the
+# directory (typically because the prompt context was thin enough that the
+# model can't say anything specific). When the model returns "I don't see any
+# file names..." we must NOT stamp `enrichment: ok` — that poisons the cache
+# permanently (GH #85). Instead the response is treated as a failure with
+# reason "ai-refused" so the next `scan-all --ai` retries automatically.
+#
+# Matched against the lowercased, stripped response. Keep prefixes short so
+# the check is robust to upstream truncation (the cli_scan path truncates
+# enrichment output to ~80 chars; refusal phrasing is always in the first 30).
+_REFUSAL_PREFIXES = (
+    "i don't",
+    "i do not",
+    "i cannot",
+    "i can't",
+    "i'm unable",
+    "i am unable",
+    "i need more",
+    "no file",
+    "insufficient context",
+    "without more",
+    "sorry, i",
+    "as an ai",
+)
+
+
+def looks_like_refusal(text: str) -> bool:
+    """Return True if the cleaned AI response looks like a refusal / inability.
+
+    Used by ``scan-all --ai`` Phase 2 to distinguish a usable one-line
+    description from boilerplate refusal text. The refusal text is never
+    project-information and stamping it with ``<!-- enrichment: ok -->``
+    pins it in the cache; the next run sees the marker and skips
+    re-enrichment, so the garbage description sticks indefinitely (GH #85).
+    """
+    t = (text or "").strip().lower()
+    if not t:
+        return False
+    return any(t.startswith(p) for p in _REFUSAL_PREFIXES)
+
 
 def extract_symbol_summary(parse_results: list[ParseResult]) -> str:
     """Extract a compact summary of file names + symbol names for AI prompt.

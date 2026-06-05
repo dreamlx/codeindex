@@ -668,6 +668,7 @@ def _enrich_directories_with_ai(
         build_safe_subdir_context,
         extract_summary_from_readme,
         inject_blockquote,
+        looks_like_refusal,
         mark_enrichment_status,
         should_enrich,
     )
@@ -757,6 +758,20 @@ def _enrich_directories_with_ai(
             if readme_path.exists():
                 mark_enrichment_status(readme_path, "failed", reason="empty AI response")
             failed_dirs.append(dir_path.name)
+            continue
+
+        # AI returned text, but is it an actual description or a refusal?
+        # Stamping refusal text with `enrichment: ok` poisons the cache forever
+        # because subsequent runs see the marker and skip re-enrichment (GH #85).
+        if looks_like_refusal(description):
+            if readme_path.exists():
+                mark_enrichment_status(readme_path, "failed", reason="ai-refused")
+            failed_dirs.append(dir_path.name)
+            if not quiet:
+                console.print(
+                    f"[yellow]⚠[/yellow] {dir_path.name}: AI declined "
+                    f"(refusal pattern) — will retry next `scan-all --ai`"
+                )
             continue
 
         # Inject into README_AI.md
