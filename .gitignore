@@ -36,3 +36,4 @@ htmlcov/
 
 # Validation reports (generated)
 scripts/validation/reports/*.md
+*.code-workspace

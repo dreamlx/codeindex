@@ -223,6 +223,40 @@ class TestHookGeneration:
 
         assert "codeindex-managed hook" in script
 
+    def test_post_commit_loop_guard_handles_merge_commits(self):
+        """Regression for GH #84.
+
+        ``git diff-tree --no-commit-id --name-only -r HEAD`` returns empty
+        on merge commits by default — it needs ``-m`` to enumerate the
+        per-parent changes. Without the flag, the loop guard sees zero
+        files on every merge commit, hits the "all docs" early-exit, and
+        the wrapper never delegates to ``codeindex hooks run post-commit``.
+
+        Net effect on GitFlow projects: ``README_AI.md`` files never
+        auto-update on PR merges (the commits that bring new code to
+        ``main`` / ``develop``). Reported live on fabricOS HEAD ``171702b``.
+        """
+        script = generate_hook_script("post-commit")
+
+        # The broken pattern: -r HEAD without -m. Asserted as a literal
+        # substring so future whitespace/format tweaks don't accidentally
+        # let it back in.
+        assert "diff-tree --no-commit-id --name-only -r HEAD" not in script, (
+            "Post-commit loop guard uses `git diff-tree -r HEAD` without -m. "
+            "On merge commits this returns empty and the hook silently skips "
+            "(GH #84). Use `-m` or `git show --name-only`."
+        )
+
+        # The fix: either -m on diff-tree OR git show --name-only. Both
+        # produce non-empty output on merge commits.
+        has_dash_m = "diff-tree" in script and " -m " in script
+        has_git_show = "git show --name-only" in script
+        assert has_dash_m or has_git_show, (
+            "Post-commit hook must enumerate files on merge commits. "
+            "Expected either `git diff-tree ... -m HEAD` or "
+            "`git show --name-only ... HEAD` in the loop guard (GH #84)."
+        )
+
 
 class TestBackupAndRestore:
     """Test backup and restore functionality."""
@@ -297,3 +331,85 @@ class TestCLIIntegration:
         """Should provide hooks status CLI command."""
         # This will be implemented with Click
         pass
+
+
+class TestPostCommitEnabledWarning:
+    """GH #87 — ``codeindex hooks install post-commit`` must surface the
+    runtime-disabled trap.
+
+    ``codeindex init`` writes ``.codeindex.yaml`` with
+    ``hooks.post_commit.enabled: false`` by default. Without a reminder at
+    install time, users see the install ✓, make commits, and nothing
+    happens because the wrapper checks the flag at runtime. These tests
+    cover the three meaningful states (disabled / enabled / no yaml)."""
+
+    def _yaml(self, enabled: bool) -> str:
+        return (
+            "version: 1\n"
+            "hooks:\n"
+            "  post_commit:\n"
+            f"    enabled: {str(enabled).lower()}\n"
+        )
+
+    def test_install_warns_when_yaml_disables_post_commit(self, tmp_path):
+        from click.testing import CliRunner
+
+        from codeindex.cli import main
+
+        (tmp_path / ".git" / "hooks").mkdir(parents=True)
+        (tmp_path / ".codeindex.yaml").write_text(self._yaml(enabled=False))
+
+        runner = CliRunner()
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(tmp_path)
+            result = runner.invoke(main, ["hooks", "install", "post-commit"])
+        finally:
+            os.chdir(original_cwd)
+
+        assert result.exit_code == 0, result.output
+        assert "post_commit.enabled is false" in result.output, result.output
+        # The user-visible fix (the yaml snippet) must be present.
+        assert "enabled: true" in result.output
+
+    def test_install_silent_when_yaml_enables_post_commit(self, tmp_path):
+        from click.testing import CliRunner
+
+        from codeindex.cli import main
+
+        (tmp_path / ".git" / "hooks").mkdir(parents=True)
+        (tmp_path / ".codeindex.yaml").write_text(self._yaml(enabled=True))
+
+        runner = CliRunner()
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(tmp_path)
+            result = runner.invoke(main, ["hooks", "install", "post-commit"])
+        finally:
+            os.chdir(original_cwd)
+
+        assert result.exit_code == 0, result.output
+        # No reminder when the user has explicitly enabled it.
+        assert "post_commit.enabled is false" not in result.output
+
+    def test_install_silent_when_no_yaml(self, tmp_path):
+        """Without ``.codeindex.yaml`` we don't know the project's intent;
+        the install itself succeeds, advisory stays silent — matches the
+        rule "don't mask the real result of a non-yaml-driven command"."""
+        from click.testing import CliRunner
+
+        from codeindex.cli import main
+
+        (tmp_path / ".git" / "hooks").mkdir(parents=True)
+        # No .codeindex.yaml.
+
+        runner = CliRunner()
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(tmp_path)
+            result = runner.invoke(main, ["hooks", "install", "post-commit"])
+        finally:
+            os.chdir(original_cwd)
+
+        assert result.exit_code == 0, result.output
+        assert "post_commit.enabled is false" not in result.output

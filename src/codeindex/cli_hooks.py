@@ -316,8 +316,11 @@ exit 0
 # Post-commit hook for codeindex
 # Thin wrapper — all logic in Python (auto-updated via pip)
 
-# Avoid infinite loop: skip if last commit only contains README_AI.md
-LAST_COMMIT_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD)
+# Avoid infinite loop: skip if last commit only contains README_AI.md.
+# -m is required so merge commits enumerate per-parent changes — without it
+# `git diff-tree -r HEAD` returns empty on every merge commit and the hook
+# silently skips every PR merge in a GitFlow project (GH #84).
+LAST_COMMIT_FILES=$(git diff-tree --no-commit-id --name-only -r -m HEAD)
 NON_DOC_FILES=$(echo "$LAST_COMMIT_FILES" | \\
     grep -v "README_AI.md" | grep -v "PROJECT_INDEX.md" || true)
 if [ -z "$NON_DOC_FILES" ]; then
@@ -539,6 +542,48 @@ def hooks():
     pass
 
 
+def _maybe_warn_post_commit_disabled(project_dir: Path) -> None:
+    """Print a reminder if ``hooks.post_commit.enabled`` is false in
+    ``.codeindex.yaml``.
+
+    ``codeindex init`` ships the yaml with ``enabled: false`` by default,
+    so the installed ``.git/hooks/post-commit`` wrapper no-ops at runtime
+    even though the install command printed ✓. User commits, READMEs don't
+    update, "it doesn't work" — see GH #87.
+
+    We don't flip the flag automatically (contract change, see #75 for the
+    boundary). The reminder makes the contract visible at install time so
+    the user can decide.
+    """
+    yaml_path = project_dir / ".codeindex.yaml"
+    if not yaml_path.exists():
+        return
+
+    try:
+        import yaml
+
+        with open(yaml_path) as f:
+            data = yaml.safe_load(f) or {}
+    except Exception:
+        # Yaml unreadable or parse error — silent skip; the install itself
+        # succeeded, we don't want this advisory to mask the real result.
+        return
+
+    enabled = data.get("hooks", {}).get("post_commit", {}).get("enabled", False)
+    if enabled:
+        return
+
+    console.print(
+        "[yellow]⚠[/yellow]  [bold]post_commit.enabled is false in "
+        ".codeindex.yaml[/bold] — the installed hook wrapper checks this "
+        "flag at runtime and will no-op until you flip it.\n"
+        "   Edit [cyan].codeindex.yaml[/cyan]:\n"
+        "     hooks:\n"
+        "       post_commit:\n"
+        "         [bold]enabled: true[/bold]\n"
+    )
+
+
 @hooks.command()
 @click.option(
     "--all",
@@ -624,6 +669,13 @@ def install(hook_name: Optional[str], install_all: bool, force: bool):
             console.print(
                 f"[dim]→ Skipped {skipped_count} already installed hook(s)[/dim]\n"
             )
+
+        # GH #87: surface the runtime-disabled trap. If post-commit was just
+        # installed (or was already installed), the wrapper still no-ops when
+        # .codeindex.yaml has post_commit.enabled=false (the init default).
+        # Without this reminder, install prints ✓ but commits trigger nothing.
+        if "post-commit" in hooks_to_install:
+            _maybe_warn_post_commit_disabled(Path.cwd())
 
     except ValueError as e:
         console.print(f"[red]✗[/red] Error: {e}", style="red")

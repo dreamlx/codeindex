@@ -14,6 +14,7 @@ from codeindex.enricher import (
     extract_symbol_summary,
     has_successful_enrichment,
     inject_blockquote,
+    looks_like_refusal,
     mark_enrichment_status,
     should_enrich,
 )
@@ -417,3 +418,75 @@ class TestMarkEnrichmentStatus:
             line for line in content.split("\n") if line.startswith("<!-- enrichment:")
         ][0]
         assert "line2" not in enrichment_line or "\n" not in enrichment_line
+
+
+class TestLooksLikeRefusal:
+    """Tests for the GH #85 refusal detector."""
+
+    def test_classic_refusal_patterns(self):
+        """Phrases observed on fabricOS haiku enrichment failures."""
+        # The exact phrase that prompted the bug report:
+        assert looks_like_refusal(
+            "I don't see any file names or symbol names provided in the directory listing"
+        )
+        assert looks_like_refusal("I cannot provide a description without more context")
+        assert looks_like_refusal("I'm unable to summarise this module")
+        assert looks_like_refusal("I am unable to identify the purpose")
+        assert looks_like_refusal("I need more information to describe this")
+        assert looks_like_refusal("No file names were provided")
+        assert looks_like_refusal("Insufficient context to summarise")
+        assert looks_like_refusal("Sorry, I can't help with that")
+        assert looks_like_refusal("As an AI language model, I can't...")
+
+    def test_case_insensitive_and_whitespace_tolerant(self):
+        assert looks_like_refusal("  I DON'T see any files  ")
+        assert looks_like_refusal("\n\ni cannot help\n")
+        assert looks_like_refusal("I Don't Have Enough Info")
+
+    def test_normal_descriptions_are_not_refusals(self):
+        """Real one-line descriptions must pass through unmolested."""
+        assert not looks_like_refusal("会员等级管理、积分兑换、权益卡券")
+        assert not looks_like_refusal("Identity and authentication layer")
+        assert not looks_like_refusal("HTTP request handlers and middleware")
+        assert not looks_like_refusal("Data access layer (repositories + ORM)")
+        # English description that mentions "I" but isn't a refusal:
+        assert not looks_like_refusal("Implementation of OAuth2 flows")
+
+    def test_empty_and_whitespace_only(self):
+        # Empty / whitespace-only is handled by the existing "empty AI
+        # response" branch in cli_scan; the refusal check should NOT also
+        # claim it (avoid double-classification).
+        assert not looks_like_refusal("")
+        assert not looks_like_refusal("   ")
+        assert not looks_like_refusal("\n\n\t")
+        assert not looks_like_refusal(None)  # type: ignore[arg-type]
+
+
+class TestRefusalEndToEndMarker:
+    """GH #85 — refusal text must end up as `failed (ai-refused)`, never `ok`.
+
+    Mirrors the cli_scan Phase 2 decision branch: after cleaning the AI
+    response, the loop chooses between (empty / refused / ok). This test
+    drives the same conditional with a refusal sample and asserts the
+    on-disk marker + blockquote state.
+    """
+
+    def test_refusal_text_marks_failed_not_ok(self, tmp_path):
+        readme = tmp_path / "README_AI.md"
+        readme.write_text("# ui\n\n## Overview\n")
+        description = "I don't see any file names or symbol names provided"
+
+        # Same branch order as cli_scan._enrich_directories_with_ai:
+        if not description:
+            mark_enrichment_status(readme, "failed", reason="empty AI response")
+        elif looks_like_refusal(description):
+            mark_enrichment_status(readme, "failed", reason="ai-refused")
+        else:
+            inject_blockquote(readme, description)
+            mark_enrichment_status(readme, "ok")
+
+        content = readme.read_text()
+        assert "<!-- enrichment: failed (reason: ai-refused) -->" in content
+        assert "<!-- enrichment: ok -->" not in content
+        # Blockquote MUST NOT be injected — refusal text is not a description.
+        assert "I don't see" not in content
