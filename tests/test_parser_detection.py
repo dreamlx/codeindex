@@ -56,6 +56,71 @@ class TestParserInstallGuidance:
         assert guidance["missing"] == []
         assert guidance["installed"] == []
 
+    def test_typescript_javascript_are_known_to_parser_map(self):
+        """Regression for GH #86 (4a).
+
+        ``PARSER_PACKAGES`` used to enumerate only python/php/java, even
+        though scanner gained TS/JS parsers (#73) and the parser modules
+        exist under ``src/codeindex/parsers/typescript/`` and
+        ``.../javascript/``. Result: ``init --yes`` on a TS project
+        reported ``Warning: Missing parsers for: javascript, typescript``
+        even though ``pipx inject ai-codeindex tree-sitter-{typescript,
+        javascript}`` confirmed the packages were already installed.
+
+        With the fix, TS/JS must be detected as installed in dev/CI
+        (where ``[all]`` extra is installed via ``pip install -e .[dev,all]``).
+        """
+        assert check_parser_installed("typescript") is True
+        assert check_parser_installed("javascript") is True
+
+        guidance = get_parser_install_guidance(["typescript", "javascript"])
+        assert "typescript" in guidance["installed"]
+        assert "javascript" in guidance["installed"]
+        assert "typescript" not in guidance["missing"]
+        assert "javascript" not in guidance["missing"]
+
+    def test_install_command_uses_pipx_inject_not_pip_install(self):
+        """Regression for GH #86 (4b).
+
+        The hint used to be ``pip install ai-codeindex[<langs>]`` — contradicts
+        the entire documented install path (``pipx install ai-codeindex`` is the
+        recommended path per CLAUDE.md / README / both hooks & index SKILL).
+        Worse: ``pip install`` into a pipx-managed env doesn't work cleanly,
+        so the hint actively misleads.
+
+        Force a missing parser by asking for an unknown language; assert the
+        hint now uses ``pipx inject``.
+        """
+        guidance = get_parser_install_guidance(["fortran"])
+        assert "install_command" in guidance
+        cmd = guidance["install_command"]
+        assert cmd.startswith("pipx inject ai-codeindex"), (
+            f"Install hint must point to pipx (not pip install); got: {cmd!r}"
+        )
+        assert "pip install" not in cmd, (
+            f"Install hint still mentions `pip install` — contradicts pipx-based "
+            f"recommended path (GH #86 4b). Got: {cmd!r}"
+        )
+
+    def test_parser_package_map_covers_scanner_supported_set(self):
+        """Structural drift guard. ``PARSER_PACKAGES`` (used to validate
+        installed parsers + build install hints) must cover every language
+        ``scanner.LANGUAGE_EXTENSIONS`` knows how to scan — otherwise a
+        language can be detected by ``init`` (#73) and scanned by the
+        runtime, while the parser-presence check silently fails for it,
+        re-introducing the GH #86 false-positive warning class."""
+        from codeindex.init_wizard import PARSER_PACKAGES
+        from codeindex.scanner import LANGUAGE_EXTENSIONS as SCAN_EXT
+
+        missing = set(SCAN_EXT.keys()) - set(PARSER_PACKAGES.keys())
+        assert not missing, (
+            f"init_wizard.PARSER_PACKAGES is missing languages that "
+            f"scanner.py knows how to scan: {sorted(missing)}. This is the "
+            f"drift class that caused GH #86 — the parser-installed check "
+            f"silently returns False for these and `init` warns about "
+            f"\"missing parsers\" even when they're installed."
+        )
+
 
 class TestInitWizardPostMessage:
     """Tests for updated post-init messages (Story 19.2)."""

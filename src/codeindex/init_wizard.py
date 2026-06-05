@@ -94,11 +94,19 @@ FRAMEWORK_PATTERNS: Dict[str, Dict[str, str]] = {
 
 
 
-# Parser package mapping: language -> tree-sitter package name
+# Parser package mapping: language -> tree-sitter Python import name.
+#
+# Must stay in sync with ``scanner.LANGUAGE_EXTENSIONS``. The structural
+# test ``test_parser_package_map_covers_scanner_supported_set`` locks the
+# invariant — adding a language to scanner.py without exposing it here
+# silently re-introduces the GH #86 false-positive ("missing parsers" for
+# parsers that are actually installed).
 PARSER_PACKAGES = {
     "python": "tree_sitter_python",
     "php": "tree_sitter_php",
     "java": "tree_sitter_java",
+    "typescript": "tree_sitter_typescript",
+    "javascript": "tree_sitter_javascript",
 }
 
 
@@ -146,8 +154,13 @@ def get_parser_install_guidance(languages: list[str]) -> dict:
     }
 
     if missing:
-        extras = ",".join(missing)
-        result["install_command"] = f"pip install ai-codeindex[{extras}]"
+        # Use `pipx inject ai-codeindex tree-sitter-<lang>` to match the
+        # documented install path (CLAUDE.md, README, hooks/index SKILL all
+        # use pipx). The previous `pip install ai-codeindex[<lang>]` hint
+        # contradicted the recommended path AND broke for pipx-managed
+        # envs — see GH #86 (4b).
+        pkgs = " ".join(f"tree-sitter-{lang}" for lang in missing)
+        result["install_command"] = f"pipx inject ai-codeindex {pkgs}"
 
     return result
 
