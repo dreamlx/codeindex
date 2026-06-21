@@ -83,6 +83,36 @@ class TestEnrichmentIntegration:
         # Prompt should ask for concise description
         assert "30" in prompt or "concise" in prompt.lower()
 
+    def test_build_enrich_summary_includes_own_symbols_for_leaf_dir(self, tmp_path):
+        """GH #94: a leaf dir whose only child is __tests__ must still get its
+        OWN file/symbol names into the enrichment summary — not just the
+        useless 'Subdirectories: __tests__' that previously short-circuited it.
+        """
+        from codeindex.cli_scan import _build_enrich_summary
+        from codeindex.config import Config
+
+        controllers = tmp_path / "controllers"
+        controllers.mkdir()
+        (controllers / "user.py").write_text(
+            "class UserController:\n"
+            "    def login(self):\n"
+            "        pass\n"
+            "    def logout(self):\n"
+            "        pass\n"
+        )
+        tests_dir = controllers / "__tests__"
+        tests_dir.mkdir()
+        (tests_dir / "user_test.py").write_text("def test_login():\n    pass\n")
+
+        config = Config(languages=["python"], include=["**/*"], exclude=[])
+        summary = _build_enrich_summary(controllers, [tests_dir], config)
+
+        # Own files/symbols present (the bug: these were entirely absent)
+        assert "user.py" in summary
+        assert "login" in summary
+        # Must NOT recurse into __tests__ (scan_directory recursive=False)
+        assert "test_login" not in summary
+
     def test_re_enrich_updates_description(self, tmp_path):
         """Running enrich twice should update, not duplicate."""
         readme = tmp_path / "README_AI.md"

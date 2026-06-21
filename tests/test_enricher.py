@@ -420,6 +420,40 @@ class TestMarkEnrichmentStatus:
         assert "line2" not in enrichment_line or "\n" not in enrichment_line
 
 
+class TestMergeEnrichContext:
+    """GH #94: dir's own files/symbols are primary; subdir names supplementary."""
+
+    def test_own_symbols_primary_subdirs_supplementary(self):
+        from codeindex.enricher import merge_enrich_context
+
+        merged = merge_enrich_context(
+            "user.controller.ts: login, logout; auth.ts: verify",
+            "Subdirectories: __tests__",
+        )
+        assert "login" in merged
+        assert "auth.ts" in merged
+        assert "__tests__" in merged  # supplementary, still present
+
+    def test_uninformative_subdir_does_not_hide_own_symbols(self):
+        """The exact bug: 'Subdirectories: __tests__' used to short-circuit."""
+        from codeindex.enricher import merge_enrich_context
+
+        merged = merge_enrich_context("svc.ts: doWork", "Subdirectories: __tests__")
+        assert "doWork" in merged
+
+    def test_empty_own_summary_falls_back_to_subdirs(self):
+        from codeindex.enricher import merge_enrich_context
+
+        merged = merge_enrich_context("", "Subdirectories: components, pages")
+        assert "components" in merged
+
+    def test_both_empty_returns_empty(self):
+        from codeindex.enricher import merge_enrich_context
+
+        assert merge_enrich_context("", "") == ""
+        assert merge_enrich_context("  ", "  ") == ""
+
+
 class TestLooksLikeRefusal:
     """Tests for the GH #85 refusal detector."""
 
@@ -442,6 +476,26 @@ class TestLooksLikeRefusal:
         assert looks_like_refusal("  I DON'T see any files  ")
         assert looks_like_refusal("\n\ni cannot help\n")
         assert looks_like_refusal("I Don't Have Enough Info")
+
+    def test_leaf_dir_punt_phrasings(self):
+        """GH #94: leaf dirs punt with phrasings the GH #85 table missed.
+
+        The empty-symbol enrichment prompt makes the model ask for the
+        very file/symbol names that were omitted. These were stamped
+        `enrichment: ok` because the prefix table had `i need more` but
+        not `i need specific`, and zero Chinese prefixes.
+        """
+        assert looks_like_refusal("I need specific file names and symbol names")
+        assert looks_like_refusal("我需要具体的文件名和符号名才能描述")
+        assert looks_like_refusal("请提供文件名和符号名")
+        assert looks_like_refusal("需要具体的文件列表")
+        assert looks_like_refusal("信息不足，无法生成描述")
+        assert looks_like_refusal("我看到的信息不足以描述该模块")
+
+    def test_chinese_descriptions_with_xuyao_are_not_refusals(self):
+        """Legit Chinese one-liners that merely contain 需要 must pass."""
+        assert not looks_like_refusal("需要登录的接口与权限校验")
+        assert not looks_like_refusal("处理需要异步执行的后台任务")
 
     def test_normal_descriptions_are_not_refusals(self):
         """Real one-line descriptions must pass through unmolested."""

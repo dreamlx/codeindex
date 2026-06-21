@@ -634,6 +634,47 @@ def _process_directories_parallel(
         )
 
 
+def _build_enrich_summary(
+    dir_path: Path,
+    child_dirs: list[Path],
+    config: Config,
+) -> str:
+    """Build the enrichment prompt context for one directory (GH #94).
+
+    Combines the directory's OWN file/symbol summary — re-parsed from source
+    (AST), non-recursively, so subtree content does not leak in — with its
+    subdirectory names. The dir's own content is the primary signal; subdir
+    names are supplementary. This fixes leaf dirs (e.g. ``controllers`` whose
+    only child is ``__tests__``) that previously got only a useless
+    ``Subdirectories: __tests__`` and made the model punt.
+
+    Args:
+        dir_path: Directory being enriched.
+        child_dirs: Indexed child directories (from ``tree.get_children``).
+        config: Active configuration (for language/exclude filtering).
+
+    Returns:
+        Combined context string, or empty if the dir has no indexable content.
+    """
+    from .enricher import (
+        build_safe_subdir_context,
+        extract_symbol_summary,
+        merge_enrich_context,
+    )
+    from .parallel import parse_files_parallel
+    from .scanner import scan_directory
+
+    subdir_context = build_safe_subdir_context(child_dirs)
+
+    own_summary = ""
+    scan_result = scan_directory(dir_path, config, recursive=False)
+    if scan_result.files:
+        parse_results = parse_files_parallel(scan_result.files, config, quiet=True)
+        own_summary = extract_symbol_summary(parse_results)
+
+    return merge_enrich_context(own_summary, subdir_context)
+
+
 def _enrich_directories_with_ai(
     dirs: list[Path],
     tree: DirectoryTree,
@@ -665,8 +706,6 @@ def _enrich_directories_with_ai(
     """
     from .enricher import (
         build_enrich_prompt,
-        build_safe_subdir_context,
-        extract_summary_from_readme,
         inject_blockquote,
         looks_like_refusal,
         mark_enrichment_status,
@@ -715,17 +754,21 @@ def _enrich_directories_with_ai(
     for dir_path in enrich_dirs:
         readme_path = dir_path / config.output_file
 
-        # Prefer tree-derived context (subdir names only) to avoid the
-        # injection chain through markdown-embedded AI descriptions.
-        # Fall back to README parsing only for dirs without indexed children
-        # (rare for enrichable navigation/overview dirs).
+        # Build context from the dir's OWN files/symbols (primary) plus its
+        # subdirectory names (supplementary). Both come from AST/tree sources,
+        # never README markdown, so the anti-injection-chain property holds
+        # (GH #94).
         child_dirs = tree.get_children(dir_path)
-        summary = build_safe_subdir_context(child_dirs)
+        summary = _build_enrich_summary(dir_path, child_dirs, config)
 
         if not summary:
-            summary = extract_summary_from_readme(readme_path)
-
-        if not summary:
+            # Nothing indexable to describe — mark failed (retryable) rather
+            # than send a prompt that asks the model to describe nothing.
+            if readme_path.exists():
+                mark_enrichment_status(
+                    readme_path, "failed", reason="no indexable content"
+                )
+            failed_dirs.append(dir_path.name)
             continue
 
         # Include parent directory name for context
