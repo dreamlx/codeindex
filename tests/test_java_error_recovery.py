@@ -259,7 +259,13 @@ public class Second {
         assert result.error is not None or len(result.symbols) >= 0
 
     def test_error_then_valid_class(self, tmp_path):
-        """Test syntax error followed by valid class."""
+        """Syntax error → parser recovers the parseable portion (GH #95).
+
+        Rather than zeroing the whole file, the parser extracts what it can and
+        flags `partial`. tree-sitter recovery is local: for this input the
+        unterminated `method(` error region extends forward, so `Broken` is
+        recovered and `Valid` is not — but the file is no longer dropped wholesale.
+        """
         java_file = tmp_path / "test.java"
         java_file.write_text("""
 public class Broken {
@@ -276,9 +282,11 @@ public class Valid {
         result = parse_file(java_file)
 
         assert result is not None
-        # Should recover and extract Valid class
-        valid = next((s for s in result.symbols if "Valid" in s.name), None)
-        assert valid is not None or result.error is not None
+        # Graceful degradation: either some symbols were recovered (flagged
+        # partial) or — if nothing was parseable — a hard error is reported.
+        assert (result.symbols and result.partial) or result.error is not None
+        if result.symbols:
+            assert any("Broken" in s.name for s in result.symbols)
 
     def test_multiple_errors_throughout(self, tmp_path):
         """Test file with multiple errors scattered throughout."""

@@ -112,13 +112,11 @@ class BaseLanguageParser(ABC):
         # Parse with tree-sitter
         tree = self.parser.parse(source_bytes)
 
-        # Check for syntax errors (tree-sitter doesn't throw exceptions)
-        if tree.root_node.has_error:
-            return ParseResult(
-                path=path,
-                error="Syntax error in source file",
-                file_lines=file_lines,
-            )
+        # GH #95: don't discard the whole file on one unsupported construct.
+        # tree-sitter error recovery is local, so still extract — return what is
+        # recoverable flagged `partial`, and only surface a hard error when
+        # nothing at all could be recovered from a truly broken file.
+        had_error = tree.root_node.has_error
 
         # Extract all information
         try:
@@ -127,6 +125,13 @@ class BaseLanguageParser(ABC):
             inheritances = self.extract_inheritances(tree, source_bytes)
             calls = self.extract_calls(tree, source_bytes, symbols, imports)
 
+            if had_error and not symbols and not imports:
+                return ParseResult(
+                    path=path,
+                    error="Syntax error in source file",
+                    file_lines=file_lines,
+                )
+
             return ParseResult(
                 path=path,
                 symbols=symbols,
@@ -134,6 +139,7 @@ class BaseLanguageParser(ABC):
                 inheritances=inheritances,
                 calls=calls,
                 file_lines=file_lines,
+                partial=had_error,
             )
         except Exception as e:
             # Return partial result with error
