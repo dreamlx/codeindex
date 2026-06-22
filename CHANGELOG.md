@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.26.2] - 2026-06-22
+
+**Theme**: enrichment-quality patch. `scan-all --ai` was silently writing punt
+text ("I need the file names") as the directory description for leaf dirs and
+caching it as `enrichment: ok`. A/B on a real TS monorepo: 23/50 punts → 0/50.
+No contract change.
+
+> **Upgrade note**: existing `README_AI.md` files enriched by ≤0.26.1 may carry
+> poisoned descriptions stamped `enrichment: ok`, which the cache will not
+> refresh on its own. After upgrading, run **`codeindex scan-all --ai --retry-all`**
+> once to flush and regenerate them.
+
 ### Fixed
 
 - **`scan-all --ai` enrichment now feeds each directory its OWN files/symbols, fixing leaf-dir punts** (GH #94): `_enrich_directories_with_ai` built the prompt from `build_safe_subdir_context(child_dirs)` — child *directory* names only — while `build_enrich_prompt` instructed the model "based ONLY on the file names and symbol names above." A leaf dir's content is *files*, not subdirs, so the prompt carried nothing to describe; worse, a single uninformative child like `__tests__` made the subdir context non-empty and short-circuited the README fallback. On a TypeScript monorepo this hit 21/50 enriched dirs (`controllers`, `services`, `routes`, `screens`, `pages` — all the leaf code dirs), and the model correctly punted ("I need the file names and symbol names"). New `cli_scan._build_enrich_summary` re-parses the directory's own files **non-recursively** (`scan_directory(recursive=False)` — no subtree leak) and runs them through the existing `extract_symbol_summary`, then `enricher.merge_enrich_context` combines that (primary) with the subdir names (supplementary). Both sources are AST/tree-derived, never README markdown, so the anti-injection-chain property `build_safe_subdir_context` was built for is preserved. `build_enrich_prompt`'s instruction was de-lied ("based ONLY on the information above (file names, symbol names, and subdirectories)") and a dir with genuinely no indexable content is now marked `failed (reason: no indexable content)` — retryable — instead of being sent a self-contradictory prompt. *(The original issue blamed `parallel_workers=16` concurrency; that was a confounded experiment — enrichment is a serial loop and the punts occurred serially. Diagnosis corrected by source read + clean repro before this fix.)*
