@@ -99,8 +99,10 @@ class TestJavaParserBasics:
         code = "public class Invalid { // missing closing brace"
         result = parse_java_file("invalid.java", code)
 
-        # Should not crash, but should report error
-        assert result.error is not None or hasattr(result, 'has_error')
+        # GH #95: should not crash. The file is flagged abnormal either via
+        # graceful partial recovery (symbols + partial=True) or, if nothing
+        # could be recovered, a hard error. (Here `Invalid` is recovered.)
+        assert result.partial or result.error is not None
 
 
 class TestJavaSymbolExtraction:
