@@ -14,6 +14,7 @@ from .config import Config
 from .directory_tree import DirectoryTree
 from .docstring_processor import DocstringProcessor
 from .invoker import (
+    AI_SCAN_MAX_ATTEMPTS,
     clean_ai_output,
     format_prompt,
     invoke_ai_cli,
@@ -331,7 +332,9 @@ def _generate_ai_readme(
         console.print(f"  [dim]→ Invoking AI CLI (timeout: {timeout}s)...[/dim]")
         console.print(f"  [dim]  Command: {config.ai_command[:50]}...[/dim]")
 
-    invoke_result = invoke_ai_cli(config.ai_command, prompt, timeout=timeout)
+    invoke_result = invoke_ai_cli(
+        config.ai_command, prompt, timeout=timeout, max_attempts=AI_SCAN_MAX_ATTEMPTS
+    )
 
     if not invoke_result.success:
         console.print(f"[red]✗ AI CLI error:[/red] {invoke_result.error}")
@@ -775,8 +778,10 @@ def _enrich_directories_with_ai(
         parent_name = dir_path.parent.name if dir_path.parent != dir_path else ""
         prompt = build_enrich_prompt(dir_path.name, summary, parent_name)
 
-        # Invoke AI CLI
-        invoke_result = invoke_ai_cli(config.ai_command, prompt, timeout=timeout)
+        # Invoke AI CLI (retry transient timeout / rate-limit in-run, GH #97)
+        invoke_result = invoke_ai_cli(
+            config.ai_command, prompt, timeout=timeout, max_attempts=AI_SCAN_MAX_ATTEMPTS
+        )
 
         if not invoke_result.success:
             reason = (invoke_result.error or "unknown").strip().split("\n")[0][:200]

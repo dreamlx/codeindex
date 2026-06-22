@@ -2,12 +2,56 @@
 
 import shlex
 import subprocess
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
 from rich.console import Console
 
 console = Console()
+
+# GH #97: transient failure signals worth retrying within a single run. A
+# `scan-all --ai` pass is serial, so a one-off haiku timeout / rate-limit
+# otherwise loses that directory until a manual re-run. Matched case-insensitively
+# against the InvokeResult.error text. Deliberately conservative — an unlabeled
+# non-zero exit (e.g. bare "Exit code: 1") or a config error (command not found,
+# exit 127) is NOT treated as transient, so a misconfigured ai_command fails fast
+# instead of being retried N× across every directory.
+_TRANSIENT_ERROR_PATTERNS = (
+    "timed out",
+    "timeout",
+    "rate limit",
+    "rate-limit",
+    "ratelimit",
+    "429",
+    "overload",            # anthropic "overloaded_error"
+    "502",
+    "503",
+    "529",
+    "temporarily unavailable",
+    "service unavailable",
+    "connection reset",
+    "connection error",
+    "connection aborted",
+    "econnreset",
+)
+
+
+# Default retry budget for scan paths (GH #97). 3 attempts = original + 2 retries,
+# with exponential backoff, absorbs the common one-off jitter in a single run.
+AI_SCAN_MAX_ATTEMPTS = 3
+
+
+def _is_transient(error: str) -> bool:
+    """Return True if an InvokeResult.error looks like a retryable transient failure.
+
+    Conservative by design (GH #97): only recognised transient signals retry;
+    everything else (config errors, unlabeled non-zero exits) fails fast.
+    """
+    if not error:
+        return False
+    low = error.lower()
+    return any(p in low for p in _TRANSIENT_ERROR_PATTERNS)
 
 
 def clean_ai_output(output: str) -> str:
@@ -118,41 +162,9 @@ Requirements:
     return prompt
 
 
-def invoke_ai_cli(
-    command_template: str,
-    prompt: str,
-    timeout: int = 120,
-    dry_run: bool = False,
-) -> InvokeResult:
-    """
-    Invoke the AI CLI with the given prompt.
-
-    Args:
-        command_template: Command template with {prompt} placeholder
-        prompt: The prompt to send
-        timeout: Timeout in seconds
-        dry_run: If True, just print the command without executing
-
-    Returns:
-        InvokeResult with output or error
-    """
-    # Escape the prompt for shell
-    escaped_prompt = prompt.replace('"', '\\"').replace("$", "\\$").replace("`", "\\`")
-
-    # Build the command
-    command = command_template.replace("{prompt}", escaped_prompt)
-
-    if dry_run:
-        console.print("[dim]Would execute:[/dim]")
-        console.print(f"[cyan]{command[:200]}...[/cyan]")
-        return InvokeResult(
-            success=True,
-            output="[DRY RUN] No actual execution",
-            command=command,
-        )
-
+def _invoke_once(command: str, timeout: int) -> InvokeResult:
+    """Run the AI CLI command exactly once."""
     try:
-        # Run the command
         result = subprocess.run(
             command,
             shell=True,
@@ -189,6 +201,63 @@ def invoke_ai_cli(
             error=str(e),
             command=command,
         )
+
+
+def invoke_ai_cli(
+    command_template: str,
+    prompt: str,
+    timeout: int = 120,
+    dry_run: bool = False,
+    max_attempts: int = 1,
+    retry_backoff: float = 2.0,
+) -> InvokeResult:
+    """
+    Invoke the AI CLI with the given prompt.
+
+    Args:
+        command_template: Command template with {prompt} placeholder
+        prompt: The prompt to send
+        timeout: Timeout in seconds
+        dry_run: If True, just print the command without executing
+        max_attempts: Max total attempts. >1 retries transient failures
+            (timeout / rate-limit / 5xx) with exponential backoff (GH #97).
+            Default 1 preserves single-shot behavior for all existing callers.
+        retry_backoff: Base seconds for backoff; attempt N sleeps
+            ``retry_backoff * 2**N`` (0 disables sleeping, used in tests).
+
+    Returns:
+        InvokeResult with output or error
+    """
+    # Escape the prompt for shell
+    escaped_prompt = prompt.replace('"', '\\"').replace("$", "\\$").replace("`", "\\`")
+
+    # Build the command
+    command = command_template.replace("{prompt}", escaped_prompt)
+
+    if dry_run:
+        console.print("[dim]Would execute:[/dim]")
+        console.print(f"[cyan]{command[:200]}...[/cyan]")
+        return InvokeResult(
+            success=True,
+            output="[DRY RUN] No actual execution",
+            command=command,
+        )
+
+    attempts = max(1, max_attempts)
+    result = _invoke_once(command, timeout)
+    attempt = 1
+    # Retry only recognised-transient failures, never refusals (those are
+    # success=True) or permanent errors. Fail fast otherwise (GH #97).
+    while (
+        not result.success
+        and attempt < attempts
+        and _is_transient(result.error)
+    ):
+        time.sleep(retry_backoff * (2 ** (attempt - 1)))
+        result = _invoke_once(command, timeout)
+        attempt += 1
+
+    return result
 
 
 def invoke_ai_cli_stdin(
