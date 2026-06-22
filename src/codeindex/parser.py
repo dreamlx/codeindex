@@ -228,6 +228,7 @@ class ParseResult:
     namespace: str = ""  # PHP namespace
     error: str | None = None
     file_lines: int = 0  # Number of lines in the file
+    partial: bool = False  # Tree had syntax errors but symbols were still recovered (GH #95)
 
     def to_dict(self) -> dict:
         """Convert ParseResult to JSON-serializable dict."""
@@ -241,6 +242,7 @@ class ParseResult:
             "namespace": self.namespace,
             "error": self.error,
             "file_lines": self.file_lines,
+            "partial": self.partial,
         }
 
 

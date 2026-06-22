@@ -5,6 +5,62 @@ Covers Story 20.1 (foundation), 20.2 (symbols), 20.3 (imports), 20.5 (calls), 20
 
 from codeindex.parser import FILE_EXTENSIONS, parse_file
 
+
+class TestPartialParseRecovery:
+    """GH #95: a single unsupported construct must not zero out the whole file.
+
+    The bundled tree-sitter-typescript grammar lags the TS language (e.g.
+    `export type *`, generic-typed tagged templates like Prisma `$queryRaw<T>`).
+    Previously one ERROR node anywhere made `parse()` bail with `symbols: []`.
+    tree-sitter error recovery is local, so the rest of the file's symbols are
+    still in the tree and must be returned (flagged `partial`).
+    """
+
+    def test_generic_tagged_template_recovers_class_and_methods(self, tmp_path):
+        f = tmp_path / "LockController.ts"
+        f.write_text(
+            "export class LockController {\n"
+            "  name = 'lock';\n"
+            "  list = async (x: any) => {\n"
+            "    const rows = await x.$queryRaw<{ id: string }[]>"
+            "`SELECT id FROM L WHERE n=${1}`;\n"
+            "    return rows;\n"
+            "  };\n"
+            "  create(dto: any) { return dto; }\n"
+            "}\n"
+        )
+        r = parse_file(f)
+        names = {s.name for s in r.symbols}
+        assert "LockController" in names               # the class survives
+        assert "LockController.create" in names        # sibling method survives
+        assert r.error is None            # not a hard error → consumers won't skip it
+        assert r.partial is True          # but flagged incomplete
+
+    def test_export_type_star_recovers_other_symbols(self, tmp_path):
+        f = tmp_path / "barrel.ts"
+        f.write_text(
+            "export type * from './types';\n"               # TS5.0, grammar errors here
+            "export function helper(n: string): string { return n; }\n"
+        )
+        r = parse_file(f)
+        assert "helper" in {s.name for s in r.symbols}
+        assert r.partial is True
+
+    def test_clean_file_is_not_flagged_partial(self, tmp_path):
+        f = tmp_path / "clean.ts"
+        f.write_text("export function ok(n: string): string { return n; }\n")
+        r = parse_file(f)
+        assert r.error is None
+        assert r.partial is False
+        assert "ok" in {s.name for s in r.symbols}
+
+    def test_unrecoverable_garbage_still_reports_error(self, tmp_path):
+        f = tmp_path / "junk.ts"
+        f.write_text("@#$%^&*(){]}[><\n;;;;\n")
+        r = parse_file(f)
+        assert r.error is not None  # nothing recovered → keep the hard error
+        assert r.symbols == []
+
 # ==================== Story 20.1: Foundation ====================
 
 
