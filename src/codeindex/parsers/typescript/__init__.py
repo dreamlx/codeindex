@@ -163,12 +163,13 @@ class TypeScriptParser(BaseLanguageParser):
 
         tree = self.parser.parse(source_bytes)
 
-        if tree.root_node.has_error:
-            return ParseResult(
-                path=path,
-                error="Syntax error in source file",
-                file_lines=file_lines,
-            )
+        # GH #95: the bundled grammar lags the TS language (e.g. `export type *`,
+        # generic-typed tagged templates). tree-sitter error recovery is local —
+        # one unsupported node does not invalidate its siblings. So instead of
+        # bailing on `has_error` with `symbols: []`, still extract: return the
+        # recovered symbols flagged `partial`, and only surface a hard error if
+        # nothing at all could be recovered from a truly broken file.
+        had_error = tree.root_node.has_error
 
         try:
             symbols = self.extract_symbols(tree, source_bytes)
@@ -176,22 +177,31 @@ class TypeScriptParser(BaseLanguageParser):
             inheritances = self.extract_inheritances(tree, source_bytes)
             calls = self.extract_calls(tree, source_bytes, symbols, imports)
             module_docstring = extract_module_docstring(tree, source_bytes)
-
-            return ParseResult(
-                path=path,
-                symbols=symbols,
-                imports=imports,
-                inheritances=inheritances,
-                calls=calls,
-                file_lines=file_lines,
-                module_docstring=module_docstring,
-            )
         except Exception as e:
             return ParseResult(
                 path=path,
                 error=f"Parse error: {str(e)}",
                 file_lines=file_lines,
             )
+
+        if had_error and not symbols and not imports:
+            # Nothing recoverable — keep the hard error so consumers skip it.
+            return ParseResult(
+                path=path,
+                error="Syntax error in source file",
+                file_lines=file_lines,
+            )
+
+        return ParseResult(
+            path=path,
+            symbols=symbols,
+            imports=imports,
+            inheritances=inheritances,
+            calls=calls,
+            file_lines=file_lines,
+            module_docstring=module_docstring,
+            partial=had_error,
+        )
 
 
 # ==================== Backward Compatibility Functions ====================
