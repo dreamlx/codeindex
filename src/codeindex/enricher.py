@@ -36,11 +36,19 @@ _REFUSAL_PREFIXES = (
     "i'm unable",
     "i am unable",
     "i need more",
+    "i need specific",  # GH #94: leaf-dir punt asking for omitted file/symbol names
     "no file",
     "insufficient context",
     "without more",
     "sorry, i",
     "as an ai",
+    # Chinese punts (GH #94). Kept specific so legit one-liners that merely
+    # contain 需要 (e.g. "需要登录的接口") are not misclassified.
+    "我需要",
+    "请提供",
+    "需要具体",
+    "信息不足",
+    "我看到的信息",
 )
 
 
@@ -165,6 +173,35 @@ def build_safe_subdir_context(child_dirs: list[Path]) -> str:
     return "Subdirectories: " + ", ".join(names) + suffix
 
 
+def merge_enrich_context(own_summary: str, subdir_context: str) -> str:
+    """Combine a directory's own file/symbol summary with its subdir names.
+
+    GH #94: a directory's OWN files and symbols are the primary signal for a
+    one-line description; subdirectory names are only supplementary. The
+    previous enrichment path used subdir context with a README fallback and a
+    single uninformative child (e.g. ``__tests__``) made the subdir context
+    non-empty, short-circuiting the dir's own content and leaving leaf dirs
+    with an empty prompt — so the model punted ("I need the file names").
+
+    Both inputs come from AST/tree sources (``extract_symbol_summary`` and
+    ``build_safe_subdir_context``), never from README markdown, preserving the
+    anti-injection-chain property ``build_safe_subdir_context`` was built for.
+
+    Args:
+        own_summary: ``extract_symbol_summary`` output (file: symbols; ...).
+        subdir_context: ``build_safe_subdir_context`` output (Subdirectories: ...).
+
+    Returns:
+        Combined context string, or empty string if both inputs are empty.
+    """
+    parts = []
+    if own_summary and own_summary.strip():
+        parts.append(f"Files: {own_summary.strip()}")
+    if subdir_context and subdir_context.strip():
+        parts.append(subdir_context.strip())
+    return "\n".join(parts)
+
+
 def build_enrich_prompt(
     dir_name: str,
     symbol_summary: str,
@@ -188,13 +225,14 @@ def build_enrich_prompt(
     return (
         context
         + "\n"
-        "Based ONLY on the file names and symbol names above, write a concise "
-        "functional description of this module (30 chars or less). "
+        "Based ONLY on the information above (file names, symbol names, and "
+        "subdirectories), write a concise functional description of this "
+        "module (30 chars or less). "
         "Describe WHAT it does, not HOW. "
         "Examples: '会员等级、积分、权益卡管理', 'Payment gateway (Alipay/WeChat)', "
         "'物流配送与运费计算'. "
         "Output ONLY the description text. No quotes, no markdown, no explanation. "
-        "Do NOT invent features not evidenced by the symbol names."
+        "Do NOT invent features not evidenced by the names above."
     )
 
 
