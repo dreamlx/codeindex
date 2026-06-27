@@ -12,6 +12,7 @@ from .cli_claude_md import claude_md, print_outdated_warning
 from .cli_config import doctor, init, list_dirs, status
 from .cli_config_commands import config
 from .cli_docs import docs
+from .cli_graph_export import graph_export
 from .cli_hooks import hooks
 from .cli_parse import parse
 from .cli_scan import scan, scan_all
@@ -44,6 +45,7 @@ main.add_command(affected)
 main.add_command(tech_debt)
 main.add_command(tech_debt, name="debt-scan")  # Alias for backward compatibility (v0.22.0+)
 main.add_command(hooks)
+main.add_command(graph_export)
 main.add_command(docs)
 main.add_command(claude_md)
 
