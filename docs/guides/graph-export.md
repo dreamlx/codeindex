@@ -32,11 +32,31 @@ records. All records carry a `type` tag.
 {"type":"edge","kind":"CALLS","src":"app.workers.kickoff","dst":null,"resolution_qualifier":"ambiguous","candidates":["app.workers.Builder.run","app.workers.Packer.run"],"source_id":"app/workers.py:15"}
 ```
 
+### Naming convention (`id`)
+
+Entity ids are **fully-qualified and path-derived**: the module is the file
+path *relative to the scan root* with the extension dropped and `/` → `.`,
+then the file-local symbol name appended. So `src/loomgraph/cli/_common.py`'s
+`prepare_workspace_store` becomes `src.loomgraph.cli._common.prepare_workspace_store`.
+
+Fully-qualified is deliberate — it resolves same-name collisions across
+sibling classes/modules (the spike's F-class) and makes ownership explicit.
+
+> **src-layout caveat.** Because the module is *path*-derived, not
+> *import*-derived, a `src/`-layout project carries the layout dir in the id
+> (`src.loomgraph.…`, where the real Python import path is `loomgraph.…`).
+> codeindex does **not** strip it in v0 — there is no robust, config-free way
+> to tell a layout dir (`src/`, strip) from a genuine top package (`app/`,
+> keep). A consumer that maintains its own import-path index should normalise
+> the layout prefix when ingesting these ids (it knows the project layout;
+> codeindex, scanning a bare tree, does not). A codeindex-side `module_root` option is a
+> possible v1 addition if multiple consumers need it.
+
 ### Entity
 
 | field | meaning |
 |---|---|
-| `id` | module-qualified name, e.g. `app.service.AuthService.login` (module derived from file path) |
+| `id` | fully-qualified, path-derived name (see above), e.g. `app.service.AuthService.login` |
 | `entity_type` | `class` \| `function` \| `method` |
 | `source_id` | `relpath:line` |
 | `description` | first line of the docstring (may be empty) |
@@ -53,6 +73,29 @@ records. All records carry a `type` tag.
 | `candidates` | (ambiguous only) the entity ids the name could refer to |
 | `source_id` | `relpath:line` of the call / class definition |
 
+## Scope — a structural slice, not a full graph index
+
+The export is codeindex's **structural slice** (L1+L2): real code symbols
+(`class` / `function` / `method`) and their `CALLS` / `INHERITS` edges. It is
+**not** a complete graph index and is **not** meant to replace a consumer's
+own index.
+
+Deliberately **not** emitted (the consumer synthesises these around the
+slice during ingestion, per ADR-007):
+
+- **file / module container nodes** — derivable from each entity's `source_id`.
+  Consequence: a `<module>`-level call has a `src` (the dotted module path)
+  with no backing `entity` record; that's expected, the consumer materialises
+  the container if it wants one. (`entity_type: "module"` may be added in v1
+  if synthesising modules proves painful downstream.)
+- **external / stdlib stubs** — these are exactly where `unresolved` edges
+  point (see below); the consumer decides whether to materialise stub nodes.
+
+This matches the LoomGraph#30 GREEN field set (which contained no module/file
+nodes) and keeps the codeindex/loomgraph division clean: codeindex emits the
+symbol-level truth, loomgraph builds the container + external + semantic
+scaffolding on top.
+
 ## Consumer contract — read these two caveats
 
 The parser emits **file-local** names; the export runs the only cross-file
@@ -62,8 +105,14 @@ draw wrong conclusions**:
 
 1. **`resolution_qualifier`** — never treat an `unresolved` or `ambiguous`
    edge as a confirmed relationship. `unresolved` usually means external /
-   stdlib or a name not in the tree; `ambiguous` means the name matched
-   several entities (see `candidates`).
+   stdlib or a name not in the tree (with `dst: null`); `ambiguous` means the
+   name matched several entities (see `candidates`, `dst: null`). A **high
+   unresolved fraction is normal** — most calls in real code go to stdlib /
+   third-party / methods AST cannot statically resolve (≈59% on a real
+   loomgraph round-trip). The consumer owns the dangling-edge policy: drop,
+   keep as dangling, or materialise an external stub node as the `dst`.
+   codeindex emits no sentinel/placeholder entity — the entity set contains
+   only real code symbols.
 2. **`provenance_completeness`** (meta) — extraction is AST-only. Dynamic
    dispatch (`getattr` / duck-typing / event handlers), reflection /
    metaclasses, and decorator wiring are **not** captured. An **absent edge
