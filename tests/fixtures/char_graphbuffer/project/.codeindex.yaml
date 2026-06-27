@@ -1,0 +1,14 @@
+version: 1
+languages:
+  - python
+  - typescript
+include:
+  - pysrc/
+  - tssrc/
+exclude:
+  - "**/__pycache__/**"
+  - "**/node_modules/**"
+parallel_workers: 1
+batch_size: 50
+output_file: README_AI.md
+ai_command: 'echo stub-description'
