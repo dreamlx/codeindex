@@ -1,0 +1,6 @@
+version: 1
+include: [app/, web/]
+exclude: ["**/__pycache__/**"]
+languages: [python, typescript]
+output_file: README_AI.md
+parallel_workers: 1
