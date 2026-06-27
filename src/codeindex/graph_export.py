@@ -75,6 +75,7 @@ class Edge:
     dst: str | None
     resolution_qualifier: str  # resolved | ambiguous | unresolved
     source_id: str
+    dst_raw: str = ""  # original best-effort callee/parent name (file-local)
     candidates: list[str] = field(default_factory=list)
 
     def to_record(self) -> dict:
@@ -83,6 +84,10 @@ class Edge:
             "kind": self.kind,
             "src": self.src,
             "dst": self.dst,
+            # the raw name we tried to resolve — load-bearing for unresolved
+            # edges (dst is null), so a consumer can still synthesise an
+            # external stub or filter test/framework noise (e.g. `expect`).
+            "dst_raw": self.dst_raw,
             "resolution_qualifier": self.resolution_qualifier,
             "source_id": self.source_id,
         }
@@ -228,6 +233,7 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
                         dst=dst,
                         resolution_qualifier=qual,
                         source_id=_source_id(pr.path, root, call.line_number),
+                        dst_raw=call.callee or "",
                         candidates=cands,
                     )
                 )
@@ -243,6 +249,7 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
                         dst=dst,
                         resolution_qualifier=qual,
                         source_id=_source_id(pr.path, root, child_line.get(inh.child, 0)),
+                        dst_raw=inh.parent or "",
                         candidates=cands,
                     )
                 )

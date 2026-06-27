@@ -107,6 +107,8 @@ def test_unresolved_external() -> None:
     assert e.resolution_qualifier == "unresolved"
     assert e.dst is None
     assert e.candidates == []
+    # the raw name must survive so a consumer can stub/filter it
+    assert e.dst_raw == "os.getcwd"
 
 
 def test_inherits_edge_resolved() -> None:

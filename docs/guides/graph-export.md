@@ -69,6 +69,7 @@ sibling classes/modules (the spike's F-class) and makes ownership explicit.
 | `kind` | `CALLS` \| `INHERITS` |
 | `src` | resolved entity id of the caller / child class |
 | `dst` | resolved entity id of the callee / parent, or `null` if not resolved |
+| `dst_raw` | the original best-effort name the resolver tried (file-local). Always present; **load-bearing when `dst` is null** — it is the only record of *what* was called, so a consumer can synthesise an external stub or filter framework noise (e.g. `expect`, `Date.now`) |
 | `resolution_qualifier` | `resolved` \| `ambiguous` \| `unresolved` |
 | `candidates` | (ambiguous only) the entity ids the name could refer to |
 | `source_id` | `relpath:line` of the call / class definition |
