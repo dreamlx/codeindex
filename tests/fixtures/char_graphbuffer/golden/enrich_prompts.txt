@@ -1,0 +1,19 @@
+Directory: project
+Parent: wsroot
+Contents: Subdirectories: pysrc, tssrc
+
+Based ONLY on the information above (file names, symbol names, and subdirectories), write a concise functional description of this module (30 chars or less). Describe WHAT it does, not HOW. Examples: '会员等级、积分、权益卡管理', 'Payment gateway (Alipay/WeChat)', '物流配送与运费计算'. Output ONLY the description text. No quotes, no markdown, no explanation. Do NOT invent features not evidenced by the names above.
+===== PROMPT =====
+Directory: pysrc
+Parent: project
+Contents: Files: models.py: User, check_password; service.py: Session, AuthService, __init__, authenticate, create_session
+Subdirectories: util
+
+Based ONLY on the information above (file names, symbol names, and subdirectories), write a concise functional description of this module (30 chars or less). Describe WHAT it does, not HOW. Examples: '会员等级、积分、权益卡管理', 'Payment gateway (Alipay/WeChat)', '物流配送与运费计算'. Output ONLY the description text. No quotes, no markdown, no explanation. Do NOT invent features not evidenced by the names above.
+===== PROMPT =====
+Directory: tssrc
+Parent: project
+Contents: Files: api.ts: Row, queryRaw, fetchUser; broken.ts: before, Broken, doThing, after; index.ts: Account, AccountStore, accounts, add, get
+Subdirectories: nested
+
+Based ONLY on the information above (file names, symbol names, and subdirectories), write a concise functional description of this module (30 chars or less). Describe WHAT it does, not HOW. Examples: '会员等级、积分、权益卡管理', 'Payment gateway (Alipay/WeChat)', '物流配送与运费计算'. Output ONLY the description text. No quotes, no markdown, no explanation. Do NOT invent features not evidenced by the names above.
