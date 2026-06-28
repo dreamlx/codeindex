@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-06-28
+
+**Theme**: graph-export + parser robustness. Ships the new `codeindex
+graph-export` command — codeindex's write-once data contract with loomgraph
+(ADR-007, gated GREEN/YELLOW by the LoomGraph#30 consumption spike) — plus
+the in-run AI retry (#97) and the cross-language partial-parse recovery (#95)
+that were sitting unreleased on master. graph-export is **additive**: it is a
+standalone command, the new `GraphBuffer` IR (#101) it reuses is dormant
+(unwired into `scan-all`), and existing `scan-all` / `parse` / `symbols`
+output is unchanged. No migration needed.
+
 ### Added
 
 - **`codeindex graph-export` — write-once graph artifact for loomgraph** (GH #102, ADR-007, **experimental schema_version 0**): a standalone command that does its own clean whole-tree parse and dumps NDJSON of code entities (`class`/`function`/`method`, module-qualified id + `source_id` + first-line description + `provenance`) and `CALLS`/`INHERITS` edges. It is **decoupled from `scan-all`/README render** — the LoomGraph#30 consumption spike (verdict 🟡 YELLOW) justified the export but not the #101 render-flip, and the two are architecturally independent (export needs the buffer *populated*, not the render path *flipped*). The parser emits *file-local* names, so the export performs the only cross-file resolution pass: every edge carries a **`resolution_qualifier`** (`resolved` / `ambiguous` / `unresolved`, with `candidates` on ambiguous) so a consumer never reads an unresolved edge as real, plus **`dst_raw`** (the original best-effort name) so a consumer can still synthesise an external stub or filter framework noise when `dst` is null, and the meta header carries **`provenance_completeness`** flagging that AST extraction misses dynamic dispatch / reflection (the spike's E-class finding — an absent edge means "not statically resolvable", not "none"). Schema is experimental and Python-validated; a TS spot-check precedes any stable-contract promise. Reuses the #101 `GraphBuffer` purely as the parsed-data container; ships no persistent/mutable state (ADR-007).
