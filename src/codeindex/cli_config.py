@@ -249,35 +249,11 @@ def list_dirs(root: Path):
         # from "nothing to index". If the project actually has source files
         # that don't match ``config.languages``, diagnose the mismatch and
         # exit non-zero so the user (and tooling) know to act.
-        from .scanner import diagnose_language_mismatch
+        from .scanner import language_mismatch_hint
 
-        diag = diagnose_language_mismatch(root, config)
-        present = diag["extensions_present"]
-        candidates = diag["candidate_languages"]
-
-        if present and candidates:
-            top = ", ".join(
-                f"{ext} ({n})" for ext, n in present.most_common(5)
-            )
-            cand = " / ".join(candidates)
-            raise click.ClickException(
-                "no indexable directories found.\n"
-                f"  Configured languages: {diag['configured_languages']}\n"
-                f"  Detected file types in include roots: {top}\n"
-                f"  Hint: add {cand} to .codeindex.yaml `languages:`\n"
-                "        (run: codeindex config explain languages)"
-            )
-        if present and not candidates:
-            top = ", ".join(
-                f"{ext} ({n})" for ext, n in present.most_common(5)
-            )
-            raise click.ClickException(
-                "no indexable directories found.\n"
-                f"  Configured languages: {diag['configured_languages']}\n"
-                "  Files are present but no codeindex-supported language "
-                "matches their extensions.\n"
-                f"  Top extensions: {top}"
-            )
+        hint = language_mismatch_hint(root, config)
+        if hint:
+            raise click.ClickException(hint)
         # Truly empty include roots — keep the historical silent + exit 0
         # so scripts that pipe ``codeindex list-dirs`` to check "anything
         # to index?" continue to work.

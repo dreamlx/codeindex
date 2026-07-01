@@ -105,9 +105,12 @@ exclude:
   - "**/venv/**"
   - "**/.venv/**"
 
-# Supported languages (currently PHP support added)
+# Supported languages — override to match your project
+# (python | php | java | typescript | javascript | swift | objc).
+# `codeindex init` auto-detects this; the value here only aligns with the
+# runtime fallback (DEFAULT_LANGUAGES) for any code that renders this template.
 languages:
-  - php
+  - python
 
 # Output file name
 output_file: README_AI.md
