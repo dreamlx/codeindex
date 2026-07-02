@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`graph-export` entity records now carry a `signature` field** (GH #115): projected from the already-extracted `Symbol.signature`. Closes an embedding-coverage hole measured by the loomgraph EPIC-015 spike — docstring-less symbols had an empty `description` → no embedding vector → invisible to downstream semantic search (~4% of entities on codeindex itself, ~15% on `src/loomgraph`). A signature is present for ~100% of symbols, so a consumer can build `description = signature + docstring` and reach full coverage. codeindex stays a dumb emitter: it emits `signature` and `description` as **separate** fields and does **not** collapse them — the combine is the consumer's call (ADR-007 seam). **Schema stays at `0`** (no bump): additive field addition during the 0-version window is exactly what ADR-007's gate permits ("fields/format may change without deprecation while at version 0"), and a known follow-up (`#110` content-hash for incremental staleness) would otherwise force an immediate 0→1→2. Consumers should read `signature` if present and warn if absent, not hard-reject on a version floor.
+
 ### Fixed
 
 - **Internal `hooks run` no longer clutters `hooks --help`** (GH #34): `codeindex hooks run <name>` is invoked by the generated shell hook scripts, not by users, but it was advertised alongside `install`/`status`/`uninstall` — reading like a user-facing command. Marked the subcommand `hidden=True`; invocation is unchanged (the shell scripts still call it).
