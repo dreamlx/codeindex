@@ -388,13 +388,15 @@ def count_files(project_dir: Path, patterns: List[str]) -> int:
 # ============================================================================
 
 
-def inject_claude_md(project_dir: Path) -> Path:
+def inject_claude_md(project_dir: Path, lang: str = "auto") -> Path:
     """Inject codeindex instructions into CLAUDE.md.
 
     Delegates to claude_md module for unified marker-based injection.
 
     Args:
         project_dir: Project root directory
+        lang: Section locale — 'auto' (detect from host CLAUDE.md), 'zh', or
+            'en'. See GH #77.
 
     Returns:
         Path to CLAUDE.md
@@ -402,7 +404,7 @@ def inject_claude_md(project_dir: Path) -> Path:
     from .claude_md import inject
 
     claude_md_path = project_dir / "CLAUDE.md"
-    inject(claude_md_path)
+    inject(claude_md_path, lang=lang)
     return claude_md_path
 
 
