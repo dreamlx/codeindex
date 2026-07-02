@@ -107,6 +107,8 @@ PARSER_PACKAGES = {
     "java": "tree_sitter_java",
     "typescript": "tree_sitter_typescript",
     "javascript": "tree_sitter_javascript",
+    "swift": "tree_sitter_swift",
+    "objc": "tree_sitter_objc",
 }
 
 
