@@ -4,6 +4,7 @@ This module provides commands for initializing configuration files,
 checking indexing status, and listing indexable directories.
 """
 
+import sys
 from pathlib import Path
 
 import click
@@ -155,6 +156,18 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
             _print_post_init_message()
 
         return
+
+    # Interactive mode needs a TTY. In CI / sandbox / container / piped input
+    # (stdin not a TTY), the wizard's click.confirm/prompt calls raise a bare
+    # Abort — the user just sees a cryptic "Aborted!" with no hint. Fail fast
+    # with an actionable message pointing at --yes (GH #44, issue option 2:
+    # explicit error, no silent behavior change).
+    if not sys.stdin.isatty():
+        raise click.ClickException(
+            "codeindex init needs an interactive terminal (stdin is not a TTY "
+            "— CI, sandbox, container, or piped input). Re-run with --yes for "
+            "non-interactive defaults:  codeindex init --yes"
+        )
 
     # Interactive mode (original behavior enhanced with wizard)
     result = run_interactive_wizard(project_dir)
