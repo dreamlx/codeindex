@@ -4,6 +4,7 @@ This module provides commands for initializing configuration files,
 checking indexing status, and listing indexable directories.
 """
 
+import sys
 from pathlib import Path
 
 import click
@@ -56,7 +57,13 @@ def _print_post_init_message():
 @click.option("--yes", "-y", is_flag=True, help="Non-interactive mode with defaults")
 @click.option("--quiet", "-q", is_flag=True, help="Minimal output (for CI/CD)")
 @click.option("--help-config", is_flag=True, help="Show complete configuration reference")
-def init(force: bool, yes: bool, quiet: bool, help_config: bool):
+@click.option(
+    "--lang",
+    type=click.Choice(["auto", "zh", "en"]),
+    default="auto",
+    help="Language for the injected CLAUDE.md section (auto = match host)",
+)
+def init(force: bool, yes: bool, quiet: bool, help_config: bool, lang: str):
     """Initialize .codeindex.yaml configuration file.
 
     Interactive wizard guides you through setup with smart defaults.
@@ -141,7 +148,7 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
 
         # Inject codeindex section into the project's CLAUDE.md (project-scoped,
         # never ~/.claude — see ADR-006). Safe default for non-interactive.
-        claude_md_path = inject_claude_md(project_dir)
+        claude_md_path = inject_claude_md(project_dir, lang=lang)
         result.claude_md_injected = True
 
         # Update .gitignore
@@ -156,6 +163,18 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
 
         return
 
+    # Interactive mode needs a TTY. In CI / sandbox / container / piped input
+    # (stdin not a TTY), the wizard's click.confirm/prompt calls raise a bare
+    # Abort — the user just sees a cryptic "Aborted!" with no hint. Fail fast
+    # with an actionable message pointing at --yes (GH #44, issue option 2:
+    # explicit error, no silent behavior change).
+    if not sys.stdin.isatty():
+        raise click.ClickException(
+            "codeindex init needs an interactive terminal (stdin is not a TTY "
+            "— CI, sandbox, container, or piped input). Re-run with --yes for "
+            "non-interactive defaults:  codeindex init --yes"
+        )
+
     # Interactive mode (original behavior enhanced with wizard)
     result = run_interactive_wizard(project_dir)
 
@@ -167,7 +186,7 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool):
     # Inject codeindex section into the project's CLAUDE.md if requested.
     # Project-scoped only (never ~/.claude) — see ADR-006.
     if result.inject_claude_md:
-        claude_md_path = inject_claude_md(project_dir)
+        claude_md_path = inject_claude_md(project_dir, lang=lang)
         result.claude_md_injected = True
         console.print(f"[green]✓ Injected:[/green] {claude_md_path.name}")
 

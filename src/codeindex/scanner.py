@@ -53,6 +53,11 @@ LANGUAGE_EXTENSIONS = {
     "java": [".java"],
     "typescript": [".ts", ".tsx"],
     "javascript": [".js", ".jsx"],
+    "swift": [".swift"],
+    # Objective-C: match parser.FILE_EXTENSIONS exactly (.h + .m, not .mm —
+    # the parser does not dispatch .mm). Keep these two maps in lockstep;
+    # tests/test_scanner_swift_objc_extensions.py guards the drift (GH #80).
+    "objc": [".h", ".m"],
 }
 
 

@@ -24,14 +24,20 @@ def claude_md():
     default=".",
     help="Project root directory (default: current directory).",
 )
-def update(project_dir: Path):
+@click.option(
+    "--lang",
+    type=click.Choice(["auto", "zh", "en"]),
+    default="auto",
+    help="Language for the section (auto = match host CLAUDE.md).",
+)
+def update(project_dir: Path, lang: str):
     """Update codeindex section in project CLAUDE.md."""
     project_dir = project_dir.resolve()
     claude_md_path = project_dir / "CLAUDE.md"
 
     old_version = extract_version(claude_md_path)
 
-    success = inject(claude_md_path, __version__)
+    success = inject(claude_md_path, __version__, lang=lang)
 
     if success:
         if old_version:
