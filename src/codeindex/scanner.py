@@ -61,6 +61,16 @@ LANGUAGE_EXTENSIONS = {
 }
 
 
+# Derived inverse of LANGUAGE_EXTENSIONS (extension → config language). Single
+# source of truth for both directions: add a language once to
+# LANGUAGE_EXTENSIONS and detection (skill_helpers.detect_project_languages)
+# stays in lockstep — it cannot drift to include an unparseable language
+# (GH #112: the old skill_helpers table had drifted to carry .go/.rs).
+EXTENSION_TO_LANGUAGE = {
+    ext: lang for lang, exts in LANGUAGE_EXTENSIONS.items() for ext in exts
+}
+
+
 def get_language_extensions(languages: list[str]) -> set[str]:
     """Get file extensions for specified languages."""
     extensions = set()

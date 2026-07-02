@@ -14,23 +14,15 @@ from typing import Optional
 
 import yaml
 
+from .scanner import EXTENSION_TO_LANGUAGE
+
 logger = logging.getLogger(__name__)
 
-# Language extension mapping
-_LANGUAGE_EXTENSIONS = {
-    ".py": "python",
-    ".swift": "swift",
-    ".java": "java",
-    ".ts": "typescript",
-    ".tsx": "typescript",
-    ".js": "javascript",
-    ".jsx": "javascript",
-    ".php": "php",
-    ".go": "go",
-    ".rs": "rust",
-    ".m": "objc",
-    ".h": "objc",
-}
+# Language extension mapping — derived from the single source
+# scanner.EXTENSION_TO_LANGUAGE (imported at top) so detection can never drift
+# to include a language the scanner/parser can't handle (GH #112; the old
+# inline table had drifted to carry .go/.rs → detect-but-unparseable empties).
+_LANGUAGE_EXTENSIONS = EXTENSION_TO_LANGUAGE
 
 # Directories to ignore during language detection
 _IGNORE_DIRS = {
