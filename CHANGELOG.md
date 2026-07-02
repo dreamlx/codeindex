@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`scan-all` no longer silently indexes nothing on a language mismatch** (GH #105): the `languages` footgun — e.g. `languages: [python]` on a TypeScript repo — made `scan-all` walk to "0/0 directories" and exit cleanly, indistinguishable from "nothing to do" (an agent then debugs for minutes; a human gives up). The actionable diagnostic that `list-dirs` already emitted (GH #74 — names the configured languages, the extensions actually present, and which language to add) is now a single shared helper `scanner.language_mismatch_hint`, and `scan-all` surfaces it too. The empty-signal was also corrected from `total_directories == 0` to `with_files == 0`: a directory whose files don't match `languages` still counts as a directory but yields nothing to process, so the old guard missed exactly this case.
+- **`languages` default no longer contradicts itself** (GH #105): the runtime fallback (`DEFAULT_LANGUAGES`) is `[python]`, but the unused `DEFAULT_CONFIG_TEMPLATE` / `Config.create_default()` seed carried `languages: [php]` (a legacy artifact — `create_default` is dead code; `codeindex init` writes auto-detected languages instead). Aligned the template to `python` and clarified the comment so anyone copy-pasting or rendering it gets a value consistent with the actual fallback.
+
 ## [0.27.0] - 2026-06-28
 
 **Theme**: graph-export + parser robustness. Ships the new `codeindex

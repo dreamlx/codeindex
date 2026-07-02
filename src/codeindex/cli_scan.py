@@ -525,9 +525,20 @@ def _build_and_print_tree(root: Path, config: Config, quiet: bool) -> DirectoryT
     tree = DirectoryTree(root, config)
     stats = tree.get_stats()
 
-    if stats["total_directories"] == 0:
+    # GH #105: `with_files == 0` (not `total_directories`) is the real "nothing
+    # to index" signal — a dir with source files whose extensions aren't in
+    # `languages` still counts as a directory but yields no processable files.
+    # Surface the same actionable diagnostic list-dirs uses instead of silently
+    # walking to "0/0 directories" (the languages footgun).
+    if stats["with_files"] == 0:
         if not quiet:
-            console.print("[yellow]No indexable directories found[/yellow]")
+            from .scanner import language_mismatch_hint
+
+            hint = language_mismatch_hint(root, config)
+            if hint:
+                console.print(f"[yellow]{hint}[/yellow]")
+            else:
+                console.print("[yellow]No indexable directories found[/yellow]")
         return tree
 
     if not quiet:
@@ -1117,7 +1128,7 @@ def scan_all(
 
     # Build directory tree and get processing order
     tree = _build_and_print_tree(root, config, quiet)
-    if tree.get_stats()["total_directories"] == 0:
+    if tree.get_stats()["with_files"] == 0:
         return
 
     dirs = tree.get_processing_order()

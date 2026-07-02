@@ -339,3 +339,42 @@ def diagnose_language_mismatch(root: Path, config: Config) -> dict:
         "configured_extensions": configured_exts,
         "candidate_languages": sorted(candidates),
     }
+
+
+def language_mismatch_hint(root: Path, config: Config) -> str | None:
+    """Render an actionable diagnostic when no directories would be indexed.
+
+    Single source for the GH #74 / #105 language-mismatch message, shared by
+    ``list-dirs`` and ``scan-all`` so both surface the same guidance instead of
+    a silent empty result (the footgun: ``languages: [python]`` on a TS repo →
+    ``scan-all`` scans nothing and exits 0, indistinguishable from "done").
+
+    Returns:
+        A multi-line hint string when source files are present under the
+        include roots but their extensions aren't covered by
+        ``config.languages``. ``None`` when the include roots are genuinely
+        empty (nothing to act on — caller should stay silent).
+    """
+    diag = diagnose_language_mismatch(root, config)
+    present = diag["extensions_present"]
+    if not present:
+        return None
+
+    top = ", ".join(f"{ext} ({n})" for ext, n in present.most_common(5))
+    candidates = diag["candidate_languages"]
+    if candidates:
+        cand = " / ".join(candidates)
+        return (
+            "no indexable directories found.\n"
+            f"  Configured languages: {diag['configured_languages']}\n"
+            f"  Detected file types in include roots: {top}\n"
+            f"  Hint: add {cand} to .codeindex.yaml `languages:`\n"
+            "        (run: codeindex config explain languages)"
+        )
+    return (
+        "no indexable directories found.\n"
+        f"  Configured languages: {diag['configured_languages']}\n"
+        "  Files are present but no codeindex-supported language "
+        "matches their extensions.\n"
+        f"  Top extensions: {top}"
+    )
