@@ -768,7 +768,7 @@ def uninstall(hook_name: Optional[str], uninstall_all: bool, keep_backup: bool):
         raise click.Abort()
 
 
-@hooks.command("run")
+@hooks.command("run", hidden=True)  # internal: called by shell hook scripts, not users (GH #34)
 @click.argument("hook_name")
 def run_hook(hook_name: str):
     """Run hook logic (called by thin wrapper scripts).
