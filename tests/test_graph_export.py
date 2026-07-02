@@ -73,6 +73,39 @@ def test_entities_qualified_and_typed() -> None:
     assert by_id["app.service.AuthService"].description == "Authenticates users."
 
 
+def test_entity_carries_signature() -> None:
+    """GH #115: entity records project ``Symbol.signature``.
+
+    ``signature`` is additive over the schema_version 0 artifact (no version
+    bump — see issue). It closes the embedding-coverage hole: docstring-less
+    symbols had an empty ``description`` → no embedding vector → invisible to
+    downstream semantic search. A signature is present for ~all symbols, so a
+    consumer can build ``description = signature + docstring`` and reach full
+    coverage. codeindex stays a dumb emitter — it does NOT collapse the two;
+    the combine is the consumer's call (ADR-007 seam)."""
+    model = _model()
+    by_id = {e.id: e for e in model.entities}
+
+    # docstring-less symbol: description empty, but signature populated — the
+    # exact hole #115 closes (workers.py Builder.run / Packer.run / kickoff).
+    assert by_id["app.workers.kickoff"].description == ""
+    assert by_id["app.workers.kickoff"].signature == "def kickoff(obj) -> None"
+    assert by_id["app.workers.Builder.run"].signature == "def run(self) -> None"
+
+    # docstring present: both carry signal, kept as separate fields.
+    assert by_id["app.service.AuthService"].signature == "class AuthService"
+    assert by_id["app.service.AuthService"].description == "Authenticates users."
+
+
+def test_entity_record_has_signature_field() -> None:
+    """The NDJSON record (what consumers read) must carry the signature key."""
+    model = _model()
+    by_id = {e.id: e for e in model.entities}
+    rec = by_id["app.workers.kickoff"].to_record()
+    assert "signature" in rec
+    assert rec["signature"] == "def kickoff(obj) -> None"
+
+
 # --------------------------------------------------------------------------- #
 # every resolution_qualifier state (the actual point of the export)
 # --------------------------------------------------------------------------- #

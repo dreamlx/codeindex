@@ -27,7 +27,7 @@ records. All records carry a `type` tag.
 
 ```jsonc
 {"type":"meta","schema_version":0,"generator":"codeindex","provenance_completeness":"ast-only: ..."}
-{"type":"entity","id":"app.service.AuthService","entity_type":"class","source_id":"app/service.py:8","description":"Authenticates users.","provenance":"ast"}
+{"type":"entity","id":"app.service.AuthService","entity_type":"class","source_id":"app/service.py:8","description":"Authenticates users.","signature":"class AuthService","provenance":"ast"}
 {"type":"edge","kind":"CALLS","src":"app.service.AuthService.login","dst":"app.service.AuthService.authenticate","resolution_qualifier":"resolved","source_id":"app/service.py:15"}
 {"type":"edge","kind":"CALLS","src":"app.workers.kickoff","dst":null,"resolution_qualifier":"ambiguous","candidates":["app.workers.Builder.run","app.workers.Packer.run"],"source_id":"app/workers.py:15"}
 ```
@@ -60,6 +60,7 @@ sibling classes/modules (the spike's F-class) and makes ownership explicit.
 | `entity_type` | `class` \| `function` \| `method` |
 | `source_id` | `relpath:line` |
 | `description` | first line of the docstring (may be empty) |
+| `signature` | parser-derived signature, e.g. `def login(self, token: str) -> bool` / `class AuthService` (GH #115). Present for ~all symbols; empty only when the parser couldn't derive one. A consumer building an embedding input should use **`signature` + `description`** rather than `description` alone — docstring-less symbols have an empty `description`, so description-only embedding leaves a coverage hole (measured ~4–15% across repos). codeindex emits the two as separate fields; the combine is the consumer's call. |
 | `provenance` | `ast` (L1 structural) |
 
 ### Edge

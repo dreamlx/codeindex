@@ -53,6 +53,14 @@ class Entity:
     entity_type: str  # class | function | method
     source_id: str  # relpath:line
     description: str = ""
+    # GH #115: parser-derived signature, projected so consumers can build a
+    # fuller embedding input (signature + docstring) than description alone.
+    # Docstring-less symbols had empty description → no vector → invisible to
+    # semantic search; signature is present for ~all symbols. Additive over
+    # schema_version 0 (no bump — the 0-version window is for exactly this).
+    # codeindex does NOT collapse signature+description; the combine is the
+    # consumer's call (ADR-007 seam).
+    signature: str = ""
     provenance: str = "ast"
 
     def to_record(self) -> dict:
@@ -62,6 +70,7 @@ class Entity:
             "entity_type": self.entity_type,
             "source_id": self.source_id,
             "description": self.description,
+            "signature": self.signature,
             "provenance": self.provenance,
         }
 
@@ -214,6 +223,7 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
                         entity_type=sym.kind,
                         source_id=_source_id(pr.path, root, sym.line_start),
                         description=_first_line(sym.docstring),
+                        signature=sym.signature,
                     )
                 )
                 last_index[sym.name.rsplit(".", 1)[-1]].append(eid)
