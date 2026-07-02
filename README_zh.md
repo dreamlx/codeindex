@@ -100,14 +100,15 @@ loomgraph inject parse_results.json  # Build knowledge graph
 # Team can now search code using natural language
 ```
 
-**三仓库架构**：
+**两仓库架构**：
 ```
-codeindex (Parse)  →  LoomGraph (Orchestrate)  →  LightRAG (Store)
-   ↓ ParseResult         ↓ Embeddings              ↓ Semantic Search
-   AST extraction        Knowledge Graph           Vector + Graph DB
+codeindex (Parse)         →   LoomGraph (Store + Query)
+   ↓ graph-export NDJSON        ↓ SQLite + sqlite-vec
+   AST extraction               知识图谱 + 向量检索 + MCP
 ```
 
-没有 codeindex，LoomGraph 无法运转。参见 [LoomGraph 集成指南](docs/guides/loomgraph-integration.md)。
+codeindex 是无状态的解析层；LoomGraph 是自包含的知识图谱（SQLite + sqlite-vec，
+无需外部 RAG 框架）。没有 codeindex，LoomGraph 就无内容可索引。参见 [LoomGraph 集成指南](docs/guides/loomgraph-integration.md)。
 
 ---
 
@@ -419,7 +420,7 @@ After (structural + AI enrichment):
                              ↑ AI agent can navigate directly
 ```
 
-### 三仓库架构（企业知识图谱）
+### 两仓库架构（企业知识图谱）
 
 ```
 ┌────────────────────────────────────────────────────┐
@@ -428,28 +429,28 @@ After (structural + AI enrichment):
 │                                                    │
 │  📦 Code Repository (Git)                          │
 │       ↓                                            │
-│  🔍 codeindex (Parse Layer)                        │
-│       ├── scan --output json → ParseResult         │
+│  🔍 codeindex (Parse Layer — 无状态)               │
+│       ├── graph-export → NDJSON 图谱制品           │
 │       ├── README_AI.md → architecture docs         │
 │       └── tech-debt → comprehensive quality scan   │
 │       ↓                                            │
-│  🕸️ LoomGraph (Orchestration Layer)                │
-│       ├── inject ParseResult                       │
-│       ├── generate embeddings                      │
-│       └── build knowledge graph                    │
-│       ↓                                            │
-│  💾 LightRAG (Storage Layer)                       │
-│       ├── PostgreSQL (graph data)                  │
-│       ├── Vector DB (embeddings)                   │
-│       └── Query API (semantic search)              │
+│  🕸️ LoomGraph (Store + Query — 有状态)             │
+│       ├── import-export ← codeindex NDJSON         │
+│       ├── SQLite + sqlite-vec（图谱 + 向量）       │
+│       ├── embeddings + KNN 语义检索                │
+│       └── query CLI + MCP server                   │
 │       ↓                                            │
 │  💬 AI Agents (Claude Code, Internal Chat)         │
-│       └── Natural language code search             │
+│       └── Natural language code search (MCP)       │
 │                                                    │
 └────────────────────────────────────────────────────┘
 ```
 
-**codeindex 角色**：底层（数据采集与解析）——整个系统都依赖 codeindex 提供结构化的 ParseResult 数据。
+> **注**：LightRAG + PostgreSQL 已不在此流程中。LoomGraph 本地化改造后用内嵌的
+> SQLite + sqlite-vec 取代（"no RAG framework needed"）。
+
+**codeindex 角色**：底层（解析）——LoomGraph 以 codeindex 的 `graph-export` NDJSON
+为唯一数据接缝；codeindex 自身保持无状态（ADR-007）。
 
 ---
 
