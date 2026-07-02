@@ -1,116 +1,187 @@
-# ADR 007: codeindex 无状态 — 持久化图谱归 loomgraph
+# ADR 007: codeindex 保持无状态 — 持久化图谱归属 loomgraph
 
 ## 状态
 
-已采纳 (Accepted) — 2026-06-28（随 v0.27.0 `graph-export` 发布落地）
+已采纳 (Accepted) — 2026-06-23；已落地 (Implemented) — 2026-06-28（`GraphBuffer` IR
+与 `graph-export` 随 v0.27.0 发布，验证门控见文末更新）
 
 ## 背景
 
-LoomGraph#30 消费 spike（verdict 🟡 YELLOW）验证了下游确实需要 codeindex 产出一份
-机读的图谱制品（entity + CALLS/INHERITS），但同时逼出一个必须先拍板的架构问题：
+`code-governance` 工作空间对 `codebase-memory-mcp`（cbm，⭐11.2k，纯 C，22-pass
+pipeline，SQLite + Cypher 图谱）做竞品分析后，产出 `absorption-plan.md` 的
+B1（N-pass pipeline）/ B3（SQLite + sqlite-vec 持久化图谱）两个吸收项，提议
+codeindex 从当前的线性 2-phase 升级为 N-pass 架构，并引入 `GraphBuffer` 中间
+表示 + 持久化 SQLite 图谱 + sqlite-vec 向量表（统一为「Phase 1」）。
 
-**谁持有持久化的代码图谱状态？**
+讨论中暴露出该方案的两个结构性问题：
 
-两仓都"碰"图谱：codeindex 从 AST 抽出符号与边，loomgraph 要把它们存进可增量更新、
-可向量检索、可 topology 分析的知识图谱。如果不划清所有权，可预见的失败模式：
+1. **三个可分离制品被捆成一个不可分的包**：
 
-1. **双写状态**：codeindex 若自己维护一份持久 `.db`（增量同步 / 缓存图谱），loomgraph 又
-   维护一份，两份状态会漂移，且"谁是 source of truth" 永远说不清。
-2. **职责错层**：codeindex 的价值在消费侧的导航与结构真值（ADR-005），不在"当一个图数据库"。
-   让它长出 corruption recovery / 向量索引 / 增量 reconcile，是把 loomgraph 的活扛过来。
-3. **export 与 render-flip 混淆**：spike 通过后一度想顺势把 `scan-all` 的内部渲染路径也
-   翻新（#101 Phase 2 render-flip）。但 spike 解锁的是**产出制品**，不是**内部重构**——
-   export 需要的是 buffer 被 *填充*，不是渲染路径被 *翻转*。二者架构独立。
+   | 制品 | 是什么 | 成本 |
+   |---|---|---|
+   | A. GraphBuffer（内存 IR） | parse 结果的中间表示，pass 间通信 | 低（纯内存，每 run 重建） |
+   | B. 持久化 SQLite 图谱 | nodes/edges + provenance，跨 run 维护 | **高**（schema/迁移/增量/损坏恢复/并发） |
+   | C. sqlite-vec 向量表 | 语义检索后端 | 中（embedding 模型 + 重建） |
+
+   A 的全部好处（解耦 parse/write、可组合 pass、全局调用图）来自内存 IR，**不依赖
+   B**。把三者捆在一起，让 codeindex 为只有 loomgraph 才消费的能力背上有状态的代价。
+
+2. **「SQLite 作为契约格式」被混淆成「codeindex 拥有有状态的 SQLite」**。两者正交：
+   codeindex 可以每次全量吐一个 write-once 的 `.db`/JSON 快照拿到 schema-as-contract
+   的好处，而无需跨 run 维护一个可变 `.db`。
+
+前置共识：**不以「追平 cbm」为目标**。cbm 是纯 C、158 语言、arXiv 论文、SLSA-3 的
+超集竞品，功能上不追、也不该追。codeindex 的护城河是消费侧的 AI 导航理解力
+（见 ADR-005），不是图谱后端这个 commodity 层。
 
 ## 决策
 
-**codeindex 是无状态的图谱 emitter；持久化图谱归 loomgraph。**
+**codeindex 保持「无状态发射器」定位，不拥有任何持久化图谱状态。**
 
-1. **codeindex 只产出 write-once 制品**：`codeindex graph-export` 对整棵树做一次干净解析，
-   dump 一份 NDJSON（`meta` + `entity` + `edge`）。它**不持有任何持久 / 可变状态**——
-   没有 `.db`、没有增量同步、没有 corruption recovery、没有向量索引。契约规格见
-   [graph-export.md](../../guides/graph-export.md)。
+1. **codeindex 不拥有有状态的图谱写路径。** 每次运行全量产出 artifact，**不**跨 run
+   维护、**不**增量回读自身图谱、**不**做损坏恢复。`~/.codeindex/*.db` 这类常驻可变
+   状态不进 codeindex。
 
-2. **持久化 + 语义层全部归 loomgraph**：可变 `.db`、增量同步、向量（`sqlite-vec`）索引、
-   以及 L3（设计文档级 LLM 抽取）都是 loomgraph 的职责。loomgraph 读这份一次性快照，
-   在其上合成容器节点（file/module）、外部 stub、语义脚手架。
+2. **L1（AST 结构）+ L2（注释规范化）升级为 `GraphBuffer` 内存 IR。** 解耦
+   `parse_file()`（今天一次性提取符号/调用/继承，加能力要改 parser），让 pass 可组合，
+   产出全局调用图。IR 在内存中，每 run 重建。这是纯内部重构，不引入持久化状态。
 
-3. **唯一接缝是制品**：进程解耦（decision (a)）——codeindex 不 import loomgraph，
-   loomgraph 通过子进程调 codeindex CLI 拿到 NDJSON。制品是两仓之间**唯一**的数据契约。
+3. **codeindex 产出一个 write-once 的结构化 graph-export artifact** 作为与 loomgraph
+   的数据契约。loomgraph **读** 该 artifact（进程解耦），**不** import codeindex 当库
+   （见替代方案 2）。
 
-4. **codeindex 只发结构切片，不发完整图谱**：只含真实代码符号（class/function/method）
-   及其 CALLS/INHERITS 边，附 `resolution_qualifier` / `provenance_completeness` 元数据，
-   如实标注 AST 抽取与跨文件解析的有损性。容器节点 / 外部 stub 由消费者合成。
+4. **持久化与查询全部归 loomgraph**：持久化 SQLite + sqlite-vec 向量表、L3 设计文档
+   LLM 抽取、跨 run 增量图谱维护、图查询（SQL / 未来 Cypher）。loomgraph 读 codeindex
+   的 L1+L2 export，追加 L3，拥有整个有状态图谱。
+
+### codeindex 明确不做的事
+
+- ❌ 维护跨 run 的持久化图谱 DB
+- ❌ 图谱增量同步 / file_hashes 状态表 / 损坏检测与恢复
+- ❌ sqlite-vec 向量索引的构建与查询
+- ❌ L3 设计文档的 LLM 实体抽取
+- ❌ 暴露图查询接口（search_graph / trace_call_path / Cypher）
+
+### codeindex 仍然做的事
+
+- ✅ AST 结构提取（L1）+ 注释规范化（L2，可选 AI）
+- ✅ `GraphBuffer` 内存 IR + 可组合 pass
+- ✅ README_AI.md / PROJECT_SYMBOLS.md（消费侧导航产品，不变）
+- ✅ write-once graph-export artifact（给 loomgraph 等工具）
+- ✅ 现有 AI-enrichment 增量缓存（ok 缓存、只重跑 new/failed dir）
 
 ## 理由
 
-### 1. 分层：sees vs thinks+remembers
+1. **codeindex 没有回读自身图谱的需求。** 唯一需要回读的场景是增量索引
+   （file_hashes → 跳过未变文件）。但 design-philosophy 明确：**parse 不是瓶颈，AI
+   调用才是（99%）**。结构层（L1）全量重 parse 是毫秒级，增量省不下什么。真正贵的
+   AI 层（enrichment / L2 规范化）**已经有增量缓存**（#94 / #97：ok 结果缓存，只有
+   new/failed dir 打 AI）。codeindex 在真正贵的地方早就解决了增量，且没用任何持久化
+   图谱。持久化图谱是为一个 codeindex 不存在的问题加重状态。
 
-两仓模型：**codeindex sees**（AST → 结构切片），**loomgraph thinks + remembers**
-（图存储 + 向量检索 + query/MCP）。持久化状态天然属于 "remembers" 侧。让 emitter 保持
-无状态，是这条分层的直接推论。
+2. **不引进竞品最难的失败类。** cbm 最严重的两个 bug —— #557「corrupt 检测触发即
+   `unlink` DB，无备份无恢复」、#516「re-index 时 ADR 数据丢失」—— 都是持久化图谱
+   状态 bug。给 codeindex 加有状态写路径等于把这个失败类引进门。
 
-### 2. 单一 source of truth
+3. **服务零现有用户。** ~400 个企业用户当前消费的是 README_AI.md，没人消费 SQLite
+   图。有状态写路径增加发布、回归、支持面，却不服务任何现有消费。
 
-制品是 write-once 快照，不是可变状态。任何时刻"图谱现在是什么样"只有一个答案——
-loomgraph 的 workspace。codeindex 每次 `graph-export` 都从源码重新生成，无历史包袱、
-无 reconcile。
+4. **「薄」是核心美德。** ADR-005（导航契约）/ ADR-006（分发拆分）一脉相承：codeindex
+   是 editor-agnostic 的薄引擎。持久化图谱（schema 版本化、迁移、vec0 扩展、`.db`
+   生命周期）是一次结构性膨胀，与「只做 AST + AI 注释规范化」冲突。
 
-### 3. 无状态 = 易测、易 CI、易并发
+5. **好处归 loomgraph，代价不该压 codeindex。** 持久化图谱的好处（全局查询、
+   向量 + 结构 JOIN、「语义相似且调用 redis 的函数」）消费方是 loomgraph（语义检索是
+   loomgraph 的能力轴）。代价（状态、schema、增量、恢复）若压在 codeindex 上即是错配。
+   状态应与消费/推理方同处。
 
-`graph-export` 是纯函数式的 `源码树 → NDJSON`。可在 CI / Docker / 任意目录无副作用运行，
-golden 测试可 diff（见 `tests/test_graph_export.py`）。若 codeindex 持有 `.db`，这些性质
-全部消失。
+6. **格式与所有权正交。** 用 SQLite 当**导出格式**（schema-as-contract，比 CLI JSON
+   稳定）不要求 codeindex **维护**一个有状态 `.db`。codeindex 吐 write-once 快照即可
+   两全。
 
-### 4. export ≠ flip（解耦，不顺势重构）
+## 验证门控
 
-spike 的 GREEN/YELLOW 只为"produce artifact"背书。内部 render-flip（#101 Phase 2）是
-独立的、可延后的重构：export 从 `GraphBuffer` 读*已填充*的数据，不要求渲染路径先翻转。
-因此 v0.27.0 只 ship export，render-flip 延后，`GraphBuffer` IR 以 dormant（未接线）状态
-随车发布。
+`GraphBuffer` 内存 IR 因有**独立的内部解耦价值**（解耦 parse/write，与消费侧 thesis
+无关），可不等 spike 推进。
 
-## 影响范围
+但 **graph-export artifact 作为常驻契约**之前，需 loomgraph 侧先跑 time-boxed 消费
+spike 出 GREEN（对照 `先验证再造基建` 红黄绿卡）：
 
-- **新增**：`codeindex graph-export` 命令 + [graph-export.md](../../guides/graph-export.md) 契约文档。
-- **复用**：`GraphBuffer` IR（#101）仅作已解析数据的容器被 export 复用；不 ship 任何持久 /
-  可变状态。
-- **延后**：`scan-all` 内部 render-flip（#101 Phase 2），issue #101 作为 tracker 保持 open。
-- **下游**：loomgraph 通过 `loomgraph import-export` 消费制品，`unresolved` 边计数但跳过存储
-  （不插占位节点，避免污染 topology）。集成见
-  [loomgraph-integration.md](../../guides/loomgraph-integration.md)。
+> 同一 fixture，agent 用 README_AI.md vs 用 loomgraph 的图谱查询，哪个让 agent 理解
+> 得更快 / 更省 token / 更准（消费侧三轴，对照 baseline）。
+
+GREEN → 固化 export schema 与 loomgraph 消费链；YELLOW → 只留真正有用的字段；
+RED → 重想，export 不固化为常驻契约。在 spike 出 GREEN 前，不把 export schema 当
+稳定契约对外承诺。
+
+### 门控结果（2026-06-28 更新）
+
+LoomGraph#30 消费 spike 已跑，verdict **🟡 YELLOW**：证实了下游确实需要这份 export
+artifact，但**只**为"产出制品"背书，**未**为内部 render-flip（#101 Phase 2）背书——
+二者架构独立（export 需要 buffer 被*填充*，不是渲染路径被*翻转*）。据此：
+
+- `GraphBuffer` IR（#101）+ `graph-export`（#102）随 **v0.27.0 发布**；`GraphBuffer`
+  以 dormant（未接入 `scan-all`）状态随车。
+- 遵循 YELLOW = "只留真正有用的字段"：export 以 **experimental `schema_version: 0`**
+  发布——字段/格式在 0 版本期间可无 deprecation 变更，**尚未**作为稳定契约对外承诺。
+  每条边带 `resolution_qualifier`、meta 带 `provenance_completeness`，如实标注有损性。
+- render-flip 延后，issue #101 作为 tracker 保持 open。
+
+契约现状规格见 [graph-export.md](../../guides/graph-export.md)；下游消费与集成路径见
+[loomgraph-integration.md](../../guides/loomgraph-integration.md)。
 
 ## 替代方案（已否决）
 
-### 方案 1：codeindex 自持久化图谱（`.db` + 增量同步）
+### 方案 1：codeindex 拥有持久化 SQLite 图谱（cbm 模型，absorption-plan 原 B3）
 
-- ❌ 双写状态、source-of-truth 不清。
-- ❌ 职责错层——把 loomgraph 的存储 / 向量 / reconcile 活扛过来。
-- ❌ 摧毁无状态带来的可测 / 可 CI / 可并发性质。
+- ❌ 引入跨 run 有状态（schema/迁移/增量/损坏恢复/并发），违反「薄」
+- ❌ 引进 cbm 最严重的失败类（#557 / #516 数据丢失）
+- ❌ 好处的消费方是 loomgraph，代价压错地方
 
-### 方案 2：借 export 顺势做 render-flip（#101 Phase 2 一起上）
+### 方案 2：loomgraph import codeindex 当库（讨论中的决策 b）
 
-- ❌ 把"产出制品"和"内部重构"绑成一个大变更，风险叠加。
-- ❌ spike 没为 flip 背书；export 不依赖 flip。延后是更小、更可控的路径。
+- ❌ 把两个 repo 在代码层绑死，迭代节奏耦合
+- ❌ 失去进程隔离与清晰契约
+- ✅ 采用决策 a：loomgraph 读 codeindex 吐的 export artifact（进程解耦）
 
-### 方案 3：codeindex 直接 import loomgraph、进程内传对象
+### 方案 3：三层（L1+L2+L3）全放 codeindex 一个工具
 
-- ❌ 紧耦合，违背两仓独立发版 / 进程隔离（同 ADR-006 的引擎/触达层原则的精神）。
-- ❌ 强绑 Python 环境；CLI 制品接缝对任何语言的消费者都开放。
+- ❌ L3 的 LLM 实体抽取是 AI 推断，违反 codeindex「结构索引层无 AI 依赖」约束
+- ❌ 详见 `code-governance/notes/codeindex-loomgraph-division.md`
+
+## 影响范围
+
+### codeindex repo
+
+- 新增 `GraphBuffer` 内存 IR + 可组合 pass（内部重构，不改对外行为）
+- 新增 write-once graph-export artifact（schema 待 spike 后固化）
+- README_AI.md / PROJECT_SYMBOLS.md / AI-enrichment 增量缓存：**不变**
+- **不**新增任何持久化 `.db` 写路径
+
+### loomgraph repo（跨 repo，需镜像 ADR）
+
+- loomgraph 接手持久化 SQLite + sqlite-vec（替换 LightRAG，见
+  `code-governance/notes/sqlite-vec-vs-lightrag.md`）
+- 读 codeindex export → 追加 L3 → 拥有有状态图谱
+- 需在 loomgraph repo 写镜像 ADR 记录这一接手
 
 ## 相关 ADR
 
-- ADR 005: 导航契约与 README 大小上限（codeindex 价值在消费侧——本决策的 precedent）。
-- ADR 006: 分发架构拆分（CLI 引擎 vs 触达层；两仓独立发版的同源思路）。
+- ADR 001: 用 tree-sitter 做解析（L1 结构提取的基础）
+- ADR 002: 外部 AI CLI 集成（L2 的 AI 规范化走外部 CLI）
+- ADR 005: 导航契约与 README 大小上限（codeindex 价值在消费侧的确立）
+- ADR 006: 分发架构拆分（「薄引擎 + 薄触达层」范式的同源决策）
 
 ## 参考资料
 
-- 契约规格：[docs/guides/graph-export.md](../../guides/graph-export.md)
-- 集成指南：[docs/guides/loomgraph-integration.md](../../guides/loomgraph-integration.md)
-- LoomGraph#30 消费 spike（verdict 🟡 YELLOW，为 export 背书、未为 flip 背书）
-- 实现：`src/codeindex/graph_export.py`、`src/codeindex/graph_buffer.py`（#101 dormant IR）
+- `code-governance/absorption-plan.md`（B1 / B3 吸收项）
+- `code-governance/notes/three-layer-architecture.md`（三层 provenance 模型）
+- `code-governance/notes/codeindex-loomgraph-division.md`（L1+L2 vs L3 分工）
+- `code-governance/notes/sqlite-vec-vs-lightrag.md`（loomgraph 后端替换论证）
+- `code-governance/notes/codebase-memory-mcp.md`（cbm 竞品分析，#557 / #516 失败类）
 
 ---
 
 **决策人**: dreamlinx
-**日期**: 2026-06-28
-**状态**: 已采纳（v0.27.0 已落地）
+**日期**: 2026-06-23
+**状态**: 已采纳
