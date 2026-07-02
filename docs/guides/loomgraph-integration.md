@@ -2,17 +2,30 @@
 
 **目标读者**: LoomGraph 项目组开发者
 **版本**: codeindex v0.13.0+
-**更新日期**: 2026-02-07
+
+> ⚠️ **架构已更新（2026-07，两仓模型）**：本指南下半部分描述的
+> `codeindex parse`（逐文件 JSON）→ `loomgraph inject` 集成范式是**早期方案**。
+> 当前的**正式数据接缝是 `graph-export` NDJSON 契约**（GH #102 / ADR-007）：
+>
+> ```bash
+> codeindex graph-export --root . -o graph-export.ndjson   # codeindex 侧
+> loomgraph import-export graph-export.ndjson              # loomgraph 侧
+> ```
+>
+> 契约规格见 [graph-export.md](graph-export.md)。此外 LightRAG 已退役 —— LoomGraph
+> 本地化后用内嵌 **SQLite + sqlite-vec** 自带图存储 + 向量检索，不再需要外部存储服务。
+> 下方的 parse JSON schema 仍然准确、`parse` 命令仍可用，但新集成应走 graph-export。
 
 ---
 
 ## 🎯 架构设计：松耦合 CLI 方案
 
-### 架构概览
+### 架构概览（两仓模型）
 
 ```
-codeindex (CLI)  →  LoomGraph (CLI)  →  LightRAG (API)
-   独立工具          调度编排            存储服务
+codeindex (CLI)         →   LoomGraph (CLI / MCP)
+   解析层（无状态）           存储 + 查询（SQLite + sqlite-vec，自包含）
+   graph-export NDJSON       import-export → 知识图谱 + 向量检索
 ```
 
 ### 为什么选择 CLI 而不是 Python API？

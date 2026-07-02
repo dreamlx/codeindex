@@ -100,14 +100,16 @@ loomgraph inject parse_results.json  # Build knowledge graph
 # Team can now search code using natural language
 ```
 
-**Three-repo architecture**:
+**Two-repo architecture**:
 ```
-codeindex (Parse)  →  LoomGraph (Orchestrate)  →  LightRAG (Store)
-   ↓ ParseResult         ↓ Embeddings              ↓ Semantic Search
-   AST extraction        Knowledge Graph           Vector + Graph DB
+codeindex (Parse)         →   LoomGraph (Store + Query)
+   ↓ graph-export NDJSON        ↓ SQLite + sqlite-vec
+   AST extraction               Knowledge graph + vector search + MCP
 ```
 
-Without codeindex, LoomGraph cannot function. See [LoomGraph Integration Guide](docs/guides/loomgraph-integration.md).
+codeindex is the stateless parse layer; LoomGraph is the self-contained
+knowledge graph (SQLite + sqlite-vec, no external RAG framework). Without
+codeindex, LoomGraph has nothing to index. See [LoomGraph Integration Guide](docs/guides/loomgraph-integration.md).
 
 ---
 
@@ -422,7 +424,7 @@ After (structural + AI enrichment):
                              ↑ AI agent can navigate directly
 ```
 
-### Three-Repo Architecture (Enterprise Knowledge Graph)
+### Two-Repo Architecture (Enterprise Knowledge Graph)
 
 ```
 ┌────────────────────────────────────────────────────┐
@@ -431,28 +433,29 @@ After (structural + AI enrichment):
 │                                                    │
 │  📦 Code Repository (Git)                          │
 │       ↓                                            │
-│  🔍 codeindex (Parse Layer)                        │
-│       ├── scan --output json → ParseResult         │
+│  🔍 codeindex (Parse Layer — stateless)            │
+│       ├── graph-export → NDJSON graph artifact     │
 │       ├── README_AI.md → architecture docs         │
 │       └── tech-debt → comprehensive quality scan   │
 │       ↓                                            │
-│  🕸️ LoomGraph (Orchestration Layer)                │
-│       ├── inject ParseResult                       │
-│       ├── generate embeddings                      │
-│       └── build knowledge graph                    │
-│       ↓                                            │
-│  💾 LightRAG (Storage Layer)                       │
-│       ├── PostgreSQL (graph data)                  │
-│       ├── Vector DB (embeddings)                   │
-│       └── Query API (semantic search)              │
+│  🕸️ LoomGraph (Store + Query — stateful)           │
+│       ├── import-export ← codeindex NDJSON         │
+│       ├── SQLite + sqlite-vec (graph + vectors)    │
+│       ├── embeddings + KNN semantic search         │
+│       └── query CLI + MCP server                   │
 │       ↓                                            │
 │  💬 AI Agents (Claude Code, Internal Chat)         │
-│       └── Natural language code search             │
+│       └── Natural language code search (MCP)       │
 │                                                    │
 └────────────────────────────────────────────────────┘
 ```
 
-**codeindex role**: Bottom layer (data collection & parsing) — the entire system depends on codeindex providing structured ParseResult data.
+> **Note**: LightRAG + PostgreSQL are no longer part of this flow. LoomGraph's
+> local refactor replaced them with an embedded SQLite + sqlite-vec store
+> ("no RAG framework needed").
+
+**codeindex role**: Bottom layer (parsing) — LoomGraph depends on codeindex's
+`graph-export` NDJSON as the sole data seam. codeindex itself stays stateless (ADR-007).
 
 ---
 

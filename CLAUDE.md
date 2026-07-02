@@ -127,17 +127,23 @@ Read `docs/architecture/design-philosophy.md` when:
 
 ## Part 3: Architecture Reference
 
-### Three-Repo Architecture
+### Two-Repo Architecture
 
-> codeindex **sees** (AST parsing), LoomGraph **thinks** (pipeline + skills), LightRAG **remembers** (storage + retrieval)
+> codeindex **sees** (AST parsing → structural slice), LoomGraph **thinks + remembers**
+> (graph store + vector retrieval + query/MCP)
 
 | Repo | Role | Local Path |
 |------|------|------------|
-| **codeindex** | AST parsing, Symbol/Call/Inheritance extraction | `/Users/dreamlinx/Projects/codeindex` |
-| **LoomGraph** | Pipeline dispatch, Embedding, CLI/Skill | `/Users/dreamlinx/Projects/LoomGraph` |
-| **LightRAG** | Graph storage, vector retrieval | `/Users/dreamlinx/Projects/LightRAG` |
+| **codeindex** | AST parsing, Symbol/Call/Inheritance extraction, `graph-export` NDJSON. **Stateless** (ADR-007). | `/Users/dreamlinx/Projects/opensource/codeindex` |
+| **LoomGraph** | Graph store + vector retrieval (SQLite + sqlite-vec vec0 KNN), embedding, query/MCP. **Stateful.** | `/Users/dreamlinx/Projects/opensource/loomgraph` |
 
-Data flow: `codeindex scan` → ParseResult → `LoomGraph embed/inject` → LightRAG API → PostgreSQL
+Data flow: `codeindex graph-export` → NDJSON → `loomgraph import-export` →
+`SqliteGraphStore` (SQLite + sqlite-vec).
+
+> **Note**: LightRAG is retired from the runtime. LoomGraph's local refactor
+> replaced it with SQLite + sqlite-vec ("no RAG framework needed"); the old
+> `codeindex scan → LoomGraph embed → LightRAG API → PostgreSQL` flow no longer
+> applies. The graph-export NDJSON contract is the sole seam between the two repos.
 
 ### Core Pipeline
 
