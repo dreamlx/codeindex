@@ -40,6 +40,22 @@ codeindex --help                         # 完整命令参考
 - 重跑 `codeindex scan-all --ai` —— 成功的目录从缓存恢复（无 AI 成本），只重试失败的
 - 若持续失败，编辑 `.codeindex.yaml` 里的 `ai_command` 换模型或后端（配方见 `codeindex --help`）
 
+### 当 post-commit hook 没触发
+
+已安装的 post-commit hook 在每次 commit 后为变更目录重新生成 `README_AI.md`。以下情况会漏跑：
+
+- commit 是纯文档（只有 `README_AI.md` / `PROJECT_INDEX.md`）—— shell wrapper 跳过这类 commit 以防无限循环；
+- 你刚把 `hooks.post_commit.enabled: false → true`，想回溯补齐之前 commit 的 README；
+- 历史 stale README 早于 merge-commit 修复（#84）。
+
+对 `HEAD` 强制重跑（绕过 shell wrapper 的 loop guard，直接跑 Python 逻辑）：
+
+```bash
+codeindex hooks rerun post-commit
+```
+
+若要全量重扫（每个目录，不只是 `HEAD` 的 affected 集合），用 `codeindex scan-all`。
+
 ### 标记（marker）含义
 
 每个 `README_AI.md` 以三个 HTML 注释开头（第三个仅出现在经 AI enrich 的 README 上）：

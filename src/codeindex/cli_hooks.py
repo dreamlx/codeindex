@@ -787,6 +787,35 @@ def run_hook(hook_name: str):
         raise SystemExit(0)
 
 
+@hooks.command("rerun")
+@click.argument("hook_name")
+def rerun_hook(hook_name: str):
+    """Force-rerun a hook against HEAD (user escape hatch, GH #89).
+
+    The installed shell hook wrapper has guards (doc-only commit loop guard;
+    config gates) that can cause a commit's README_AI.md update to be skipped.
+    ``rerun`` calls the Python hook logic directly — bypassing the shell
+    wrapper — so the update fires regardless of those guards.
+
+    Use when the post-commit hook didn't fire on a commit:
+
+    \b
+    - doc-only commit skipped by the loop guard
+    - retroactive populate after flipping ``hooks.post_commit.enabled`` to true
+    - a historical stale README (e.g. predating the #84 merge-commit fix)
+
+    For a full re-scan (every directory) use ``codeindex scan-all``.
+
+    Example: codeindex hooks rerun post-commit
+    """
+    if hook_name == "post-commit":
+        exit_code = run_post_commit_hook()
+        raise SystemExit(exit_code)
+    else:
+        console.print(f"[yellow]No run handler for hook: {hook_name}[/yellow]")
+        raise SystemExit(0)
+
+
 @hooks.command()
 def status():
     """Show status of Git hooks."""
