@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-07-03
+
+**Theme**: `graph-export` emits `IMPORTS` edges (GH #117) — the third edge kind,
+after `CALLS`/`INHERITS`. Module→module import relationships were entirely
+absent from the export contract, so `loomgraph deps` (module dependency graph)
+returned empty and the IMPORTS filter in `loomgraph graph` had no data.
+loomgraph-side `VALID_EDGE_KINDS` already included `IMPORTS` (LoomGraph#77),
+waiting on this emit. Schema stays at `0` (no bump — additive new edge kind,
+same 0-version gate rationale as #115 in v0.28.0).
+
+### Added
+
+- **`graph-export` emits `IMPORTS` edges** (GH #117): a new edge kind for
+  module→module import relationships, projected from the already-parsed
+  `ParseResult.imports`. `src` = the importer module id (no entity backing —
+  module-level, same shape as a `<module>`-level `CALLS` `src`; the consumer
+  materialises the container); `dst` = the imported module id if a scanned
+  file maps to it, else `null` with `dst_raw` carrying the original import
+  string. Resolution is **module-level**, not entity-level — `from
+  app.validators import validate` → `dst` is `app.validators` (the module),
+  not `validate` (the symbol). Relative imports (`./api`, `../lib` — TS/JS)
+  resolve against the importer's directory. `Import.line` added to the parser
+  dataclass so `source_id` is the import statement's `relpath:line`; filled
+  for Python/TS, `0` (file-level) for PHP/Java/Swift/ObjC pending a parser
+  follow-up. **Schema stays at `0`** (no bump): a new edge kind is additive —
+  old consumers ignore unknown `kind` values; `1` is reserved for shape
+  freeze (ADR-007 gate). Drives `loomgraph deps` and `loomgraph graph --kind
+  IMPORTS` (downstream already gated on it, LoomGraph#77). No breaking
+  changes; no migration.
+
 ## [0.28.0] - 2026-07-03
 
 **Theme**: graph-export `signature` + a sweep of init/scan UX bugs. The headline

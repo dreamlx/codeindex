@@ -20,4 +20,7 @@
 {"candidates": ["app.workers.Builder.run", "app.workers.Packer.run"], "dst": null, "dst_raw": "obj.run", "kind": "CALLS", "resolution_qualifier": "ambiguous", "source_id": "app/workers.py:15", "src": "app.workers.kickoff", "type": "edge"}
 {"dst": "web.api.queryRaw", "dst_raw": "queryRaw", "kind": "CALLS", "resolution_qualifier": "resolved", "source_id": "web/api.ts:8", "src": "web.api.fetchUser", "type": "edge"}
 {"dst": "web.api.fetchUser", "dst_raw": "fetchUser", "kind": "CALLS", "resolution_qualifier": "resolved", "source_id": "web/index.ts:6", "src": "web.index.bootstrap", "type": "edge"}
+{"dst": null, "dst_raw": "os", "kind": "IMPORTS", "resolution_qualifier": "unresolved", "source_id": "app/service.py:3", "src": "app.service", "type": "edge"}
+{"dst": "app.validators", "dst_raw": "app.validators", "kind": "IMPORTS", "resolution_qualifier": "resolved", "source_id": "app/service.py:5", "src": "app.service", "type": "edge"}
+{"dst": "web.api", "dst_raw": "./api", "kind": "IMPORTS", "resolution_qualifier": "resolved", "source_id": "web/index.ts:3", "src": "web.index", "type": "edge"}
 {"dst": "app.service.AuthService", "dst_raw": "AuthService", "kind": "INHERITS", "resolution_qualifier": "resolved", "source_id": "app/service.py:18", "src": "app.service.AdminService", "type": "edge"}

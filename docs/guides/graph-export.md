@@ -30,6 +30,7 @@ records. All records carry a `type` tag.
 {"type":"entity","id":"app.service.AuthService","entity_type":"class","source_id":"app/service.py:8","description":"Authenticates users.","signature":"class AuthService","provenance":"ast"}
 {"type":"edge","kind":"CALLS","src":"app.service.AuthService.login","dst":"app.service.AuthService.authenticate","resolution_qualifier":"resolved","source_id":"app/service.py:15"}
 {"type":"edge","kind":"CALLS","src":"app.workers.kickoff","dst":null,"resolution_qualifier":"ambiguous","candidates":["app.workers.Builder.run","app.workers.Packer.run"],"source_id":"app/workers.py:15"}
+{"type":"edge","kind":"IMPORTS","src":"app.service","dst":"app.validators","dst_raw":"app.validators","resolution_qualifier":"resolved","source_id":"app/service.py:5"}
 ```
 
 ### Naming convention (`id`)
@@ -67,13 +68,38 @@ sibling classes/modules (the spike's F-class) and makes ownership explicit.
 
 | field | meaning |
 |---|---|
-| `kind` | `CALLS` \| `INHERITS` |
+| `kind` | `CALLS` \| `INHERITS` \| `IMPORTS` |
 | `src` | resolved entity id of the caller / child class |
 | `dst` | resolved entity id of the callee / parent, or `null` if not resolved |
 | `dst_raw` | the original best-effort name the resolver tried (file-local). Always present; **load-bearing when `dst` is null** — it is the only record of *what* was called, so a consumer can synthesise an external stub or filter framework noise (e.g. `expect`, `Date.now`) |
 | `resolution_qualifier` | `resolved` \| `ambiguous` \| `unresolved` |
 | `candidates` | (ambiguous only) the entity ids the name could refer to |
-| `source_id` | `relpath:line` of the call / class definition |
+| `source_id` | `relpath:line` of the call / class definition / **import statement (IMPORTS)** |
+
+### IMPORTS edges (GH #117)
+
+`IMPORTS` is **module→module** (additive over schema_version 0, no bump),
+unlike `CALLS`/`INHERITS` (entity→entity):
+
+- **`src`** = the *importer module* id (e.g. `app.service`) — **no `entity`
+  record backs it** (modules aren't entities in this entity-centric slice;
+  ADR-007), same shape as a `<module>`-level `CALLS` `src`. The consumer
+  materialises the container if it wants one.
+- **`dst`** = the *imported module* id if a file in the scan tree maps to it,
+  else `null`. Resolution is **module-level** (does that module file exist?),
+  not entity-level — `from app.validators import validate` → `dst` is
+  `app.validators` (the module), not `validate` (the symbol).
+- **Relative imports** (`./api`, `../lib` — TS/JS) resolve against the
+  importer's directory (`./api` from `web.index` → `web.api`).
+- **`dst_raw`** = the original import string (`app.validators` / `os` /
+  `./api`); load-bearing when `dst` is null (stdlib/external) so a consumer
+  can include externals in a dependency graph.
+- **`source_id`** = `relpath:line` of the import statement; line is filled
+  for Python/TS, **0 (file-level) for PHP/Java/Swift/ObjC** pending a parser
+  follow-up.
+
+`loomgraph deps` aggregates these into module-level dependency graphs;
+downstream `VALID_EDGE_KINDS` already includes `IMPORTS`.
 
 ## Scope — a structural slice, not a full graph index
 

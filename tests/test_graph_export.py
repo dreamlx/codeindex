@@ -151,6 +151,61 @@ def test_inherits_edge_resolved() -> None:
 
 
 # --------------------------------------------------------------------------- #
+# IMPORTS edges (GH #117) — module→module, additive over schema_version 0
+# --------------------------------------------------------------------------- #
+def test_imports_edge_resolved_intra_project() -> None:
+    """``from app.validators import validate`` (service.py:5) → IMPORTS edge
+    src=app.service (importer module, no entity backing — container-level,
+    like a ``<module>`` CALLS src), dst=app.validators (the imported module,
+    resolved because app/validators.py is in the scan tree)."""
+    e = _edge(_model(), "app.service", dst="app.validators", kind="IMPORTS")
+    assert e is not None
+    assert e.resolution_qualifier == "resolved"
+    assert e.dst == "app.validators"
+    assert e.dst_raw == "app.validators"
+    assert e.source_id == "app/service.py:5"
+
+
+def test_imports_edge_unresolved_external() -> None:
+    """``import os`` (service.py:3) — stdlib, not in the scan tree → dst is
+    null, dst_raw preserves ``os`` so a consumer can stub/filter."""
+    import_edges = [
+        e for e in _model().edges
+        if e.kind == "IMPORTS" and e.src == "app.service"
+    ]
+    os_edge = [e for e in import_edges if e.dst_raw == "os"]
+    assert len(os_edge) == 1
+    assert os_edge[0].resolution_qualifier == "unresolved"
+    assert os_edge[0].dst is None
+    assert os_edge[0].source_id == "app/service.py:3"
+
+
+def test_imports_edge_relative_resolved_ts() -> None:
+    """``import { fetchUser } from "./api"`` (index.ts:3) — TS relative import.
+    ``./api`` resolves against the importer module's directory (``web``) →
+    ``web.api`` (web/api.ts is in the tree). dst_raw keeps ``./api``."""
+    e = _edge(_model(), "web.index", dst="web.api", kind="IMPORTS")
+    assert e is not None
+    assert e.resolution_qualifier == "resolved"
+    assert e.dst == "web.api"
+    assert e.dst_raw == "./api"
+    assert e.source_id == "web/index.ts:3"
+
+
+def test_imports_edge_record_shape() -> None:
+    """IMPORTS edges serialise with the same record shape as other edges."""
+    e = _edge(_model(), "app.service", dst="app.validators", kind="IMPORTS")
+    assert e is not None
+    rec = e.to_record()
+    assert rec["type"] == "edge"
+    assert rec["kind"] == "IMPORTS"
+    assert rec["src"] == "app.service"
+    assert rec["dst"] == "app.validators"
+    assert rec["dst_raw"] == "app.validators"
+    assert rec["resolution_qualifier"] == "resolved"
+
+
+# --------------------------------------------------------------------------- #
 # whole-file invariants
 # --------------------------------------------------------------------------- #
 def test_meta_and_ndjson_shape() -> None:
