@@ -58,7 +58,7 @@ def _parse_import(node: Node, source_bytes: bytes) -> list[Import]:
                 # Simple import without alias
                 module_name = get_node_text(child, source_bytes)
                 imports.append(
-                    Import(module=module_name, names=[], is_from=False, alias=None)
+                    Import(module=module_name, names=[], is_from=False, alias=None, line=node.start_point[0] + 1)
                 )
             elif child.type == "aliased_import":
                 # import foo as bar
@@ -72,7 +72,7 @@ def _parse_import(node: Node, source_bytes: bytes) -> list[Import]:
                         alias = get_node_text(ac, source_bytes)
                 if module_name:
                     imports.append(
-                        Import(module=module_name, names=[], is_from=False, alias=alias)
+                        Import(module=module_name, names=[], is_from=False, alias=alias, line=node.start_point[0] + 1)
                     )
 
     elif node.type == "import_from_statement":
@@ -123,7 +123,7 @@ def _parse_import(node: Node, source_bytes: bytes) -> list[Import]:
             # Create separate Import for each item
             for name, alias in imported_items:
                 imports.append(
-                    Import(module=module, names=[name], is_from=True, alias=alias)
+                    Import(module=module, names=[name], is_from=True, alias=alias, line=node.start_point[0] + 1)
                 )
 
     return imports

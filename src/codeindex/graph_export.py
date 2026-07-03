@@ -79,7 +79,7 @@ class Entity:
 class Edge:
     """A relationship (edge) between two entities."""
 
-    kind: str  # CALLS | INHERITS
+    kind: str  # CALLS | INHERITS | IMPORTS
     src: str
     dst: str | None
     resolution_qualifier: str  # resolved | ambiguous | unresolved
@@ -178,6 +178,52 @@ def _resolve(
     return "ambiguous", None, sorted(pool)
 
 
+def _module_target(import_module: str, importer_module: str) -> str:
+    """Normalise an import module string to an absolute dotted module id.
+
+    Absolute imports (``app.validators``, ``os``) are returned verbatim (TS
+    ``/`` separators normalised to ``.``). Relative imports (``./api``,
+    ``../lib`` — TS/JS) resolve against the importer module's directory.
+    """
+    if import_module.startswith("."):
+        stripped = import_module
+        up = 0
+        while stripped.startswith("../"):
+            up += 1
+            stripped = stripped[3:]
+        while stripped.startswith("./"):
+            stripped = stripped[2:]
+        importer_parts = importer_module.split(".") if importer_module else []
+        dir_parts = importer_parts[:-1] if importer_parts else []
+        if up:
+            dir_parts = dir_parts[:-up] if up <= len(dir_parts) else []
+        name_parts = [p for p in stripped.split("/") if p]
+        return ".".join([*dir_parts, *name_parts])
+    return import_module.replace("/", ".")
+
+
+def _resolve_module(
+    import_module: str,
+    importer_module: str,
+    module_set: set[str],
+) -> tuple[str, str | None]:
+    """Resolve an import target to a module id in the scan tree (IMPORTS edges).
+
+    Unlike ``_resolve`` (which resolves a callee/parent *name* against the
+    entity set), this resolves a *module* target: ``dst`` is a dotted module
+    id with **no entity backing** (module-level, like a ``<module>`` CALLS
+    src) — the consumer materialises the container if it wants one (ADR-007
+    entity-centric contract). Returns ``(resolution_qualifier, dst)``;
+    ``dst_raw`` (the original import string) is the caller's responsibility.
+    """
+    if not import_module:
+        return "unresolved", None
+    target = _module_target(import_module, importer_module)
+    if target in module_set:
+        return "resolved", target
+    return "unresolved", None
+
+
 # --------------------------------------------------------------------------- #
 # public API
 # --------------------------------------------------------------------------- #
@@ -210,11 +256,14 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
     entities: list[Entity] = []
     # last-segment -> entity ids, for cross-file resolution
     last_index: dict[str, list[str]] = defaultdict(list)
+    # all scanned module ids, for IMPORTS resolution (GH #117)
+    module_set: set[str] = set()
 
     # Pass 1: entities + resolution index
     for node in buffer.directories():
         for pr in node.parse_results:
             module = _module_of(pr.path, root)
+            module_set.add(module)
             for sym in pr.symbols:
                 eid = f"{module}.{sym.name}"
                 entities.append(
@@ -261,6 +310,26 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
                         source_id=_source_id(pr.path, root, child_line.get(inh.child, 0)),
                         dst_raw=inh.parent or "",
                         candidates=cands,
+                    )
+                )
+
+    # Pass 3: IMPORTS edges (module→module, GH #117). Additive over schema 0
+    # — no version bump. src is the importer module id (no entity backing,
+    # like a <module> CALLS src); dst is the imported module id if it's a file
+    # in the scan tree, else null with dst_raw carrying the original string.
+    for node in buffer.directories():
+        for pr in node.parse_results:
+            module = _module_of(pr.path, root)
+            for imp in pr.imports:
+                qual, dst = _resolve_module(imp.module, module, module_set)
+                edges.append(
+                    Edge(
+                        kind="IMPORTS",
+                        src=module,
+                        dst=dst,
+                        resolution_qualifier=qual,
+                        source_id=_source_id(pr.path, root, imp.line),
+                        dst_raw=imp.module or "",
                     )
                 )
 

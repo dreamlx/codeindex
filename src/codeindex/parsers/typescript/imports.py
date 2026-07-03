@@ -64,7 +64,7 @@ def _parse_import_statement(
 
     if import_clause is None:
         # Side-effect import: import 'module'
-        imports.append(Import(module=module, names=[], is_from=False))
+        imports.append(Import(module=module, names=[], is_from=False, line=node.start_point[0] + 1))
         return imports
 
     # Parse import clause
@@ -77,6 +77,7 @@ def _parse_import_statement(
                 names=[default_name],
                 is_from=True,
                 alias=default_name,
+                line=node.start_point[0] + 1,
             ))
         elif child.type == "named_imports":
             # Named imports: import { A, B } from 'module'
@@ -95,6 +96,7 @@ def _parse_import_statement(
                     module=module,
                     names=names,
                     is_from=True,
+                    line=node.start_point[0] + 1,
                 ))
         elif child.type == "namespace_import":
             # Namespace import: import * as X from 'module'
@@ -107,6 +109,7 @@ def _parse_import_statement(
                 names=["*"],
                 is_from=True,
                 alias=alias,
+                line=node.start_point[0] + 1,
             ))
 
     return imports
@@ -147,9 +150,9 @@ def _parse_export_as_import(
 
     if module and has_from:
         if is_wildcard:
-            imports.append(Import(module=module, names=["*"], is_from=True))
+            imports.append(Import(module=module, names=["*"], is_from=True, line=node.start_point[0] + 1))
         elif names:
-            imports.append(Import(module=module, names=names, is_from=True))
+            imports.append(Import(module=module, names=names, is_from=True, line=node.start_point[0] + 1))
 
     return imports
 
@@ -192,6 +195,7 @@ def _parse_require(
                             names=[var_name] if var_name else [],
                             is_from=False,
                             alias=var_name if var_name else None,
+                            line=node.start_point[0] + 1,
                         )
 
     return None

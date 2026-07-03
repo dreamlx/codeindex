@@ -81,6 +81,7 @@ class TestImportSerialization:
             "names": ["Optional", "Dict"],
             "is_from": True,
             "alias": None,  # Epic 10: Added alias field
+            "line": 0,  # GH #117: default when parser doesn't fill it
         }
 
     def test_import_to_dict_no_names(self):
