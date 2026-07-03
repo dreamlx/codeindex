@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.0] - 2026-07-04
+
+**Theme**: `codeindex hooks rerun` — the user-facing post-commit escape
+hatch (GH #89). The hidden `hooks run` (#34) is the shell hook script's
+internal contract; `rerun` is its visible counterpart: force-rerun the
+post-commit hook against HEAD when it didn't fire (doc-only commit skipped
+by the shell wrapper's loop guard, retroactive populate after flipping
+`hooks.post_commit.enabled: false → true`, or a historical stale README
+predating the #84 merge-commit fix). Calls the Python logic directly,
+bypassing the shell wrapper. Plus a CLAUDE.md injection-template section
+documenting the escape hatch — the hooks section previously had none, so
+agents suggested `git commit --allow-empty` workarounds.
+
+### Added
+
+- **`codeindex hooks rerun <hook>`** (GH #89): visible user command that
+  force-reruns a hook against HEAD, bypassing the shell wrapper's doc-only
+  loop guard. Sibling to the hidden `hooks run` (#34, shell contract) —
+  `run` = internal/hidden, `rerun` = user/visible. No `--force` / `--ref`
+  flags: rerun IS the force path (backfill beyond HEAD uses `scan-all`).
+  Background — the post-commit hook can miss a commit (doc-only loop-guard
+  skip; `enabled: false` at the time; stale README predating #84). #84
+  (merge-commit `-m` fix) and #87 (`enabled: false` install warn) are
+  already shipped, so `rerun` is a backfill / escape-hatch, not a bug
+  workaround. Note: `hooks.post_commit.enabled` is checked only at install
+  (reminder warn, #87); runtime doesn't gate on it, so `rerun` "bypasses"
+  it by construction.
+- **CLAUDE.md template: "When the post-commit hook didn't fire" section**
+  (en + zh, GH #89): documents `codeindex hooks rerun post-commit` as the
+  escape hatch. Per the AI-facing-refs escape-hatch rule — the hooks
+  section previously had no escape hatch, so agents suggested
+  `git commit --allow-empty -m "trigger hook"` (destructive workaround).
+
 ## [0.29.0] - 2026-07-03
 
 **Theme**: `graph-export` emits `IMPORTS` edges (GH #117) — the third edge kind,

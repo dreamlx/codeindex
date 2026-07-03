@@ -40,6 +40,22 @@ You will see lines like `⚠ <dir>: AI error — <reason>`. Likely transient (ra
 - Re-run `codeindex scan-all --ai` — successful dirs are restored from cache (no AI cost), only failed ones retry
 - If failures persist, swap the model or backend by editing `ai_command` in `.codeindex.yaml` (see `codeindex --help` for the recipe)
 
+### When the post-commit hook didn't fire
+
+The installed post-commit hook regenerates `README_AI.md` for changed directories after each commit. It can miss a commit when:
+
+- the commit was doc-only (only `README_AI.md` / `PROJECT_INDEX.md`) — the shell wrapper skips those to avoid an infinite loop;
+- you just flipped `hooks.post_commit.enabled: false → true` and want to retroactively populate READMEs for prior commits;
+- a historical stale README predates the merge-commit fix (#84).
+
+Force-rerun the hook against `HEAD` (bypasses the shell wrapper's loop guard; runs the Python logic directly):
+
+```bash
+codeindex hooks rerun post-commit
+```
+
+For a full re-scan (every directory, not just `HEAD`'s affected set), use `codeindex scan-all`.
+
 ### What the markers mean
 
 Every `README_AI.md` starts with three HTML comments (the third only on AI-enriched READMEs):
