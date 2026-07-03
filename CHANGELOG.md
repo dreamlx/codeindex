@@ -40,6 +40,15 @@ agents suggested `git commit --allow-empty` workarounds.
   section previously had no escape hatch, so agents suggested
   `git commit --allow-empty -m "trigger hook"` (destructive workaround).
 
+### Changed
+
+- **CLAUDE.md core template: trimmed two redundancies** (en + zh): merged
+  "Code Navigation Priority" rules 2+3 (two sides of one rule — "README
+  sufficient" vs "drill into source") into one; stopped repeating the
+  navigation-contract comment text in the markers list (already shown in
+  the "What README_AI.md is" section). Surfaced via grump meta-lens review.
+  No behavior change.
+
 ## [0.29.0] - 2026-07-03
 
 **Theme**: `graph-export` emits `IMPORTS` edges (GH #117) — the third edge kind,
