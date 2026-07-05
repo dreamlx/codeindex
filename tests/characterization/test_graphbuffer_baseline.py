@@ -125,15 +125,15 @@ def test_enrich_prompts_and_frozen_ai_readmes(tmp_path: Path, monkeypatch) -> No
     proj = _copy_fixture(tmp_path)
     captured: list[str] = []
 
-    def fake_invoke(command_template, prompt, *args, **kwargs):  # noqa: ANN001
+    def fake_invoke(config, prompt, *args, **kwargs):  # noqa: ANN001
         captured.append(prompt)
         return InvokeResult(success=True, output="stub-description", command="<stub>")
 
-    # cli_scan re-imports invoke_ai_cli from .invoker at call time (line ~717),
-    # so patching the home module catches the scan-all enrich path; patch the
-    # module-level binding too for the single-dir path's safety.
-    monkeypatch.setattr("codeindex.invoker.invoke_ai_cli", fake_invoke)
-    monkeypatch.setattr("codeindex.cli_scan.invoke_ai_cli", fake_invoke, raising=False)
+    # cli_scan re-imports invoke_ai from .invoker at call time (enrich path), so
+    # patching the home module catches it; patch the module-level binding too
+    # for the single-dir path's safety (ADR-008: invoke_ai dispatches API/CLI).
+    monkeypatch.setattr("codeindex.invoker.invoke_ai", fake_invoke)
+    monkeypatch.setattr("codeindex.cli_scan.invoke_ai", fake_invoke, raising=False)
 
     _run(["scan-all", "--root", str(proj), "--quiet"], cwd=proj)
 

@@ -61,9 +61,20 @@ class TestSemanticExtractor:
         assert extractor.ai_command is None
 
     def test_extractor_creation_with_ai_requires_command(self):
-        """Test that AI mode requires ai_command parameter"""
-        with pytest.raises(ValueError, match="ai_command is required"):
+        """AI mode requires ai_command (CLI) OR an `ai:` section with api_key."""
+        with pytest.raises(ValueError, match="ai_command or an"):
             SemanticExtractor(use_ai=True)
+
+    def test_extractor_creation_with_ai_via_api_config(self, monkeypatch):
+        """ADR-008: use_ai=True is valid when a Config has a resolved api_key
+        (direct API), even without ai_command."""
+        from codeindex.config import Config
+
+        monkeypatch.setenv("CODEINDEX_AI_API_KEY", "sk-env")
+        cfg = Config()
+        extractor = SemanticExtractor(use_ai=True, ai_command=None, config=cfg)
+        assert extractor.use_ai
+        assert extractor.config is cfg
 
     def test_extractor_creation_with_ai_and_command(self):
         """Test creating SemanticExtractor with AI mode"""

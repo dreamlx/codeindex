@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Direct HTTP API as default AI backend** (ADR-008, partially reverses
+  ADR-002): new `ai:` config section — DeepSeek `deepseek-chat` default,
+  OpenAI-compatible `/chat/completions` via httpx. `ai_command` (CLI)
+  retained as escape hatch. Precedence: `ai_command` > `ai.api_key` > error.
+  API key via env `DEEPSEEK_API_KEY` (preferred) or yaml `ai.api_key`.
+  Reuses GH-97 transient retry (`_retry_transient` shared by CLI + API paths;
+  HTTP 429/5xx/timeout/connection match existing `_TRANSIENT_ERROR_PATTERNS`,
+  401/402/403 fail fast). Trigger: Anthropic mass account bans made the
+  prior `claude` CLI default unreliable.
+- **`invoke_ai(config, ...)` dispatch** + `resolve_ai_backend` +
+  `invoke_ai_api` (invoker.py). All AI call sites routed through it
+  (cli_scan single-dir + Phase-2 enrich, semantic_extractor,
+  docstring_processor). docstring_processor also gains GH-97 retry (was
+  inline `subprocess.run` with no retry).
+
+### Changed
+
+- Config: `AIConfig` dataclass (`provider/base_url/model/api_key/timeout/
+  max_tokens` + `resolved_api_key` env-first property); `Config.ai` field;
+  `DEFAULT_CONFIG_TEMPLATE` rewritten — `ai:` section main path, `ai_command`
+  commented as escape hatch (uncommented claude line removed).
+- `init --yes` seeds the `ai:` section instead of
+  `ai_command=RECOMMENDED_AI_COMMAND`; post-init message points at
+  `CODEINDEX_AI_API_KEY`.
+- **Provider UX** (multi-provider, not DeepSeek-locked): env name is now
+  `CODEINDEX_AI_API_KEY` (provider-agnostic; `DEEPSEEK_API_KEY` kept as
+  backcompat from the initial ADR-008 release) — was hardcoded to DeepSeek,
+  which made "switch provider" confusing. `PROVIDER_PRESETS`
+  (deepseek/openai/ollama/llama-server) auto-fill `base_url`/`model` when
+  `provider` is set; explicit fields override. `DEFAULT_CONFIG_TEMPLATE`
+  shows multi-provider examples (OpenAI / Ollama / self-host llama-server /
+  vllm / LMStudio) so users see how to point codeindex at their own backend.
+
 ### Removed
 
 - Dead `hooks/` directory (templates + README): described an obsolete

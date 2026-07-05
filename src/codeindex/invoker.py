@@ -1,12 +1,18 @@
-"""AI CLI invoker - calls external AI CLI tools."""
+"""AI invoker — external CLI (ADR-002) + direct HTTP API (ADR-008)."""
+
+from __future__ import annotations
 
 import shlex
 import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from rich.console import Console
+
+if TYPE_CHECKING:
+    from codeindex.config import AIConfig
 
 console = Console()
 
@@ -52,6 +58,33 @@ def _is_transient(error: str) -> bool:
         return False
     low = error.lower()
     return any(p in low for p in _TRANSIENT_ERROR_PATTERNS)
+
+
+def _retry_transient(
+    attempt_fn,            # callable() -> InvokeResult
+    max_attempts: int,
+    retry_backoff: float,
+) -> InvokeResult:
+    """Run ``attempt_fn``, retrying recognised-transient failures (GH #97).
+
+    Shared by the CLI path (``invoke_ai_cli``) and the HTTP API path
+    (``invoke_ai_api``, ADR-008). Retries only transient signals
+    (timeout/rate-limit/5xx/connection); refusals (success=True) and
+    permanent errors (auth/quota/404) fail fast. Backoff: attempt N sleeps
+    ``retry_backoff * 2**(N-1)`` (0 disables sleeping, used in tests).
+    """
+    attempts = max(1, max_attempts)
+    result = attempt_fn()
+    attempt = 1
+    while (
+        not result.success
+        and attempt < attempts
+        and _is_transient(result.error)
+    ):
+        time.sleep(retry_backoff * (2 ** (attempt - 1)))
+        result = attempt_fn()
+        attempt += 1
+    return result
 
 
 def clean_ai_output(output: str) -> str:
@@ -243,21 +276,133 @@ def invoke_ai_cli(
             command=command,
         )
 
-    attempts = max(1, max_attempts)
-    result = _invoke_once(command, timeout)
-    attempt = 1
-    # Retry only recognised-transient failures, never refusals (those are
-    # success=True) or permanent errors. Fail fast otherwise (GH #97).
-    while (
-        not result.success
-        and attempt < attempts
-        and _is_transient(result.error)
-    ):
-        time.sleep(retry_backoff * (2 ** (attempt - 1)))
-        result = _invoke_once(command, timeout)
-        attempt += 1
+    return _retry_transient(
+        lambda: _invoke_once(command, timeout),
+        max_attempts,
+        retry_backoff,
+    )
 
-    return result
+
+def invoke_ai_api(
+    ai_cfg: AIConfig,
+    prompt: str,
+    timeout: int | None = None,
+    max_attempts: int = 1,
+    retry_backoff: float = 2.0,
+) -> InvokeResult:
+    """POST ``prompt`` to an OpenAI-compatible ``/chat/completions`` endpoint.
+
+    Reuses the GH-97 transient-retry framework via ``_retry_transient``:
+    error strings are phrased to match ``_TRANSIENT_ERROR_PATTERNS`` so
+    429/5xx/timeout/connection retry identically to the CLI path.
+    401/402/403 (auth/quota) are NOT transient → fail fast (avoid hammering
+    on a bad key). httpx is imported lazily so non-AI users pay no import
+    cost. ADR-008.
+    """
+    import httpx
+
+    url = ai_cfg.base_url.rstrip("/") + "/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {ai_cfg.resolved_api_key}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": ai_cfg.model,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": ai_cfg.max_tokens,
+        "stream": False,
+    }
+    effective_timeout = timeout if timeout is not None else ai_cfg.timeout
+
+    def _once() -> InvokeResult:
+        try:
+            with httpx.Client(timeout=effective_timeout) as client:
+                resp = client.post(url, json=payload, headers=headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                content = data["choices"][0]["message"]["content"]
+                return InvokeResult(success=True, output=content, command=f"POST {url}")
+            # Non-2xx → error string shaped to match _TRANSIENT_ERROR_PATTERNS
+            # ("HTTP 429:..." / "HTTP 503:..." retry; "HTTP 401:..." fail fast).
+            return InvokeResult(
+                success=False,
+                output="",
+                error=f"HTTP {resp.status_code}: {resp.text[:300]}",
+                command=f"POST {url}",
+            )
+        except httpx.TimeoutException as e:
+            return InvokeResult(
+                success=False, output="", error=f"timed out: {e}", command=f"POST {url}"
+            )
+        except httpx.HTTPError as e:  # ConnectError, RemoteProtocolError, etc.
+            return InvokeResult(
+                success=False,
+                output="",
+                error=f"connection error: {e}",
+                command=f"POST {url}",
+            )
+
+    return _retry_transient(_once, max_attempts, retry_backoff)
+
+
+def resolve_ai_backend(config) -> tuple[str, object]:
+    """Decide which AI backend a call site should use (ADR-008).
+
+    Precedence: ``ai_command`` (CLI escape hatch) wins if set; else
+    ``ai.api_key`` (direct HTTP API); else ``("none", "")`` so the caller
+    surfaces a clear configure-it message.
+
+    Returns ``(kind, value)``: ``("cli", command_template)`` |
+    ``("api", AIConfig)`` | ``("none", "")``.
+    """
+    if config.ai_command:
+        return ("cli", config.ai_command)
+    if config.ai and config.ai.resolved_api_key:
+        return ("api", config.ai)
+    return ("none", "")
+
+
+def invoke_ai(
+    config,
+    prompt: str,
+    *,
+    timeout: int = 120,
+    max_attempts: int = 1,
+    retry_backoff: float = 2.0,
+    dry_run: bool = False,
+) -> InvokeResult:
+    """Single entry: resolve backend from ``config`` and dispatch.
+
+    Prefer this over ``invoke_ai_cli(config.ai_command, ...)`` at call sites
+    so the ``ai:`` section (DeepSeek API, ADR-008) is the default and
+    ``ai_command`` is the escape hatch. See ``resolve_ai_backend``.
+    """
+    backend, value = resolve_ai_backend(config)
+    if backend == "cli":
+        return invoke_ai_cli(
+            value, prompt, timeout=timeout, dry_run=dry_run,
+            max_attempts=max_attempts, retry_backoff=retry_backoff,
+        )
+    if backend == "api":
+        if dry_run:
+            return InvokeResult(
+                success=True,
+                output="[DRY RUN]",
+                command=f"POST {value.base_url}/chat/completions",
+            )
+        return invoke_ai_api(
+            value, prompt, timeout=timeout,
+            max_attempts=max_attempts, retry_backoff=retry_backoff,
+        )
+    # ("none", "")
+    return InvokeResult(
+        success=False,
+        output="",
+        command="",
+        error="No AI backend configured. Set the CODEINDEX_AI_API_KEY env var, "
+              "add an `ai:` section to .codeindex.yaml, or set ai_command "
+              "(CLI escape hatch). See ADR-008.",
+    )
 
 
 def invoke_ai_cli_stdin(

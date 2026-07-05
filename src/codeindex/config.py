@@ -81,14 +81,24 @@ DEFAULT_CONFIG_TEMPLATE = """\
 # codeindex configuration
 version: 1
 
-# AI CLI command template
-# {prompt} will be replaced with the actual prompt
-# Examples:
-#   claude -p "{prompt}" --model haiku --allowedTools "Read"   # fast/cheap default
-#   claude -p "{prompt}" --model sonnet --allowedTools "Read"  # higher quality
-#   opencode run "{prompt}"
-#   gemini "{prompt}"
-ai_command: 'claude -p "{prompt}" --model haiku --allowedTools "Read"'
+# AI backend — direct HTTP API (default since ADR-008; Claude CLI bans made the
+# prior `claude` CLI default unreliable). OpenAI-compatible /chat/completions.
+# Set the CODEINDEX_AI_API_KEY env var (preferred) or ai.api_key below.
+ai:
+  provider: deepseek          # deepseek | openai | ollama | llama-server | custom
+  base_url: https://api.deepseek.com/v1
+  model: deepseek-chat
+  # api_key: sk-...           # prefer CODEINDEX_AI_API_KEY env var over committing here
+  timeout: 120
+  max_tokens: 4096
+# Switch provider — `provider` picks a preset (base_url/model defaults); override
+# either field explicitly. Examples (OpenAI-compatible /v1/chat/completions):
+#   openai:        base_url https://api.openai.com/v1    model gpt-4o-mini
+#   ollama local:  base_url http://localhost:11434/v1    model llama3.1    # no api_key
+#   self-host:     base_url http://localhost:10802/v1    model <your-model>  # llama-server/vllm
+
+# Escape hatch: external AI CLI (overrides `ai:` above if set).
+# ai_command: 'claude -p "{prompt}" --model haiku --allowedTools "Read"'
 
 # Directories to scan (tests included for better AI understanding)
 include:
@@ -204,6 +214,71 @@ class SemanticConfig:
             enabled=data.get("enabled", True),
             use_ai=data.get("use_ai", False),
             fallback_to_heuristic=data.get("fallback_to_heuristic", True),
+        )
+
+
+# Provider presets (ADR-008): pick a provider in `ai:` and base_url/model
+# default automatically — user overrides either field explicitly to customize.
+# Any OpenAI-compatible endpoint works (llama-server / vllm / LMStudio / ...);
+# add presets here only for the common hosted/local ones.
+PROVIDER_PRESETS: dict[str, dict[str, str]] = {
+    "deepseek": {"base_url": "https://api.deepseek.com/v1", "model": "deepseek-chat"},
+    "openai": {"base_url": "https://api.openai.com/v1", "model": "gpt-4o-mini"},
+    "ollama": {"base_url": "http://localhost:11434/v1", "model": "llama3.1"},
+    "llama-server": {"base_url": "http://localhost:10802/v1", "model": ""},
+}
+
+
+@dataclass
+class AIConfig:
+    """Direct HTTP AI backend (OpenAI-compatible ``/chat/completions``).
+
+    Default provider is DeepSeek. ``provider`` selects a preset
+    (``PROVIDER_PRESETS``) that fills ``base_url``/``model`` defaults; either
+    field can be overridden explicitly. Activates only when ``api_key``
+    resolves AND no ``ai_command`` is set — CLI wins (see
+    ``invoker.resolve_ai_backend``). ADR-008 partially reverses ADR-002.
+    """
+
+    provider: str = "deepseek"
+    base_url: str = "https://api.deepseek.com/v1"
+    model: str = "deepseek-chat"
+    api_key: str = ""  # optional; env CODEINDEX_AI_API_KEY preferred
+    timeout: int = 120
+    max_tokens: int = 4096
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "AIConfig":
+        """Create from the yaml ``ai:`` mapping (empty/None → defaults).
+
+        ``provider`` selects a preset; explicit ``base_url``/``model`` in the
+        yaml override the preset.
+        """
+        if not data:
+            return cls()
+        provider = data.get("provider", "deepseek")
+        preset = PROVIDER_PRESETS.get(provider, {})
+        return cls(
+            provider=provider,
+            base_url=data.get("base_url") or preset.get("base_url", "https://api.deepseek.com/v1"),
+            model=data.get("model") or preset.get("model", "deepseek-chat"),
+            api_key=data.get("api_key", ""),
+            timeout=data.get("timeout", 120),
+            max_tokens=data.get("max_tokens", 4096),
+        )
+
+    @property
+    def resolved_api_key(self) -> str:
+        """Env-first, provider-agnostic: ``CODEINDEX_AI_API_KEY`` (preferred)
+        → ``DEEPSEEK_API_KEY`` (backcompat from ADR-008 initial release) →
+        the yaml ``api_key``.
+        """
+        import os
+
+        return (
+            os.environ.get("CODEINDEX_AI_API_KEY", "")
+            or os.environ.get("DEEPSEEK_API_KEY", "")
+            or self.api_key
         )
 
 
@@ -425,6 +500,9 @@ class Config:
 
     version: int = 1
     ai_command: str = DEFAULT_AI_COMMAND
+    ai: AIConfig = field(
+        default_factory=AIConfig
+    )  # direct HTTP API (ADR-008); ai_command (CLI) is escape hatch
     include: list[str] = field(default_factory=lambda: DEFAULT_INCLUDE.copy())
     exclude: list[str] = field(default_factory=lambda: DEFAULT_EXCLUDE.copy())
     languages: list[str] = field(default_factory=lambda: DEFAULT_LANGUAGES.copy())
@@ -456,6 +534,7 @@ class Config:
         return cls(
             version=data.get("version", 1),
             ai_command=ai_command,
+            ai=AIConfig.from_dict(data.get("ai", {})),
             include=data.get("include", DEFAULT_INCLUDE.copy()),
             exclude=data.get("exclude", DEFAULT_EXCLUDE.copy()),
             languages=data.get("languages", DEFAULT_LANGUAGES.copy()),

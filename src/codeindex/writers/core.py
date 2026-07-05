@@ -79,9 +79,13 @@ class SmartWriter:
 
         # Initialize semantic extractor if enabled
         if self.config.semantic.enabled:
+            # SmartWriter receives an IndexingConfig (not the global Config), so it
+            # has no ai_command/ai — semantic AI here falls back to heuristic. The
+            # direct-API path (ADR-008) is driven from cli_symbols/cli_scan, which
+            # hold the full Config.
             self.semantic_extractor = SemanticExtractor(
                 use_ai=self.config.semantic.use_ai,
-                ai_command=None if not self.config.semantic.use_ai else None
+                ai_command=None,
             )
         else:
             self.semantic_extractor = None
