@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (cli_scan single-dir + Phase-2 enrich, semantic_extractor,
   docstring_processor). docstring_processor also gains GH-97 retry (was
   inline `subprocess.run` with no retry).
+- **`codeindex init --dry-run`** (GH #88): previews init's 3 mutation targets
+  (`.codeindex.yaml` create, `CLAUDE.md` codeindex-section inject, `.gitignore`
+  README_AI.md append) without writing. Uses the same detection as the real
+  init (`_collect_init_targets`), so it can't drift from init's actual
+  behavior — replaces the `codeindex:index` SKILL Step 0 hardcoded bash, and
+  gives bare-CLI users (pipx, no plugin) a preview too. Existing targets show
+  as "Already in place"; `--dry-run` bypasses the exists/force gate.
 
 ### Changed
 

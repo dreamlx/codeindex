@@ -40,6 +40,26 @@ def _update_gitignore(project_dir: Path) -> bool:
     return True
 
 
+def _collect_init_targets(project_dir: Path) -> list[tuple[str, str, str]]:
+    """Return ``(action, target, detail)`` for each init mutation target.
+
+    action: ``"create"`` | ``"modify"`` | ``"exists"`` (already in desired state).
+    Reflects init's actual mutation set — ``.codeindex.yaml`` + ``CLAUDE.md``
+    codeindex-section inject + ``.gitignore`` README_AI.md append. Used by
+    ``--dry-run`` to preview (GH #88), replacing the SKILL Step 0 hardcoded bash.
+    """
+    targets: list[tuple[str, str, str]] = []
+    cfg = project_dir / DEFAULT_CONFIG_NAME
+    targets.append(("create" if not cfg.exists() else "exists", ".codeindex.yaml", ""))
+    claude_md = project_dir / "CLAUDE.md"
+    has_section = claude_md.exists() and "## codeindex" in claude_md.read_text()
+    targets.append(("exists" if has_section else "modify", "CLAUDE.md", "inject ## codeindex section"))
+    gitignore = project_dir / ".gitignore"
+    has_entry = gitignore.exists() and "README_AI.md" in gitignore.read_text()
+    targets.append(("exists" if has_entry else "modify", ".gitignore", "append README_AI.md"))
+    return targets
+
+
 def _print_post_init_message():
     """Print post-init next steps message."""
     console.print("\n[bold]Next steps:[/bold]")
@@ -67,7 +87,12 @@ def _print_post_init_message():
     default="auto",
     help="Language for the injected CLAUDE.md section (auto = match host)",
 )
-def init(force: bool, yes: bool, quiet: bool, help_config: bool, lang: str):
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview mutation targets without writing anything (GH #88)",
+)
+def init(force: bool, yes: bool, quiet: bool, help_config: bool, lang: str, dry_run: bool = False):
     """Initialize .codeindex.yaml configuration file.
 
     Interactive wizard guides you through setup with smart defaults.
@@ -79,6 +104,30 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool, lang: str):
 
         show_full_config_help()
         return
+
+    # --dry-run: preview mutation targets, mutate nothing (GH #88).
+    # Runs before the exists/force gate so users can preview even with an
+    # existing .codeindex.yaml (no --force needed for a read-only preview).
+    if dry_run:
+        targets = _collect_init_targets(Path.cwd())
+        create = [(t, d) for (a, t, d) in targets if a == "create"]
+        modify = [(t, d) for (a, t, d) in targets if a == "modify"]
+        exists = [(t, d) for (a, t, d) in targets if a == "exists"]
+        console.print("[dim]Dry run — no files mutated.[/dim]\n")
+        if create:
+            console.print("[bold]Would create:[/bold]")
+            for t, _ in create:
+                console.print(f"  {t}")
+        if modify:
+            console.print("\n[bold]Would modify:[/bold]")
+            for t, d in modify:
+                console.print(f"  {t} ({d})" if d else f"  {t}")
+        if exists:
+            console.print("\n[dim]Already in place:[/dim]")
+            for t, _ in exists:
+                console.print(f"  [dim]{t}[/dim]")
+        return
+
     config_path = Path.cwd() / DEFAULT_CONFIG_NAME
 
     if config_path.exists() and not force:
