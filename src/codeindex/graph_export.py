@@ -23,6 +23,7 @@ sqlite-vec, L3 design-doc extraction (all loomgraph's).
 
 from __future__ import annotations
 
+import hashlib
 import json
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -33,7 +34,33 @@ from .graph_buffer import GraphBuffer
 from .parallel import parse_files_parallel
 from .scanner import scan_directory
 
-SCHEMA_VERSION = 0
+SCHEMA_VERSION = 1  # v1: per-symbol content_hash (GH #124, #110 gate satisfied)
+
+
+def _content_hash(source: str, line_start: int, line_end: int) -> str | None:
+    """Per-symbol content hash (sha256) over a normalized span (GH #124).
+
+    Normalization (hashline pattern, ref oh-my-openagent packages/hashline-core):
+    ``splitlines()`` slice ``[line_start-1 : line_end]`` → per-line ``rstrip()``
+    (trailing whitespace) → strip a leading BOM → ``"\\n".join``. The hash is
+    over **content, not line numbers** — inserting a line above a symbol shifts
+    its ``line_start``/``line_end`` but leaves ``content_hash`` stable, so a
+    consumer can skip re-embedding unchanged symbols.
+
+    Returns ``None`` when there's no usable span (``line_start``/``line_end``
+    falsy or inverted, or empty slice) — module-level / external / synthetic
+    entities.
+    """
+    if not line_start or not line_end or line_end < line_start:
+        return None
+    span = source.splitlines()[line_start - 1 : line_end]
+    if not span:
+        return None
+    text = "\n".join(line.rstrip() for line in span)
+    if text.startswith("﻿"):
+        text = text[1:]
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
 
 # The single most important caveat the LoomGraph#30 spike surfaced (E-class):
 # AST extraction silently misses dynamically-resolved call sites. A consumer
@@ -62,6 +89,10 @@ class Entity:
     # consumer's call (ADR-007 seam).
     signature: str = ""
     provenance: str = "ast"
+    # GH #124: per-symbol sha256 over a normalized span (content, not line
+    # numbers → stable under line shift). None for no-span entities (module /
+    # external / synthetic). Additive over schema v0 consumers (ignored).
+    content_hash: str | None = None
 
     def to_record(self) -> dict:
         return {
@@ -72,6 +103,7 @@ class Entity:
             "description": self.description,
             "signature": self.signature,
             "provenance": self.provenance,
+            "content_hash": self.content_hash,
         }
 
 
@@ -264,6 +296,12 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
         for pr in node.parse_results:
             module = _module_of(pr.path, root)
             module_set.add(module)
+            # Read source once per file (ParseResult has no source field, GH #124);
+            # all symbols in this file share it for content_hash span slicing.
+            try:
+                source = pr.path.read_text(errors="replace")
+            except OSError:
+                source = ""
             for sym in pr.symbols:
                 eid = f"{module}.{sym.name}"
                 entities.append(
@@ -273,6 +311,7 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
                         source_id=_source_id(pr.path, root, sym.line_start),
                         description=_first_line(sym.docstring),
                         signature=sym.signature,
+                        content_hash=_content_hash(source, sym.line_start, sym.line_end),
                     )
                 )
                 last_index[sym.name.rsplit(".", 1)[-1]].append(eid)

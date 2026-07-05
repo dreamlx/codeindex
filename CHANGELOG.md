@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **graph-export per-symbol `content_hash`** (schema v1, GH #124, #110 gate
+  satisfied): each entity record carries a `sha256` over a normalized
+  symbol-span slice (trailing-ws / line-ending / BOM normalized; content not
+  line numbers → stable under line shift). Lets loomgraph skip re-embedding
+  unchanged symbols (symbol-level incremental, vs prior file-level warm-diff).
+  `null` for no-span entities. Additive over v0 — old loomgraph reader warns
+  on `schema_version: 1` but still imports (content_hash ignored, backward
+  compatible).
 - **Direct HTTP API as default AI backend** (ADR-008, partially reverses
   ADR-002): new `ai:` config section — DeepSeek `deepseek-chat` default,
   OpenAI-compatible `/chat/completions` via httpx. `ai_command` (CLI)
