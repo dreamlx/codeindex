@@ -1,8 +1,11 @@
 # graph-export — codeindex → loomgraph data contract
 
-> **Status: EXPERIMENTAL (`schema_version: 0`).** Validated on Python; a
-> TypeScript spot-check precedes any stable-contract promise. Fields and
-> format may change without deprecation while at version 0.
+> **Status: EXPERIMENTAL (`schema_version: 1`).** v1 adds per-symbol
+> `content_hash` (GH #124, #110 gate satisfied — see Entity). A consumer
+> that only knew v0 sees `content_hash` as an additive field (ignored if
+> unused); loomgraph's reader warns on `schema_version > supported` but
+> still imports. Fields/format may change without deprecation while
+> experimental.
 
 `codeindex graph-export` dumps a **write-once** NDJSON graph of the codebase
 for downstream consumers (loomgraph) to read. Per [ADR-007](../architecture/adr/007-codeindex-stateless-graph-ownership.md)
@@ -26,8 +29,8 @@ NDJSON. Line 1 is the `meta` record; then `entity` records; then `edge`
 records. All records carry a `type` tag.
 
 ```jsonc
-{"type":"meta","schema_version":0,"generator":"codeindex","provenance_completeness":"ast-only: ..."}
-{"type":"entity","id":"app.service.AuthService","entity_type":"class","source_id":"app/service.py:8","description":"Authenticates users.","signature":"class AuthService","provenance":"ast"}
+{"type":"meta","schema_version":1,"generator":"codeindex","provenance_completeness":"ast-only: ..."}
+{"type":"entity","id":"app.service.AuthService","entity_type":"class","source_id":"app/service.py:8","description":"Authenticates users.","signature":"class AuthService","provenance":"ast","content_hash":"fc5e93..."}
 {"type":"edge","kind":"CALLS","src":"app.service.AuthService.login","dst":"app.service.AuthService.authenticate","resolution_qualifier":"resolved","source_id":"app/service.py:15"}
 {"type":"edge","kind":"CALLS","src":"app.workers.kickoff","dst":null,"resolution_qualifier":"ambiguous","candidates":["app.workers.Builder.run","app.workers.Packer.run"],"source_id":"app/workers.py:15"}
 {"type":"edge","kind":"IMPORTS","src":"app.service","dst":"app.validators","dst_raw":"app.validators","resolution_qualifier":"resolved","source_id":"app/service.py:5"}
@@ -63,6 +66,7 @@ sibling classes/modules (the spike's F-class) and makes ownership explicit.
 | `description` | first line of the docstring (may be empty) |
 | `signature` | parser-derived signature, e.g. `def login(self, token: str) -> bool` / `class AuthService` (GH #115). Present for ~all symbols; empty only when the parser couldn't derive one. A consumer building an embedding input should use **`signature` + `description`** rather than `description` alone — docstring-less symbols have an empty `description`, so description-only embedding leaves a coverage hole (measured ~4–15% across repos). codeindex emits the two as separate fields; the combine is the consumer's call. |
 | `provenance` | `ast` (L1 structural) |
+| `content_hash` | per-symbol `sha256` over a **normalized** span (`line_start:line_end` slice → per-line trailing-ws strip → BOM strip → `\n`-join), GH #124. The hash is over **content, not line numbers** — inserting a line above a symbol shifts its `source_id` but leaves `content_hash` stable, so a consumer can skip re-embedding unchanged symbols (symbol-level incremental, vs the prior file-level warm-diff). `null` for no-span entities (module / external / synthetic). Additive over v0 — unknown-field-tolerant readers ignore it. |
 
 ### Edge
 

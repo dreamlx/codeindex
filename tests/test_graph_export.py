@@ -35,6 +35,55 @@ def _edges(model, kind=None):
     return [e for e in model.edges if kind is None or e.kind == kind]
 
 
+class TestContentHash:
+    """Per-symbol content_hash (#124): stable under line shift, normalizes form."""
+
+    def test_stable_under_line_shift(self):
+        from codeindex.graph_export import _content_hash
+
+        # Same symbol body at different line positions (blank lines inserted above).
+        src_v1 = "def f():\n    return 1\n"            # f at line 1-2
+        src_v2 = "\n\n\ndef f():\n    return 1\n"       # f at line 4-5
+        h1 = _content_hash(src_v1, line_start=1, line_end=2)
+        h2 = _content_hash(src_v2, line_start=4, line_end=5)
+        assert h1 == h2, "hash must depend on content, not line numbers"
+
+    def test_normalizes_trailing_whitespace(self):
+        from codeindex.graph_export import _content_hash
+
+        clean = "def f():\n    return 1\n"
+        dirty = "def f():   \n    return 1\t\n"
+        assert _content_hash(clean, 1, 2) == _content_hash(dirty, 1, 2)
+
+    def test_normalizes_crlf(self):
+        from codeindex.graph_export import _content_hash
+
+        lf = "def f():\n    return 1\n"
+        crlf = "def f():\r\n    return 1\r\n"
+        assert _content_hash(lf, 1, 2) == _content_hash(crlf, 1, 2)
+
+    def test_normalizes_bom(self):
+        from codeindex.graph_export import _content_hash
+
+        no_bom = "def f():\n    return 1\n"
+        with_bom = "﻿def f():\n    return 1\n"
+        assert _content_hash(no_bom, 1, 2) == _content_hash(with_bom, 1, 2)
+
+    def test_none_for_no_span(self):
+        from codeindex.graph_export import _content_hash
+
+        assert _content_hash("anything", 0, 0) is None
+        assert _content_hash("anything", 5, 3) is None  # end < start
+        assert _content_hash("", 1, 5) is None  # empty source
+
+    def test_different_content_different_hash(self):
+        from codeindex.graph_export import _content_hash
+
+        a = "def f():\n    return 1\n"
+        b = "def f():\n    return 2\n"
+        assert _content_hash(a, 1, 2) != _content_hash(b, 1, 2)
+
+
 def _edge(model, src, dst=None, kind="CALLS"):
     for e in model.edges:
         if e.kind == kind and e.src == src and (dst is None or e.dst == dst):
@@ -212,7 +261,7 @@ def test_meta_and_ndjson_shape() -> None:
     text = dump_ndjson(_model())
     first = json.loads(text.splitlines()[0])
     assert first["type"] == "meta"
-    assert first["schema_version"] == 0
+    assert first["schema_version"] == 1  # v1: content_hash (#124)
     assert "ast-only" in first["provenance_completeness"]
     # every line is valid json with a type tag
     for line in text.splitlines():
