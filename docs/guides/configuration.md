@@ -7,11 +7,24 @@ codeindex uses `.codeindex.yaml` for project-specific settings.
 ## Full Configuration Reference
 
 ```yaml
-# AI CLI command template
-# {prompt} will be replaced with the generated prompt
-ai_command: 'claude -p "{prompt}" --allowedTools "Read"'
+# AI backend — direct HTTP API (default since ADR-008). OpenAI-compatible /chat/completions.
+# Set CODEINDEX_AI_API_KEY env var (preferred) or ai.api_key below.
+ai:
+  provider: deepseek          # deepseek | openai | ollama | llama-server | custom
+  base_url: https://api.deepseek.com/v1
+  model: deepseek-chat
+  # api_key: sk-...           # prefer CODEINDEX_AI_API_KEY env var
+  timeout: 120
+  max_tokens: 4096
+# Switch provider — `provider` picks a preset (base_url/model defaults); override either field.
+#   openai:        base_url https://api.openai.com/v1    model gpt-4o-mini
+#   ollama local:  base_url http://localhost:11434/v1    model llama3.1    # no api_key
+#   self-host:     base_url http://localhost:10802/v1    model <your-model>  # llama-server/vllm
 
-# Timeout for AI CLI execution (seconds)
+# Escape hatch: external AI CLI (overrides `ai:` above if set).
+# ai_command: 'claude -p "{prompt}" --allowedTools "Read"'
+
+# Timeout (seconds) — applies to both AI backend and CLI
 ai_timeout: 120
 
 # Output filename

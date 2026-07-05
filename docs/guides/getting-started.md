@@ -43,22 +43,24 @@ cd /your/project
 codeindex init
 ```
 
-This creates three files:
-- `.codeindex.yaml` — scan configuration (languages, include/exclude patterns)
+This creates:
+- `.codeindex.yaml` — scan configuration (languages, include/exclude patterns, AI backend)
 - `CLAUDE.md` — injects codeindex instructions so Claude Code uses README_AI.md automatically
-- `CODEINDEX.md` — project-level documentation reference
+- `.gitignore` — appends README_AI.md (the indexes are generated, not hand-edited)
 
-### 2. Configure AI CLI (Optional)
+### 2. Configure AI backend (Optional)
 
-For AI-enhanced documentation, edit `.codeindex.yaml`:
+For AI-enhanced documentation, set the `CODEINDEX_AI_API_KEY` env var (the
+default backend is DeepSeek's OpenAI-compatible API), or edit `.codeindex.yaml`:
 
 ```yaml
-# AI CLI command (optional — scanning works without this)
-ai_command: 'claude -p "{prompt}" --allowedTools "Read"'
-
-# Or with other AI CLIs:
-# ai_command: 'openai chat "{prompt}" --model gpt-4'
-# ai_command: 'gemini "{prompt}"'
+# AI backend — direct HTTP API (default since ADR-008). OpenAI-compatible.
+# Set CODEINDEX_AI_API_KEY env var (preferred) or ai.api_key below.
+ai:
+  provider: deepseek          # deepseek | openai | ollama | llama-server | custom
+  base_url: https://api.deepseek.com/v1
+  model: deepseek-chat
+  # api_key: sk-...           # prefer the CODEINDEX_AI_API_KEY env var
 
 include:
   - src/
@@ -75,6 +77,10 @@ languages:
 output_file: "README_AI.md"
 ```
 
+Switch provider: change `provider` (picks a `base_url`/`model` preset) or
+override either field. Escape hatch: set `ai_command` (external CLI like
+claude/opencode) to override the `ai:` API section.
+
 ### 3. Scan a Directory
 
 Generate documentation for a single directory:
@@ -83,7 +89,7 @@ Generate documentation for a single directory:
 # Structural documentation (default, no AI needed)
 codeindex scan ./src/auth
 
-# Full AI-generated README for a single directory (requires ai_command)
+# Full AI-generated README for a single directory (requires an AI backend)
 codeindex scan ./src/auth --ai
 ```
 
@@ -115,7 +121,7 @@ Scan all directories at once:
 
 ```bash
 # Structural documentation for entire project
-# When ai_command is configured, automatically includes AI module descriptions
+# When an AI backend is configured, automatically includes AI module descriptions
 codeindex scan-all
 
 # Disable AI enrichment (structural only)
@@ -125,7 +131,7 @@ codeindex scan-all --no-ai
 codeindex list-dirs | xargs -P 4 -I {} codeindex scan {}
 ```
 
-> **Note**: When `ai_command` is configured in `.codeindex.yaml`, `scan-all` automatically runs a two-phase pipeline: Phase 1 generates structural README_AI.md, Phase 2 adds a short AI-generated functional description (`> ...`) to each non-leaf directory. Use `--no-ai` to skip Phase 2. This is different from `scan --ai`, which uses AI to generate the entire README for a single directory.
+> **Note**: When an AI backend (`ai:` section or `ai_command`) is configured, `scan-all` automatically runs a two-phase pipeline: Phase 1 generates structural README_AI.md, Phase 2 adds a short AI-generated functional description (`> ...`) to each non-leaf directory. Use `--no-ai` to skip Phase 2. This is different from `scan --ai`, which uses AI to generate the entire README for a single directory.
 
 ### 6. Symbol Indexes (v0.1.2+)
 

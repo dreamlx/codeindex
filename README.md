@@ -41,7 +41,7 @@ Full data incl. the failure cases: **[2026-05 benchmark](docs/benchmark/2026-05-
 
 - **Two-phase documentation pipeline** (v0.23.0) — Phase 1: structural README_AI.md via SmartWriter; Phase 2: AI generates one-line functional descriptions per module. AI agents can browse README_AI.md hierarchy and find the right module **without grep**.
 - **Smart indexing** — Tiered documentation (overview → navigation → detailed) optimized for AI agents, ≤10KB per file (navigation index, not a tech doc — see [ADR-005](docs/architecture/adr/005-navigation-disclaimer-and-readme-size-cap.md))
-- **Auto-AI enrichment** — When `ai_command` is configured, `scan-all` automatically enables AI module descriptions. Use `--no-ai` to opt out
+- **Auto-AI enrichment** — When an AI backend is configured (`ai:` section per [ADR-008](docs/architecture/adr/008-direct-http-api-ai-default.md), or `ai_command` CLI escape hatch), `scan-all` automatically enables AI module descriptions. Use `--no-ai` to opt out
 - **Auto-update hooks** — Optional post-commit hook (`codeindex hooks install`) regenerates README_AI.md for changed directories. Thin wrapper pattern: `pipx upgrade ai-codeindex` auto-updates hook logic
 
 ### Parsing & Analysis
@@ -73,7 +73,7 @@ Full data incl. the failure cases: **[2026-05 benchmark](docs/benchmark/2026-05-
 ```bash
 # Enterprise developer workflow
 git clone <internal-repo>
-codeindex init                       # Configure project
+codeindex init                       # Configure project (init --dry-run previews)
 codeindex scan-all                   # Structural + AI descriptions (auto)
 # AI agent reads README_AI.md → sees module purposes → navigates directly
 # No grep needed for code discovery

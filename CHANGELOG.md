@@ -13,7 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ADR-002): new `ai:` config section — DeepSeek `deepseek-chat` default,
   OpenAI-compatible `/chat/completions` via httpx. `ai_command` (CLI)
   retained as escape hatch. Precedence: `ai_command` > `ai.api_key` > error.
-  API key via env `DEEPSEEK_API_KEY` (preferred) or yaml `ai.api_key`.
+  API key via env `CODEINDEX_AI_API_KEY` (provider-agnostic, preferred),
+  `DEEPSEEK_API_KEY` (backcompat), or yaml `ai.api_key`.
   Reuses GH-97 transient retry (`_retry_transient` shared by CLI + API paths;
   HTTP 429/5xx/timeout/connection match existing `_TRANSIENT_ERROR_PATTERNS`,
   401/402/403 fail fast). Trigger: Anthropic mass account bans made the
