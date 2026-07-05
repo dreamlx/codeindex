@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-07-06
+
 ### Added
 
 - **graph-export per-symbol `content_hash`** (schema v1, GH #124, #110 gate
