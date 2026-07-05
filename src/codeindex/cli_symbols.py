@@ -51,7 +51,8 @@ def extract_module_purpose(
             # Initialize semantic extractor
             extractor = SemanticExtractor(
                 use_ai=config.indexing.semantic.use_ai,
-                ai_command=config.ai_command if config.indexing.semantic.use_ai else None
+                ai_command=config.ai_command if config.indexing.semantic.use_ai else None,
+                config=config,
             )
 
             # Build DirectoryContext

@@ -206,19 +206,25 @@ class SemanticExtractor:
     - AI mode: LLM-powered semantic understanding (accurate, requires API)
     """
 
-    def __init__(self, use_ai: bool = False, ai_command: Optional[str] = None):
+    def __init__(self, use_ai: bool = False, ai_command: Optional[str] = None, config=None):
         """
         Initialize SemanticExtractor
 
         Args:
             use_ai: If True, use AI for extraction; if False, use heuristic rules
-            ai_command: AI command template (required if use_ai=True)
+            ai_command: AI CLI command template (CLI escape hatch, ADR-002)
+            config: full Config — if provided, AI calls use the direct API
+                (``ai:`` section, ADR-008) via ``invoke_ai``; falls back to
+                ``ai_command`` CLI when None (backward compat).
         """
         self.use_ai = use_ai
         self.ai_command = ai_command
+        self.config = config
 
-        if use_ai and not ai_command:
-            raise ValueError("ai_command is required when use_ai=True")
+        if use_ai and not ai_command and not (config and config.ai.resolved_api_key):
+            raise ValueError(
+                "ai_command or an `ai:` section with api_key is required when use_ai=True"
+            )
 
     def extract_directory_semantic(
         self,
@@ -285,14 +291,17 @@ class SemanticExtractor:
         # Build the prompt
         prompt = self._build_ai_prompt(context)
 
-        # Invoke AI CLI
-        from codeindex.invoker import invoke_ai_cli
+        # Invoke AI (direct API via config per ADR-008, else ai_command CLI)
+        from codeindex.invoker import invoke_ai, invoke_ai_cli
 
-        result = invoke_ai_cli(
-            command_template=self.ai_command,
-            prompt=prompt,
-            timeout=30
-        )
+        if self.config is not None:
+            result = invoke_ai(self.config, prompt, timeout=30)
+        else:
+            result = invoke_ai_cli(
+                command_template=self.ai_command,
+                prompt=prompt,
+                timeout=30,
+            )
 
         if not result.success:
             # Fallback to heuristic if AI fails

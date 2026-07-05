@@ -17,7 +17,6 @@ Architecture:
 
 import json
 import re
-import subprocess
 from pathlib import Path
 
 from .parser import Symbol
@@ -41,19 +40,23 @@ class DocstringProcessor:
         total_tokens: Total tokens processed (for cost tracking)
     """
 
-    def __init__(self, ai_command: str, mode: str = "hybrid"):
+    def __init__(self, ai_command: str, mode: str = "hybrid", config=None):
         """
         Initialize docstring processor.
 
         Args:
             ai_command: AI CLI command template (e.g., 'claude -p "{prompt}"')
             mode: Processing mode - "hybrid" (default) or "all-ai"
+            config: full Config — if provided, AI calls use the direct API
+                (``ai:`` section, ADR-008) via ``invoke_ai`` with GH-97 retry;
+                falls back to ``ai_command`` CLI when None (backward compat).
         """
         if mode not in ("hybrid", "all-ai"):
             raise ValueError(f"Invalid mode: {mode}. Must be 'hybrid' or 'all-ai'")
 
         self.ai_command = ai_command
         self.mode = mode
+        self.config = config
         self.total_tokens = 0
 
     def process_file(
@@ -256,22 +259,23 @@ If a symbol has no meaningful documentation, omit it from the response."""
         Raises:
             Exception: If AI call fails
         """
-        # Replace {prompt} placeholder in command
-        command = self.ai_command.replace("{prompt}", prompt)
+        # Route through the shared invoker so docstring AI also gets the direct
+        # API (ADR-008) + GH-97 transient retry, instead of a one-shot subprocess.
+        from .invoker import AI_SCAN_MAX_ATTEMPTS, invoke_ai, invoke_ai_cli
 
-        # Execute AI CLI
-        result = subprocess.run(
-            command,
-            shell=True,
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
+        if self.config is not None:
+            result = invoke_ai(
+                self.config, prompt, timeout=120, max_attempts=AI_SCAN_MAX_ATTEMPTS
+            )
+        else:
+            result = invoke_ai_cli(
+                self.ai_command, prompt, timeout=120, max_attempts=AI_SCAN_MAX_ATTEMPTS
+            )
 
-        if result.returncode != 0:
-            raise Exception(f"AI CLI failed: {result.stderr}")
+        if not result.success:
+            raise Exception(f"AI call failed: {result.error}")
 
-        return result.stdout
+        return result.output
 
     def _parse_ai_response(self, response: str) -> dict[str, str]:
         """

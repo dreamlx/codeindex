@@ -1,7 +1,7 @@
 # ADR 002: 外部 AI CLI 集成策略
 
 ## 状态
-已采纳 (Accepted)
+已采纳 (Accepted) — 部分反转于 [ADR-008](008-direct-http-api-ai-default.md)(direct HTTP API 作默认 backend;CLI 路径保留为 escape hatch)
 
 ## 背景
 codeindex 需要调用 AI 来生成高质量的代码文档。主要考虑以下方案：

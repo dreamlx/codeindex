@@ -174,25 +174,22 @@ class TestInitWizardPostMessage:
         assert "Review .codeindex.yaml" in result.output
         assert "scan-all" in result.output
 
-    def test_generated_config_seeds_recommended_ai_command(self, tmp_path):
-        """Generated config seeds ``RECOMMENDED_AI_COMMAND`` so first
-        ``scan-all --ai`` works without an "AI not configured" wall
-        (GH #75).
+    def test_generated_config_seeds_ai_section(self, tmp_path):
+        """Generated config seeds the ``ai:`` DeepSeek section so first
+        ``scan-all --ai`` works once ``CODEINDEX_AI_API_KEY`` is set (ADR-008,
+        reversing GH #75's claude-CLI seed).
 
-        Contract change vs the pre-#75 behavior: AI used to be opt-in at
-        BOTH layers (yaml field absent AND ``--ai`` flag required), but
-        the doubly-opt-in path broke the most common workflow — agent/
-        user reads CLAUDE.md, runs ``init --yes`` then ``scan-all --ai``,
-        hits a confusing error. AI remains opt-in at the CLI flag level
-        (``--ai`` is still required to enable enrichment); seeding the
-        yaml just removes the wall when the user does opt in.
+        AI remains opt-in at the CLI flag level (``--ai`` still required to
+        enable enrichment); seeding the yaml just removes the wall when the
+        user does opt in. The Claude CLI path (``ai_command``) is retained
+        as an escape hatch but no longer the default.
         """
         import os
 
         from click.testing import CliRunner
 
         from codeindex.cli import main
-        from codeindex.config import RECOMMENDED_AI_COMMAND, Config
+        from codeindex.config import Config
 
         src = tmp_path / "src"
         src.mkdir()
@@ -209,7 +206,12 @@ class TestInitWizardPostMessage:
         assert result.exit_code == 0
 
         config = Config.load(tmp_path / ".codeindex.yaml")
-        assert config.ai_command == RECOMMENDED_AI_COMMAND, (
-            f"init --yes should seed RECOMMENDED_AI_COMMAND so first "
-            f"`scan --ai` works (GH #75). got: {config.ai_command!r}"
+        assert config.ai.provider == "deepseek"
+        assert config.ai.model == "deepseek-chat", (
+            f"init --yes should seed the DeepSeek `ai:` section (ADR-008). "
+            f"got model: {config.ai.model!r}"
+        )
+        assert config.ai_command == "", (
+            f"init --yes must NOT seed ai_command (Claude CLI dead, ADR-008). "
+            f"got: {config.ai_command!r}"
         )

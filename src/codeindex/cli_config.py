@@ -51,6 +51,10 @@ def _print_post_init_message():
     console.print(
         "  • [dim]Claude Code:[/dim] [cyan]/plugin install codeindex@codeindex-claude[/cyan]"
     )
+    console.print("\n[bold]AI enrichment (ADR-008, DeepSeek default):[/bold]")
+    console.print("  • [cyan]export CODEINDEX_AI_API_KEY=sk-...[/cyan]   → enable the direct API")
+    console.print("  • [cyan]codeindex scan-all --ai[/cyan]          → enrich READMEs via API")
+    console.print("  [dim](Prefer claude/opencode CLI? Set `ai_command:` in .codeindex.yaml.)[/dim]")
 
 @click.command()
 @click.option("--force", "-f", is_flag=True, help="Overwrite existing config")
@@ -121,7 +125,6 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool, lang: str):
                 )
 
         # Create minimal result
-        from .config import RECOMMENDED_AI_COMMAND
         from .init_wizard import WizardResult
 
         result = WizardResult(
@@ -132,14 +135,11 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool, lang: str):
             batch_size=batch_size,
             enable_hooks=False,  # Hooks are opt-in via `codeindex hooks install`
             create_codeindex_md=False,  # Dropped from init (B1/ADR-006); CLAUDE.md is the guide
-            # AI is opt-in at the CLI flag level (`scan --ai`), but seed the
-            # documented default into ``.codeindex.yaml`` so the user (or an
-            # agent driving the CLI) doesn't get "AI not configured" the first
-            # time they try `scan-all --ai` (GH #75). The recommended value
-            # lives in config.RECOMMENDED_AI_COMMAND alongside the matching
-            # documentation in DEFAULT_CONFIG_TEMPLATE.
+            # ADR-008: leave ai_command unset so generate_config_yaml emits the
+            # direct-API `ai:` section (DeepSeek default). The prior claude-CLI
+            # seed (RECOMMENDED_AI_COMMAND) is dead — Claude mass-bans made the
+            # `claude` CLI unreliable. AI still activates only on `scan --ai`.
             configure_ai=False,
-            ai_command=RECOMMENDED_AI_COMMAND,
         )
 
         # Generate config

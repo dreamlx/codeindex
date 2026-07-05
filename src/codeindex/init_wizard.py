@@ -533,10 +533,24 @@ def generate_config_yaml(result: WizardResult, project_dir: Path) -> str:
         "",
     ]
 
-    # AI command (optional)
+    # AI backend (ADR-008): direct HTTP API by default (DeepSeek); ai_command CLI is escape hatch.
     if result.ai_command:
         yaml_lines.extend([
+            "# AI CLI command (escape hatch — overrides the `ai:` API section below).",
             f"ai_command: '{result.ai_command}'",
+            "",
+        ])
+    else:
+        yaml_lines.extend([
+            "# AI backend — direct HTTP API (default, ADR-008). OpenAI-compatible /chat/completions.",
+            "# Set CODEINDEX_AI_API_KEY env var (preferred) or ai.api_key below.",
+            "ai:",
+            "  provider: deepseek",
+            "  base_url: https://api.deepseek.com/v1",
+            "  model: deepseek-chat",
+            "  # api_key: sk-...   # prefer the CODEINDEX_AI_API_KEY env var",
+            "  timeout: 120",
+            "  max_tokens: 4096",
             "",
         ])
 
