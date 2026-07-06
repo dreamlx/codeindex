@@ -246,6 +246,30 @@ class TestImportStatements:
         assert any("Foundation" in mod for mod in import_modules) or \
                any("MyClass" in mod for mod in import_modules)
 
+    def test_imports_carry_source_line(self, tmp_path):
+        """GH #118: ObjC #import line filled (1-based) for IMPORTS source_id
+        (#117 left Swift/ObjC at default line=0 → source_id file:0)."""
+        objc_code = dedent("""
+            #import <Foundation/Foundation.h>
+            #import "MyClass.h"
+
+            @interface Test : NSObject
+            @end
+        """).strip()
+        objc_file = tmp_path / "Test.h"
+        objc_file.write_text(objc_code)
+
+        try:
+            result = parse_file(objc_file)
+        except ImportError:
+            pytest.skip("tree-sitter-objc not installed")
+
+        by_module = {imp.module: imp.line for imp in result.imports}
+        assert all(line > 0 for line in by_module.values()), by_module
+        # dedent().strip() → #import <Foundation/Foundation.h> on line 1
+        foundation_imp = next(imp for imp in result.imports if "Foundation" in imp.module)
+        assert foundation_imp.line == 1
+
 
 class TestInheritanceExtraction:
     """Test inheritance relationship extraction."""

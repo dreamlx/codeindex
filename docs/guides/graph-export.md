@@ -80,7 +80,7 @@ sibling classes/modules (the spike's F-class) and makes ownership explicit.
 | `candidates` | (ambiguous only) the entity ids the name could refer to |
 | `source_id` | `relpath:line` of the call / class definition / **import statement (IMPORTS)** |
 
-### IMPORTS edges (GH #117)
+### IMPORTS edges (GH #117, #118)
 
 `IMPORTS` is **module→module** (additive over schema_version 0, no bump),
 unlike `CALLS`/`INHERITS` (entity→entity):
@@ -95,12 +95,22 @@ unlike `CALLS`/`INHERITS` (entity→entity):
   `app.validators` (the module), not `validate` (the symbol).
 - **Relative imports** (`./api`, `../lib` — TS/JS) resolve against the
   importer's directory (`./api` from `web.index` → `web.api`).
+- **Java intra-project** (`import com.foo.Bar`) resolves by prepending the
+  Maven source root (`src/main/java` / `src/test/java`) — `com.foo.Bar` ↔
+  `src.main.java.com.foo.Bar` (GH #118). Layout-specific, **not** a general
+  suffix match; external Java imports (`java.util.List`) stay unresolved.
+- **PHP `use`** (`use App\Service`) resolves via `\` → `.` normalisation
+  (PSR-4) — `App\Service` ↔ `App.Service` (GH #118).
+- **Swift / ObjC** (`import Foundation` / `#import <Foundation/...>`) are
+  framework-level — mostly unresolved (the framework isn't a single file in
+  the scan tree); `dst_raw` preserves the framework name.
 - **`dst_raw`** = the original import string (`app.validators` / `os` /
-  `./api`); load-bearing when `dst` is null (stdlib/external) so a consumer
-  can include externals in a dependency graph.
+  `./api` / `App\Service`); load-bearing when `dst` is null
+  (stdlib/external/framework) so a consumer can include externals in a
+  dependency graph.
 - **`source_id`** = `relpath:line` of the import statement; line is filled
-  for Python/TS, **0 (file-level) for PHP/Java/Swift/ObjC** pending a parser
-  follow-up.
+  for all supported languages (Python/TS via #117, Java/PHP/Swift/ObjC via
+  #118 — previously `file:0` for the latter four).
 
 `loomgraph deps` aggregates these into module-level dependency graphs;
 downstream `VALID_EDGE_KINDS` already includes `IMPORTS`.

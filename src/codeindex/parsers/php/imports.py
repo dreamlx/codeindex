@@ -83,6 +83,7 @@ def _parse_use(node, source_bytes: bytes) -> list[Import]:
                         names=[],  # PHP use imports whole class, not specific members
                         is_from=True,  # PHP use is similar to Python's from...import
                         alias=alias if alias else None,
+                        line=child.start_point[0] + 1,  # GH #118: 1-based, for IMPORTS source_id
                     )
                 )
 
@@ -110,6 +111,7 @@ def _parse_use(node, source_bytes: bytes) -> list[Import]:
                                 names=[],  # PHP use imports whole class
                                 is_from=True,
                                 alias=alias if alias else None,
+                                line=group_child.start_point[0] + 1,  # GH #118
                             )
                         )
 
@@ -124,5 +126,5 @@ def _parse_include(node, source_bytes: bytes) -> Import | None:
                 module = get_node_text(child, source_bytes)
                 # Remove quotes
                 module = module.strip('\'"')
-                return Import(module=module, names=[], is_from=False)
+                return Import(module=module, names=[], is_from=False, line=node.start_point[0] + 1)  # GH #118
     return None

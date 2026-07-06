@@ -155,6 +155,19 @@ class TestSwiftIntegration:
         assert "Foundation" in import_names
         assert "UIKit" in import_names
 
+    def test_imports_carry_source_line(self, tmp_path):
+        """GH #118: Swift import line filled (1-based) for IMPORTS source_id
+        (#117 left Swift/ObjC at default line=0 → source_id file:0)."""
+        (tmp_path / "Test.swift").write_text(
+            "import Foundation\nimport UIKit\nstruct Foo {}\n"
+        )
+        result = parse_file(tmp_path / "Test.swift")
+
+        by_module = {imp.module: imp.line for imp in result.imports}
+        assert by_module.get("Foundation") == 1
+        assert by_module.get("UIKit") == 2
+        assert all(line > 0 for line in by_module.values()), by_module
+
     def test_parse_multiple_files_sequentially(self, tmp_path):
         """Should parse multiple Swift files without errors."""
         files = []

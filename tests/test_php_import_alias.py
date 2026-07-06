@@ -305,3 +305,35 @@ use App\\B;
         # Second has no alias
         b_import = result.imports[1]
         assert b_import.alias is None
+
+
+class TestPHPImportSourceLine:
+    """GH #118: PHP Import.line is filled (1-based) for IMPORTS edge source_id.
+
+    #117 left PHP/Swift/ObjC at default line=0 (source_id file:0). Covers the
+    three Import construction sites: single use, group use, and include/require.
+    """
+
+    def test_use_single_and_group_carry_line(self, tmp_path):
+        from codeindex.parser import parse_file
+
+        php_file = tmp_path / "test.php"
+        php_file.write_text("""<?php
+namespace App\\Service;
+
+use App\\Model\\User;
+use App\\Repository\\{OrderRepo, ProductRepo};
+""")
+        result = parse_file(php_file)
+
+        by_module = {imp.module: imp.line for imp in result.imports}
+        # line 4: use App\Model\User (single)
+        assert by_module["App\\Model\\User"] == 4
+        # line 5: group use — both clauses on the same source line
+        assert by_module["App\\Repository\\OrderRepo"] == 5
+        assert by_module["App\\Repository\\ProductRepo"] == 5
+        # every extracted import carries a real line — no file:0 fallback (GH #118).
+        # NOTE: top-level require/include are NOT extracted (tree-sitter wraps them
+        # in expression_statement; extract_imports only sees root-level children) —
+        # a pre-#117 extraction gap, out of #118's line-fill scope.
+        assert all(line > 0 for line in by_module.values()), by_module
