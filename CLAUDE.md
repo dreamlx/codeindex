@@ -9,6 +9,17 @@
 > wheel must never mutate `~/.claude/*` at install time. End users install
 > via pipx; Claude Code users add the plugin.
 
+> **Product positioning (2026-07, ADR-009)**: codeindex is the **parser engine** for
+> [LoomGraph](https://github.com/dreamlx/LoomGraph) — the "see" layer (tree-sitter AST →
+> structural slice → `graph-export` NDJSON). LoomGraph is the **user-facing product** (the
+> "think + remember" layer: SQLite + sqlite-vec graph store, vector retrieval, MCP server,
+> `impact`/`deps`/`topology`, skills). End users install LoomGraph (`pipx install loomgraph`),
+> which pulls `ai-codeindex` as a dependency; `loomgraph index` runs the full pipeline
+> (graph-export → embed → inject) — users never operate codeindex directly. codeindex is
+> also usable standalone for `README_AI.md` navigation indexes without the graph layer.
+> **Two repos, one product from the user's view.** Methodology role (the "see" instance of
+> the agent-native middleware thesis) is decoupled from product form.
+
 ---
 
 ## Part 1: Understanding & Navigating

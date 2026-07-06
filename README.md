@@ -11,7 +11,7 @@
 
 codeindex is an **open-source CLI** that turns any codebase into AI-readable navigation indexes (`README_AI.md`) via a **two-phase pipeline** — structural indexing (tree-sitter AST) + optional one-line AI module descriptions. Agents browse the README_AI.md hierarchy, see what each module does, and jump straight to the right file — across Python, PHP, Java, TypeScript, JavaScript, Swift, and Objective-C. The measured payoff is efficiency, not magic (benchmark below).
 
-**Runs fully offline.** Structural indexing needs no AI at all; AI descriptions use *your* local agent CLI (e.g. `claude -p`), so no code leaves your network — fine for air-gapped intranets. MIT-licensed, free, and meant to stay that way: codeindex is the open-source *navigate* layer; the reason/retrieval layer lives in [LoomGraph](FOR_LOOMGRAPH.md).
+**Runs fully offline.** Structural indexing needs no AI at all; AI descriptions use *your* local agent CLI (e.g. `claude -p`), so no code leaves your network — fine for air-gapped intranets. MIT-licensed, free, and meant to stay that way. **codeindex is the parser engine that powers [LoomGraph](FOR_LOOMGRAPH.md)** — for the full AI-agent experience (knowledge graph, MCP server, impact analysis, skills), `pipx install loomgraph` and run `loomgraph index .`; codeindex is pulled in automatically as a dependency, you never operate it directly. Use codeindex standalone only if you want structural `README_AI.md` navigation indexes without the graph layer.
 
 ---
 
