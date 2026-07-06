@@ -40,6 +40,19 @@ def graph_export(root: Path, output: str, quiet: bool):
 
     buffer = walk_and_parse(root, config)
     model = build_export(buffer, root)
+
+    # GH #93: 0 entities signals a languages mismatch (analogous to scan-all's
+    # GH #105 ``with_files == 0`` guard). Surface the hint instead of silently
+    # emitting an empty graph — loomgraph consumes this output and would
+    # otherwise import 0 entities with ``success:true``. To **stderr**: ``-o -``
+    # streams NDJSON on stdout and a warning there would corrupt the contract.
+    if not quiet and not model.entities:
+        from .scanner import language_mismatch_hint
+
+        hint = language_mismatch_hint(root, config)
+        if hint:
+            click.echo(f"WARNING: {hint}", err=True)
+
     text = dump_ndjson(model)
 
     if output == "-":

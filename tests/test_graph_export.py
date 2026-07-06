@@ -293,3 +293,71 @@ def test_each_file_parsed_once() -> None:
     buffer = walk_and_parse(FIXTURE, config)
     seen = [pr.path for node in buffer.directories() for pr in node.parse_results]
     assert len(seen) == len(set(seen)), "a file was parsed more than once"
+
+
+# --------------------------------------------------------------------------- #
+# language-mismatch warning (GH #93)
+# --------------------------------------------------------------------------- #
+class TestLanguageMismatchWarning:
+    """GH #93: ``loomgraph index`` on a Java repo with default
+    ``languages=[python]`` silently produced 0 entities. ``graph-export`` must
+    surface the same guidance ``list-dirs`` / ``scan-all`` do (single source:
+    :func:`language_mismatch_hint`) — the footgun lives at the export layer too,
+    because loomgraph consumes graph-export output directly.
+
+    Fixtures place source under ``src/`` because the default ``include`` is
+    ``['src/', 'lib/', 'tests/', 'examples/']`` — a file at the repo root is
+    outside include roots and wouldn't be scanned at all.
+    """
+
+    @staticmethod
+    def _write_src(tmp_path: Path, name: str, content: str) -> None:
+        src = tmp_path / "src"
+        src.mkdir(exist_ok=True)
+        (src / name).write_text(content, encoding="utf-8")
+
+    def test_warns_when_language_not_configured(self, tmp_path) -> None:
+        self._write_src(tmp_path, "Foo.java", "class Foo {}\n")
+        # no .codeindex.yaml → defaults to languages=[python]
+        from click.testing import CliRunner
+
+        from codeindex.cli import main
+
+        result = CliRunner().invoke(
+            main,
+            ["graph-export", "--root", str(tmp_path), "-o", "-"],
+            catch_exceptions=False,
+        )
+        # backward compat: still exits 0 and emits NDJSON (does not fail)
+        assert result.exit_code == 0
+        # the warning surfaces the missing language and points at `languages:`
+        assert "java" in result.output.lower()
+        assert "languages" in result.output.lower()
+
+    def test_no_warning_when_languages_match(self, tmp_path) -> None:
+        self._write_src(tmp_path, "foo.py", "def f():\n    return 1\n")
+        from click.testing import CliRunner
+
+        from codeindex.cli import main
+
+        result = CliRunner().invoke(
+            main,
+            ["graph-export", "--root", str(tmp_path), "-o", "-"],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+        assert "no indexable directories" not in result.output
+
+    def test_quiet_suppresses_warning(self, tmp_path) -> None:
+        self._write_src(tmp_path, "Foo.java", "class Foo {}\n")
+        from click.testing import CliRunner
+
+        from codeindex.cli import main
+
+        result = CliRunner().invoke(
+            main,
+            ["graph-export", "--root", str(tmp_path), "-o", "-", "--quiet"],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+        assert "java" not in result.output.lower()
