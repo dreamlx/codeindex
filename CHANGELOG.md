@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.32.0] - 2026-07-06
+
+### Fixed
+
+- **Java call-chain dangling edges** (GH #76, cross-repo root cause with
+  LoomGraph): Java parser's `calls.py` built `caller` from `full_class_name`
+  (package-qualified) while `symbols.py` built `sym.name` from simple class
+  name, so `graph-export`'s `edge.src` (`module + caller`) never matched
+  `entity.id` (`module + sym.name`) — every Java edge source dangled.
+  LoomGraph downstream saw `graph=0 callees`, 81% orphan, `coupling=0.0`.
+  Fixed: `caller = f"{class_name}.{method}"` (simple, aligned with sym.name);
+  drop `full_class_name`. Verified on spring-petclinic: `edge.src==entity.id`
+  0%→71%; loomgraph orphan 81%→49%, coupling 0.0→0.621, graph(OwnerController)
+  0→4 callees. Python unaffected (parser kept caller/sym.name same form).
+- **graph-export silent 0 entities** (GH #93): a Java repo under the default
+  `languages=[python]` silently yielded 0 entities with `success:true`.
+  `graph-export` now warns on stderr when 0 entities result, reusing the
+  single-source `language_mismatch_hint` from list-dirs/scan-all. stdout NDJSON
+  contract stays clean for `loomgraph index` (`-o -`).
+
+### Changed
+
+- **Product positioning clarified** (ADR-009): codeindex is the parser engine
+  for [LoomGraph](https://github.com/dreamlx/LoomGraph) — the "see" layer.
+  Users install LoomGraph (`pipx install loomgraph`), which pulls `ai-codeindex`
+  as a dependency. Two repos, one product from the user's view. Methodology
+  role (agent-native middleware "see" instance) decoupled from product form.
+
 ## [0.31.0] - 2026-07-06
 
 ### Added

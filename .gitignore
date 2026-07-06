@@ -33,6 +33,7 @@ htmlcov/
 
 # Serena MCP rewrites this on every project activation — keeps memories tracked.
 .serena/project.yml
+.serena/project.local.yml
 
 # Validation reports (generated)
 scripts/validation/reports/*.md
