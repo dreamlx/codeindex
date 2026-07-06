@@ -304,8 +304,6 @@ def _extract_calls_from_tree(
             if not class_name:
                 continue
 
-            full_class_name = f"{namespace}.{class_name}" if namespace else class_name
-
             body_node = None
             for node in child.children:
                 if node.type in ("class_body", "interface_body"):
@@ -324,7 +322,7 @@ def _extract_calls_from_tree(
                             break
 
                     if method_name:
-                        caller = f"{full_class_name}.{method_name}"
+                        caller = f"{class_name}.{method_name}"
                         calls.extend(
                             _extract_calls_recursive(
                                 method_node, source_bytes, caller,
@@ -333,7 +331,7 @@ def _extract_calls_from_tree(
                         )
 
                 elif method_node.type == "constructor_declaration":
-                    caller = f"{full_class_name}.<init>"
+                    caller = f"{class_name}.<init>"
                     calls.extend(
                         _extract_calls_recursive(
                             method_node, source_bytes, caller,
