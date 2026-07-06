@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`codeindex --version` went stale after a pyproject bump in editable
+  installs**: `__version__` read `dist-info` metadata via
+  `importlib.metadata`, which editable installs bake at install time, so
+  `--version` reported the install-time version (e.g. 0.30.0) instead of the
+  current source (0.32.0) until reinstall. This once masked a shipped fix
+  when a spike read the stale `--version` and concluded the Java call-graph
+  fix hadn't landed. Resolve from the source-tree `pyproject.toml` when
+  reachable; fall back to metadata for wheel/pipx installs. Adds a
+  default-path depth regression test.
+
 ## [0.32.0] - 2026-07-06
 
 ### Fixed
