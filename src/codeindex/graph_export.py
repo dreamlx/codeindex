@@ -213,9 +213,11 @@ def _resolve(
 def _module_target(import_module: str, importer_module: str) -> str:
     """Normalise an import module string to an absolute dotted module id.
 
-    Absolute imports (``app.validators``, ``os``) are returned verbatim (TS
-    ``/`` separators normalised to ``.``). Relative imports (``./api``,
-    ``../lib`` — TS/JS) resolve against the importer module's directory.
+    Absolute imports (``app.validators``, ``os``) are returned verbatim with
+    path separators normalised to ``.``: TS ``/`` (``./api``) and PHP ``\\``
+    (``App\\Service`` → ``App.Service``, PSR-4 — GH #118). Relative imports
+    (``./api``, ``../lib`` — TS/JS) resolve against the importer module's
+    directory.
     """
     if import_module.startswith("."):
         stripped = import_module
@@ -231,7 +233,16 @@ def _module_target(import_module: str, importer_module: str) -> str:
             dir_parts = dir_parts[:-up] if up <= len(dir_parts) else []
         name_parts = [p for p in stripped.split("/") if p]
         return ".".join([*dir_parts, *name_parts])
-    return import_module.replace("/", ".")
+    return import_module.replace("\\", ".").replace("/", ".")  # GH #118: PHP \\ → .
+
+
+# GH #118: Java Maven src-layout — the file-path-derived module id carries a
+# src/main/java (or src/test/java) prefix the logical import name lacks:
+# import ``com.foo.Bar`` ≠ module id ``src.main.java.com.foo.Bar``. Prepended
+# here so the import resolves. This is layout-specific, NOT a general suffix
+# match — Python ``import os`` won't wrongly hit a project ``app.os``, because
+# ``src.main.java.os`` is never in the tree.
+_MAVEN_SOURCE_ROOTS = ("src.main.java.", "src.test.java.")
 
 
 def _resolve_module(
@@ -247,12 +258,20 @@ def _resolve_module(
     src) — the consumer materialises the container if it wants one (ADR-007
     entity-centric contract). Returns ``(resolution_qualifier, dst)``;
     ``dst_raw`` (the original import string) is the caller's responsibility.
+
+    Java imports need a Maven src-layout fallback (GH #118): the import's
+    logical name is prepended with each known Maven source root and re-checked
+    against the scan tree.
     """
     if not import_module:
         return "unresolved", None
     target = _module_target(import_module, importer_module)
     if target in module_set:
         return "resolved", target
+    for prefix in _MAVEN_SOURCE_ROOTS:
+        candidate = prefix + target
+        if candidate in module_set:
+            return "resolved", candidate
     return "unresolved", None
 
 

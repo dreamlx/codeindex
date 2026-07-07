@@ -224,6 +224,23 @@ class TestJavaImports:
         wildcard_imports = [imp for imp in result.imports if "*" in imp.module]
         assert len(wildcard_imports) > 0
 
+    # @pytest.mark.skip(reason="GREEN phase: implementation ready")
+    def test_imports_carry_source_line(self):
+        """GH #118: Import.line is filled (1-based) so the IMPORTS edge
+        source_id points at the import statement, not file:0 (#117 left
+        Java/PHP/Swift/ObjC at default line=0)."""
+        from codeindex.parsers.java_parser import parse_java_file
+
+        code = load_fixture("imports.java")
+        result = parse_java_file("imports.java", code)
+
+        by_module = {imp.module: imp.line for imp in result.imports}
+        # imports.java: java.util.List on line 4, java.util.Map on line 6
+        assert by_module["java.util.List"] == 4
+        assert by_module["java.util.Map"] == 6
+        # every import carries a real line — no file:0 fallback (GH #118)
+        assert all(line > 0 for line in by_module.values()), by_module
+
 
 class TestJavaGenerics:
     """Test parsing generic types."""

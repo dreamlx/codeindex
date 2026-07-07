@@ -143,6 +143,7 @@ def _parse_java_import(node: Node, source_bytes: bytes) -> Import | None:
             module=module,
             names=[],
             is_from=is_static,
+            line=node.start_point[0] + 1,  # GH #118: 1-based, for IMPORTS source_id
         )
 
     return None

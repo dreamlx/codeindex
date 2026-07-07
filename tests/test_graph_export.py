@@ -255,6 +255,65 @@ def test_imports_edge_record_shape() -> None:
 
 
 # --------------------------------------------------------------------------- #
+# IMPORTS edges — Java/PHP resolution + line (GH #118, follow-up to #117)
+# Independent tmp_path fixtures (no main-golden pollution). Main golden stays
+# Python+TS; these prove per-language resolution + non-zero source_id line.
+# --------------------------------------------------------------------------- #
+def test_imports_edge_php_namespace_resolved(tmp_path) -> None:
+    """GH #118: PHP ``use App\\Service`` resolves to ``App/Service.py`` via
+    ``\\`` → ``.`` (PSR-4). #117 left PHP unresolved — the file-path-derived
+    module id (``App.Service``) never equalled the raw import (``App\\Service``).
+    The IMPORTS edge source_id also carries the real line (#118 fills it)."""
+    (tmp_path / ".codeindex.yaml").write_text("version: 1\nlanguages: [php]\n")
+    app = tmp_path / "App"
+    app.mkdir()
+    (app / "Service.php").write_text("<?php\nnamespace App;\nclass Service {}\n")
+    (app / "Controller.php").write_text(
+        "<?php\nnamespace App;\nuse App\\Service;\nclass Controller {}\n"
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    e = _edge(model, "App.Controller", dst="App.Service", kind="IMPORTS")
+    assert e is not None, "PHP IMPORTS edge missing"
+    assert e.resolution_qualifier == "resolved"
+    assert e.dst == "App.Service"
+    assert e.dst_raw == "App\\Service"  # original backslash preserved
+    assert e.source_id == "App/Controller.php:3"  # use on line 3, filled per #118
+
+
+def test_imports_edge_java_maven_resolved(tmp_path) -> None:
+    """GH #118: Java ``import com.foo.Bar`` resolves to
+    ``src/main/java/com/foo/Bar.java`` despite the Maven src-layout prefix.
+    The import's logical name (``com.foo.Bar``) ≠ the file-path-derived module
+    id (``src.main.java.com.foo.Bar``) — #117 left every Java IMPORTS
+    unresolved. Resolution strips the known Maven source root, so it never
+    fires for non-Java (Python ``import os`` won't wrongly hit ``app.os``)."""
+    (tmp_path / ".codeindex.yaml").write_text("version: 1\nlanguages: [java]\n")
+    pkg = tmp_path / "src" / "main" / "java" / "com" / "foo"
+    pkg.mkdir(parents=True)
+    (pkg / "Bar.java").write_text("package com.foo;\npublic class Bar {}\n")
+    (pkg / "Baz.java").write_text(
+        "package com.foo;\nimport com.foo.Bar;\npublic class Baz {}\n"
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    # importer module id is file-path-derived (src.main.java.com.foo.Baz);
+    # dst resolves to the Bar entity's module id (same Maven prefix).
+    e = _edge(
+        model,
+        "src.main.java.com.foo.Baz",
+        dst="src.main.java.com.foo.Bar",
+        kind="IMPORTS",
+    )
+    assert e is not None, "Java IMPORTS edge missing"
+    assert e.resolution_qualifier == "resolved"
+    assert e.dst_raw == "com.foo.Bar"  # original Java import string preserved
+    assert e.source_id == "src/main/java/com/foo/Baz.java:2"  # import on line 2
+
+
+# --------------------------------------------------------------------------- #
 # whole-file invariants
 # --------------------------------------------------------------------------- #
 def test_meta_and_ndjson_shape() -> None:

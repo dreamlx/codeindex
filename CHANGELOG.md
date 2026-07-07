@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **graph-export IMPORTS edges: Java/PHP/Swift/ObjC `source_id` line +
+  Java/PHP resolution** (GH #118, follow-up to #117). `Import.line` is now
+  filled for Java/PHP/Swift/ObjC — previously default `0`, so the IMPORTS
+  edge `source_id` read `file:0` for these languages (Python/TS were already
+  filled under #117). Java intra-project imports now resolve via Maven
+  src-layout stripping (`com.foo.Bar` ↔ `src/main/java/com/foo/Bar.java`);
+  PHP `use` resolves via `\` → `.` (PSR-4, `App\Service` ↔ `App/Service.php`).
+  The Maven match is layout-specific, **not** a general suffix match — Python
+  `import os` still correctly stays unresolved. Swift/ObjC framework imports
+  remain mostly unresolved (acceptable; `dst_raw` preserves the framework name).
+
 ### Fixed
 
 - **`codeindex --version` went stale after a pyproject bump in editable

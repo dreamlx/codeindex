@@ -29,6 +29,13 @@ def extract_imports(tree: Tree, source_bytes: bytes) -> list:
             parts = import_text.strip().split()
             if len(parts) >= 2:
                 module_name = parts[1]
-                imports.append(Import(module=module_name, names=[], is_from=False))
+                imports.append(
+                    Import(
+                        module=module_name,
+                        names=[],
+                        is_from=False,
+                        line=child.start_point[0] + 1,  # GH #118
+                    )
+                )
 
     return imports

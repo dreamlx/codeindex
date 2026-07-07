@@ -69,4 +69,4 @@ def _extract_import(node, source_bytes: bytes) -> Import | None:
     if module_name.endswith(".h"):
         module_name = module_name[:-2]
 
-    return Import(module=module_name, names=[], is_from=False)
+    return Import(module=module_name, names=[], is_from=False, line=node.start_point[0] + 1)  # GH #118
