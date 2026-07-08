@@ -22,6 +22,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **graph-export dotted-callee false-ambiguous edges** (GH #127). A dotted
+  callee whose receiver is a runtime variable (`obj.run`, `db.exec`,
+  `res.json`) was wrongly classified `ambiguous` and dumped every same-name
+  entity into `candidates` via the step-3 last-segment fallback — almost
+  always a mis-match, since the receiver's type is statically unknowable
+  (dynamic dispatch). On fabricOS this was 502 of 544 `ambiguous` edges
+  (92%); downstream loomgraph materialised ~20 ghost `→ server/test` edges
+  (defended client-side at LoomGraph#101). These dotted callees now resolve
+  as `unresolved`, consistent with `provenance_completeness` ("dynamic
+  dispatch NOT captured"). Bare callees (`run()`) are unchanged — genuine
+  same-name collisions still resolve `ambiguous`. Also removes the now-dead
+  step-3 fallback (provably unreachable: step-2 full-suffix already decides
+  every bare name, since `last_index` keys ARE the entity last-segment).
 - **`codeindex --version` went stale after a pyproject bump in editable
   installs**: `__version__` read `dist-info` metadata via
   `importlib.metadata`, which editable installs bake at install time, so

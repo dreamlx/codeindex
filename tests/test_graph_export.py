@@ -138,7 +138,7 @@ def test_entity_carries_signature() -> None:
     # docstring-less symbol: description empty, but signature populated — the
     # exact hole #115 closes (workers.py Builder.run / Packer.run / kickoff).
     assert by_id["app.workers.kickoff"].description == ""
-    assert by_id["app.workers.kickoff"].signature == "def kickoff(obj) -> None"
+    assert by_id["app.workers.kickoff"].signature == "def kickoff() -> None"
     assert by_id["app.workers.Builder.run"].signature == "def run(self) -> None"
 
     # docstring present: both carry signal, kept as separate fields.
@@ -152,7 +152,7 @@ def test_entity_record_has_signature_field() -> None:
     by_id = {e.id: e for e in model.entities}
     rec = by_id["app.workers.kickoff"].to_record()
     assert "signature" in rec
-    assert rec["signature"] == "def kickoff(obj) -> None"
+    assert rec["signature"] == "def kickoff() -> None"
 
 
 # --------------------------------------------------------------------------- #
@@ -177,10 +177,27 @@ def test_resolved_cross_file() -> None:
 
 
 def test_ambiguous_carries_candidates() -> None:
+    # bare `run()` callee — last-segment matches Builder.run + Packer.run
+    # (step-2 full-suffix) → genuine AMBIGUOUS.
     e = _edge(_model(), "app.workers.kickoff")
     assert e.resolution_qualifier == "ambiguous"
     assert e.dst is None
     assert e.candidates == ["app.workers.Builder.run", "app.workers.Packer.run"]
+
+
+def test_dotted_callee_is_unresolved() -> None:
+    # GH #127: dotted callee `obj.run()` — the receiver `obj` is a runtime
+    # parameter, statically unknowable. This is dynamic dispatch → UNRESOLVED,
+    # NOT ambiguous. The previous step-3 last-segment fallback spammed every
+    # `.run` entity into candidates (here Builder.run/Packer.run), producing
+    # ghost edges downstream.
+    e = _edge(_model(), "app.workers.dispatch")
+    assert e is not None
+    assert e.resolution_qualifier == "unresolved"
+    assert e.dst is None
+    assert e.candidates == []
+    # the raw dotted name survives so a consumer can stub/filter it
+    assert e.dst_raw == "obj.run"
 
 
 def test_unresolved_external() -> None:

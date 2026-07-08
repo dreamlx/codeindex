@@ -204,10 +204,15 @@ def _resolve(
     if len(full) > 1:
         return "ambiguous", None, sorted(full)
 
-    # 3. last-segment fallback (bare/dotted callee with no fuller match)
-    if len(pool) == 1:
-        return "resolved", pool[0], []
-    return "ambiguous", None, sorted(pool)
+    # 3. No full-suffix match in the pool. For a DOTTED callee (``obj.run``)
+    #    this is dynamic dispatch — the receiver is a runtime parameter whose
+    #    type is statically unknowable, so a last-segment fallback would only
+    #    manufacture ghost edges (GH #127: 502/544 ambiguous edges in fabricOS
+    #    were this false positive). A BARE callee cannot reach here: every
+    #    pool member's id ends with ``.{last}`` (last_index keys ARE the last
+    #    segment), so step 2 already decided all of them. Unresolved is the
+    #    honest answer either way.
+    return "unresolved", None, []
 
 
 def _module_target(import_module: str, importer_module: str) -> str:

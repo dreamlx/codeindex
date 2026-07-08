@@ -154,7 +154,12 @@ draw wrong conclusions**:
    loomgraph round-trip). The consumer owns the dangling-edge policy: drop,
    keep as dangling, or materialise an external stub node as the `dst`.
    codeindex emits no sentinel/placeholder entity — the entity set contains
-   only real code symbols.
+   only real code symbols. A dotted callee whose receiver is a runtime
+   variable (`obj.run`, `db.exec`) resolves as `unresolved`, **not**
+   `ambiguous` — the receiver's type is statically unknowable (dynamic
+   dispatch), so a last-segment name match would be a guess; `ambiguous` is
+   reserved for genuine same-name collisions reachable by suffix (e.g. a bare
+   `run()` with multiple `.run` entities). (GH #127)
 2. **`provenance_completeness`** (meta) — extraction is AST-only. Dynamic
    dispatch (`getattr` / duck-typing / event handlers), reflection /
    metaclasses, and decorator wiring are **not** captured. An **absent edge
