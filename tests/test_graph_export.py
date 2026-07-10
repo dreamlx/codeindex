@@ -472,6 +472,35 @@ class TestLanguageMismatchWarning:
         assert "java" in result.output.lower()
         assert "languages" in result.output.lower()
 
+    def test_warns_when_few_entities_but_language_mismatch(self, tmp_path) -> None:
+        """GH #129: the few-entity false-positive. A TS repo with a stray
+        ``.py`` script yields a handful of entities (≠0), so the 0-entity guard
+        is bypassed and graph-export silently emits a partial graph with
+        ``success:true``. The mismatch warning must still fire — entities > 0
+        but ≪ the unconfigured-language code files is exactly the silent
+        footgun the 0-entity guard was meant to catch.
+
+        Mirrors the HEXFORCE-RN report: 7 ``.py`` entities + 81 ``.ts``/``.tsx``
+        uncaptured, no warning.
+        """
+        self._write_src(tmp_path, "foo.py", "def f():\n    return 1\n")
+        self._write_src(tmp_path, "app.ts", "export const x = 1\n")
+        from click.testing import CliRunner
+
+        from codeindex.cli import main
+
+        result = CliRunner().invoke(
+            main,
+            ["graph-export", "--root", str(tmp_path), "-o", "-"],
+            catch_exceptions=False,
+        )
+        # still exits 0 and emits NDJSON (does not fail)
+        assert result.exit_code == 0
+        # the partial-graph warning names the unconfigured language and the
+        # captured-entity count, so a consumer/CI doesn't mistake partial for done
+        assert "typescript" in result.output.lower()
+        assert "partial" in result.output.lower()
+
     def test_no_warning_when_languages_match(self, tmp_path) -> None:
         self._write_src(tmp_path, "foo.py", "def f():\n    return 1\n")
         from click.testing import CliRunner

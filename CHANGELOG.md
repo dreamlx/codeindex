@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **graph-export few-entity language-mismatch warning** (GH #129). The
+  `language_mismatch_hint` only fired when `entities == 0`, so a non-Python
+  repo (e.g. React Native) with a stray `.py` script produced a handful of
+  entities (≠0), bypassed the hint, and silently streamed a partial graph
+  with `success:true` — downstream (loomgraph index) then built
+  deps/topology/impact on the broken graph unknowingly. graph-export now also
+  warns when `entities > 0` but `diagnose_language_mismatch` detects
+  unconfigured-language code files in the include roots, naming the captured
+  entity count and the uncaptured file types. (scan-all keeps its 0-files
+  guard: its partial output is visible READMEs, not a silent graph.) Also
+  corrected a stale `# GH #93` comment (that issue is an unrelated hooks fix).
+
 ### Added
 
 - **graph-export REFERENCES edges: symbol-level import-ref + type-ref**

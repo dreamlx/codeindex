@@ -41,17 +41,49 @@ def graph_export(root: Path, output: str, quiet: bool):
     buffer = walk_and_parse(root, config)
     model = build_export(buffer, root)
 
-    # GH #93: 0 entities signals a languages mismatch (analogous to scan-all's
-    # GH #105 ``with_files == 0`` guard). Surface the hint instead of silently
-    # emitting an empty graph — loomgraph consumes this output and would
-    # otherwise import 0 entities with ``success:true``. To **stderr**: ``-o -``
-    # streams NDJSON on stdout and a warning there would corrupt the contract.
-    if not quiet and not model.entities:
-        from .scanner import language_mismatch_hint
+    # GH #129: a languages mismatch signals the configured `languages` don't
+    # cover the project's code files. graph-export consumes this output
+    # directly into loomgraph, so a silent partial graph (few entities from a
+    # stray `.py` + a TS repo full of uncaptured `.ts`) would stream with
+    # `success:true` and downstream would build deps/topology on a broken
+    # graph. Two surfaces, one diagnostic source:
+    #   - 0 entities  : the classic footgun (analogous to scan-all's GH #105
+    #     ``with_files == 0`` guard) — reuse ``language_mismatch_hint``.
+    #   - >0 entities : the few-entity false-positive (GH #129) — entities
+    #     exist but ≪ the unconfigured-language files. The 0-entity hint text
+    #     ("no indexable directories found") is wrong here, so this branch
+    #     renders its own partial-graph wording from ``diagnose_language_mismatch``.
+    # scan-all deliberately stays at the 0-files guard: its partial output
+    # (only some READMEs) is *visible*, whereas graph-export's is silent.
+    if not quiet:
+        if not model.entities:
+            from .scanner import language_mismatch_hint
 
-        hint = language_mismatch_hint(root, config)
-        if hint:
-            click.echo(f"WARNING: {hint}", err=True)
+            hint = language_mismatch_hint(root, config)
+            if hint:
+                click.echo(f"WARNING: {hint}", err=True)
+        else:
+            from .scanner import diagnose_language_mismatch
+
+            diag = diagnose_language_mismatch(root, config)
+            if diag["candidate_languages"]:
+                # Files present whose extensions belong to an unconfigured
+                # supported language — what graph-export is leaving on the table.
+                present = diag["extensions_present"]
+                configured = diag["configured_extensions"]
+                uncaptured = [
+                    (ext, n) for ext, n in present.most_common() if ext not in configured
+                ]
+                top = ", ".join(f"{ext} ({n})" for ext, n in uncaptured[:5])
+                cands = " / ".join(diag["candidate_languages"])
+                click.echo(
+                    "WARNING: partial graph — graph-export captured "
+                    f"{len(model.entities)} entities but configured languages "
+                    f"{diag['configured_languages']} leave code files uncaptured "
+                    f"({top}). Add {cands} to .codeindex.yaml `languages:` to "
+                    "capture them (run: codeindex config explain languages)",
+                    err=True,
+                )
 
     text = dump_ndjson(model)
 
