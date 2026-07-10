@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **graph-export Python constructor calls now resolve to the class entity**
+  (GH #132). The Python parser tags every `CONSTRUCTOR` call's callee as
+  `Class.__init__` (`parsers/python/calls.py`); `_resolve` then keyed on the
+  `__init__` last-segment, which is almost never a symbol entity (dataclass /
+  auto-generated `__init__` is never extracted), so the edge landed unresolved
+  — and when a hand-written `__init__` method entity did exist, the edge
+  misdirected to the method, not the class. Either way the class got ZERO
+  resolved `CALLS` in-edges and was falsely flagged orphan downstream.
+  `_resolve` now strips the `.__init__` tag and resolves the class entity;
+  `dst_raw` still preserves the constructor tag. codeindex self-dogfood:
+  constructor CALLS edges resolved 0 → 1423 (100% to class entities); 38 classes
+  whose only in-edge was an instantiation are rescued from orphan status.
+- **graph-export Python src-layout + relative imports now resolve** (GH #133).
+  Two layout gaps left every intra-project Python `IMPORTS` edge unresolved
+  (codeindex self-dogfood: 0/1214 resolved). (1) **src-layout**: the
+  file-path-derived module id carries a `src.` prefix the import statement
+  lacks (`src/codeindex/config.py` → module id `src.codeindex.config`, but
+  `from codeindex.config import X` targets `codeindex.config`). `_resolve_module`
+  now tries the `src.` source-root prefix alongside the Maven
+  `src.main.java.` / `src.test.java.` roots (GH #118). (2) **relative imports**
+  (PEP 328): `_module_target` only knew the TS/JS `./` `../` path form, so a
+  Python `.mod` produced a double-dot id (`pkg..mod`) that never hit the scan
+  tree. It now counts leading dots as package levels (1 = current package,
+  2 = parent). A `__init__` fallback resolves package-level imports
+  (`from . import X` → `pkg.sub.__init__`). Both are layout-specific and safe —
+  wrong prefixes/`__init__` never hit a normal scan tree, so `import os` stays
+  unresolved. codeindex self-dogfood: `codeindex.*` imports 0 → 691/698
+  resolved (99%); relative imports 0 → 289/292 (99%); total IMPORTS resolved
+  0 → 691 (remaining 523 are stdlib/third-party, correctly unresolved).
 - **graph-export few-entity language-mismatch warning** (GH #129). The
   `language_mismatch_hint` only fired when `entities == 0`, so a non-Python
   repo (e.g. React Native) with a stray `.py` script produced a handful of
@@ -20,6 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   entity count and the uncaptured file types. (scan-all keeps its 0-files
   guard: its partial output is visible READMEs, not a silent graph.) Also
   corrected a stale `# GH #93` comment (that issue is an unrelated hooks fix).
+  The inline uncaptured list is now filtered to extensions of a
+  supported-but-unconfigured language only (GH #129 comment) — a stray
+  `.md`/`.yaml` is never a `languages:` target and previously drowned the real
+  signal (e.g. 29 `.md` ahead of the `.ts` the user should act on); the list
+  now mirrors `candidate_languages`'s own filter.
 
 ### Added
 

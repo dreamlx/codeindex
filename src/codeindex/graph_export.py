@@ -187,6 +187,17 @@ def _resolve(
     if not name:
         return "unresolved", None, []
 
+    # Python constructor: the parser tags a CONSTRUCTOR call's callee as
+    # ``Class.__init__`` (parsers/python/calls.py). The call instantiates the
+    # CLASS, so the edge must land on the class entity — not a phantom
+    # ``__init__`` method. Auto-generated ``__init__`` (dataclass) is never a
+    # symbol, so the method entity rarely exists; even when it does (hand-
+    # written), the class is the right target (else the class gets ZERO
+    # resolved in-edges and is falsely orphan downstream, GH #132). Strip the
+    # tag and resolve the class name.
+    if name.endswith(".__init__"):
+        return _resolve(name[: -len(".__init__")], module, last_index)
+
     last = name.rsplit(".", 1)[-1]
     pool = last_index.get(last, [])
     if not pool:
@@ -225,6 +236,19 @@ def _module_target(import_module: str, importer_module: str) -> str:
     directory.
     """
     if import_module.startswith("."):
+        # Python PEP 328 relative import (``.mod``, ``..mod``, ``.``): the
+        # leading dot COUNT names a package level — 1 dot = current package
+        # (importer's parent), 2 = parent package, N = N levels up. This is
+        # NOT the TS/JS ``./`` ``../`` path form; conflating them yields a
+        # double-dot id (``pkg..mod``) that never hits the scan tree (GH #133).
+        if "/" not in import_module and "\\" not in import_module:
+            dots = len(import_module) - len(import_module.lstrip("."))
+            rest = import_module[dots:]  # "" (from . import X) or "mod"
+            importer_parts = importer_module.split(".") if importer_module else []
+            base = importer_parts[:-dots] if dots <= len(importer_parts) else []
+            name_parts = rest.split(".") if rest else []
+            return ".".join([*base, *name_parts])
+        # TS/JS ``./`` ``../`` path form (slash-delimited up-count)
         stripped = import_module
         up = 0
         while stripped.startswith("../"):
@@ -247,7 +271,20 @@ def _module_target(import_module: str, importer_module: str) -> str:
 # here so the import resolves. This is layout-specific, NOT a general suffix
 # match — Python ``import os`` won't wrongly hit a project ``app.os``, because
 # ``src.main.java.os`` is never in the tree.
-_MAVEN_SOURCE_ROOTS = ("src.main.java.", "src.test.java.")
+# GH #118 / #133: src-layout roots — the file-path-derived module id carries a
+# source-root prefix the logical import name lacks. Java Maven:
+#   import ``com.foo.Bar`` ≠ module id ``src.main.java.com.foo.Bar``.
+# Python src-layout (PEP): file ``src/pkg/mod.py`` → module id ``src.pkg.mod``,
+# but import is ``from pkg.mod import X`` (target ``pkg.mod``). Each known root
+# is prepended to the import target and re-checked against the scan tree. This
+# is layout-specific, NOT a general suffix match — Python ``import os`` won't
+# wrongly hit a project ``app.os``, because ``src.main.java.os`` / ``src.os``
+# are never in a normal tree.
+_SOURCE_ROOT_PREFIXES = (
+    "src.main.java.",   # GH #118: Java Maven main
+    "src.test.java.",   # GH #118: Java Maven test
+    "src.",             # GH #133: Python src-layout (PEP)
+)
 
 
 def _resolve_module(
@@ -264,8 +301,8 @@ def _resolve_module(
     entity-centric contract). Returns ``(resolution_qualifier, dst)``;
     ``dst_raw`` (the original import string) is the caller's responsibility.
 
-    Java imports need a Maven src-layout fallback (GH #118): the import's
-    logical name is prepended with each known Maven source root and re-checked
+    src-layout fallback (GH #118 Java Maven, #133 Python src): the import's
+    logical name is prepended with each known source root and re-checked
     against the scan tree.
     """
     if not import_module:
@@ -273,10 +310,15 @@ def _resolve_module(
     target = _module_target(import_module, importer_module)
     if target in module_set:
         return "resolved", target
-    for prefix in _MAVEN_SOURCE_ROOTS:
+    for prefix in _SOURCE_ROOT_PREFIXES:
         candidate = prefix + target
         if candidate in module_set:
             return "resolved", candidate
+    # Package-level import (``from . import X`` / ``from pkg import Y``): the
+    # target is a package name, but the scan tree stores its ``__init__`` module
+    # (``pkg.sub.__init__``, not ``pkg.sub``). Re-check with the init suffix.
+    if target + ".__init__" in module_set:
+        return "resolved", target + ".__init__"
     return "unresolved", None
 
 

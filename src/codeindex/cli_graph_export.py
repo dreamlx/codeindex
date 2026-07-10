@@ -63,16 +63,25 @@ def graph_export(root: Path, output: str, quiet: bool):
             if hint:
                 click.echo(f"WARNING: {hint}", err=True)
         else:
-            from .scanner import diagnose_language_mismatch
+            from .scanner import diagnose_language_mismatch, get_language_extensions
 
             diag = diagnose_language_mismatch(root, config)
             if diag["candidate_languages"]:
-                # Files present whose extensions belong to an unconfigured
-                # supported language — what graph-export is leaving on the table.
+                # Files present whose extensions belong to an UNCONFIGURED but
+                # SUPPORTED language — the code graph-export is leaving on the
+                # table. Filtering to candidate-language extensions (instead of
+                # "every ext not in configured set") keeps the list honest: a
+                # stray ``.md``/``.yaml`` is never a ``languages:`` target, so
+                # showing it here (GH #129 comment) only drowns the real signal
+                # (the ``.java``/``.ts`` files the user should add a language
+                # for). candidate_languages already uses this filter; the inline
+                # list now matches it.
+                wanted = get_language_extensions(diag["candidate_languages"])
                 present = diag["extensions_present"]
-                configured = diag["configured_extensions"]
                 uncaptured = [
-                    (ext, n) for ext, n in present.most_common() if ext not in configured
+                    (ext, n)
+                    for ext, n in present.most_common()
+                    if ext in wanted
                 ]
                 top = ", ".join(f"{ext} ({n})" for ext, n in uncaptured[:5])
                 cands = " / ".join(diag["candidate_languages"])

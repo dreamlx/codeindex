@@ -330,6 +330,129 @@ def test_imports_edge_java_maven_resolved(tmp_path) -> None:
     assert e.source_id == "src/main/java/com/foo/Baz.java:2"  # import on line 2
 
 
+def test_python_constructor_resolves_to_class_entity(tmp_path) -> None:
+    """GH #132: ``AuthService()`` is a CONSTRUCTOR call; the Python parser tags
+    the callee as ``AuthService.__init__`` (calls.py:268). The call instantiates
+    the CLASS, so the CALLS edge must land on the class entity — not a phantom
+    ``__init__`` method (dataclass/auto-generated ``__init__`` is never a
+    symbol, so before #132 the edge was unresolved and the class got ZERO
+    in-edges → falsely orphan downstream)."""
+    (tmp_path / ".codeindex.yaml").write_text("version: 1\nlanguages: [python]\n")
+    (tmp_path / "svc.py").write_text(
+        "class AuthService:\n"  # no explicit __init__ — dataclass-style
+        "    def login(self):\n"
+        "        return 1\n"
+    )
+    (tmp_path / "main.py").write_text(
+        "from svc import AuthService\n"
+        "def run():\n"
+        "    a = AuthService()\n"  # constructor call inside a function body
+        "    return a\n"
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    # exactly one CALLS edge out of main.run, resolving to the class entity
+    calls = [e for e in model.edges if e.kind == "CALLS" and e.src == "main.run"]
+    assert len(calls) == 1
+    assert calls[0].resolution_qualifier == "resolved"
+    assert calls[0].dst == "svc.AuthService"  # class entity, NOT .__init__
+    # the raw constructor tag survives so a consumer can stub/filter
+    assert calls[0].dst_raw == "AuthService.__init__"
+
+
+def test_python_constructor_inherits_class_still_resolves(tmp_path) -> None:
+    """GH #132 guard: a class WITH an explicit ``__init__`` method must ALSO
+    resolve its constructor call to the class entity, not to the method. The
+    previous behavior resolved 325 such edges to the ``__init__`` method entity
+    (misdirect), leaving the class itself zero-in-edge."""
+    (tmp_path / ".codeindex.yaml").write_text("version: 1\nlanguages: [python]\n")
+    (tmp_path / "svc.py").write_text(
+        "class Widget:\n"
+        "    def __init__(self):\n"  # explicit __init__ — IS a symbol entity
+        "        self.x = 1\n"
+    )
+    (tmp_path / "main.py").write_text(
+        "from svc import Widget\n"
+        "def run():\n"
+        "    w = Widget()\n"
+        "    return w\n"
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    calls = [e for e in model.edges if e.kind == "CALLS" and e.src == "main.run"]
+    assert len(calls) == 1
+    assert calls[0].resolution_qualifier == "resolved"
+    assert calls[0].dst == "svc.Widget"  # class, not svc.Widget.__init__
+    assert calls[0].dst_raw == "Widget.__init__"
+
+
+def test_python_src_layout_import_resolves(tmp_path) -> None:
+    """GH #133: Python src-layout. The file-path-derived module id carries a
+    ``src.`` prefix the import statement lacks: file ``src/myproj/svc.py`` →
+    module id ``src.myproj.svc``, but the import is ``from myproj.svc import
+    foo`` (target ``myproj.svc``). #118 fixed this for Java (Maven
+    ``src/main/java``); Python needs the same src-layout fallback. Non-src
+    layout (pkg directly under root) already matches and is unaffected."""
+    (tmp_path / ".codeindex.yaml").write_text("version: 1\nlanguages: [python]\n")
+    pkg = tmp_path / "src" / "myproj"
+    pkg.mkdir(parents=True)
+    (pkg / "svc.py").write_text("def foo():\n    return 1\n")
+    (pkg / "cli.py").write_text(
+        "from myproj.svc import foo\nfoo()\n"
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    # importer module id is path-derived (src.myproj.cli); dst resolves to the
+    # target module id (src.myproj.svc) via the src. prefix fallback.
+    e = _edge(model, "src.myproj.cli", dst="src.myproj.svc", kind="IMPORTS")
+    assert e is not None, "Python src-layout IMPORTS edge missing"
+    assert e.resolution_qualifier == "resolved"
+    assert e.dst == "src.myproj.svc"
+    assert e.dst_raw == "myproj.svc"  # original import string preserved
+
+
+def test_python_relative_import_resolves(tmp_path) -> None:
+    """GH #133: Python PEP 328 relative imports (``.mod``, ``..mod``,
+    ``from . import X``) — the dot count names a package level, NOT a path
+    separator like TS ``./``. ``_module_target`` only knew the TS form, so a
+    Python ``.mod`` produced a double-dot id (``pkg..mod``) that never matched
+    the scan tree — 292 relative IMPORTS unresolved in the codeindex
+    self-dogfood. Each leading dot = up one package level from the importer's
+    parent (1 dot = current package, 2 = parent package)."""
+    (tmp_path / ".codeindex.yaml").write_text("version: 1\nlanguages: [python]\n")
+    pkg = tmp_path / "pkg"
+    sub = pkg / "sub"
+    sub.mkdir(parents=True)
+    (pkg / "__init__.py").write_text("")
+    (pkg / "util.py").write_text("def u():\n    return 1\n")
+    (sub / "__init__.py").write_text("")
+    (sub / "svc.py").write_text("def s():\n    return 1\n")
+    # importer: pkg/sub/cli.py — module id pkg.sub.cli
+    (sub / "cli.py").write_text(
+        "from . import svc\n"        # 1 dot → pkg.sub.svc
+        "from ..util import u\n"     # 2 dots → pkg.util
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    # `from . import svc` → target is the current package pkg.sub; the scan
+    # tree stores it as pkg.sub.__init__ (the __init__.py module id), so dst
+    # resolves to that — the package-level container (GH #133 __init__ fallback).
+    e1 = _edge(model, "pkg.sub.cli", dst="pkg.sub.__init__", kind="IMPORTS")
+    assert e1 is not None, "from . import X edge missing"
+    assert e1.resolution_qualifier == "resolved"
+    assert e1.dst_raw == "."
+
+    # `from ..util import u` → 2 dots → pkg.util
+    e2 = _edge(model, "pkg.sub.cli", dst="pkg.util", kind="IMPORTS")
+    assert e2 is not None, "from ..util import u edge missing"
+    assert e2.resolution_qualifier == "resolved"
+    assert e2.dst_raw == "..util"
+
+
 # --------------------------------------------------------------------------- #
 # REFERENCES edges (GH #128) — symbol-level import-ref + type-ref
 # Additive: connect non-callable exported symbols (const/interface/type_alias)
@@ -500,6 +623,42 @@ class TestLanguageMismatchWarning:
         # captured-entity count, so a consumer/CI doesn't mistake partial for done
         assert "typescript" in result.output.lower()
         assert "partial" in result.output.lower()
+
+    def test_mismatch_warning_filters_non_code_ext(self, tmp_path) -> None:
+        """GH #129 comment: the uncaptured list must only name extensions of a
+        supported-but-unconfigured language. A stray ``.md``/``.yaml`` is never
+        a ``languages:`` target, so listing it (29 ``.md`` in the codeindex
+        self-dogfood) drowns the real signal (the ``.ts`` the user should add a
+        language for). The list now mirrors ``candidate_languages``'s filter."""
+        self._write_src(tmp_path, "foo.py", "def f():\n    return 1\n")
+        self._write_src(tmp_path, "app.ts", "export const x = 1\n")
+        # noise: non-code files that are never a `languages:` target
+        self._write_src(tmp_path, "README.md", "# readme\n")
+        self._write_src(tmp_path, "conf.yaml", "key: value\n")
+        from click.testing import CliRunner
+
+        from codeindex.cli import main
+
+        result = CliRunner().invoke(
+            main,
+            ["graph-export", "--root", str(tmp_path), "-o", "-"],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+        # isolate the uncaptured-list segment (the parenthesised ext list right
+        # after "uncaptured"). Whole-output substring checks false-pass: the
+        # NDJSON body mentions "yaml"/"ts" in its provenance blurb, and the
+        # warning's own help text names ".codeindex.yaml".
+        warn_line = next(
+            (ln for ln in result.output.splitlines() if "partial graph" in ln),
+            "",
+        )
+        seg = warn_line.split("uncaptured")[1].split(").")[0]
+        # the real code file is named...
+        assert ".ts" in seg
+        # ...the non-code noise is NOT
+        assert ".md" not in seg
+        assert ".yaml" not in seg
 
     def test_no_warning_when_languages_match(self, tmp_path) -> None:
         self._write_src(tmp_path, "foo.py", "def f():\n    return 1\n")
