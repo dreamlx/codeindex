@@ -31,6 +31,13 @@ htmlcov/
 # Project specific
 .codeindex.yaml
 
+# GH #135: scan-all (root config includes tests/) generates README_AI.md inside
+# test fixtures. The #101 characterization fixture must stay byte-identical
+# (baseline goldens), so committing a generated README there drifts CI. Ignore
+# ONLY char_graphbuffer — other fixture READMEs (cli_parse/, graph_export/) are
+# legit tracked navigation assets and must stay committable.
+tests/fixtures/char_graphbuffer/**/README_AI.md
+
 # Serena MCP rewrites this on every project activation — keeps memories tracked.
 .serena/project.yml
 .serena/project.local.yml

@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **scan-all can no longer pollute the characterization fixture** (GH #135).
+  `codeindex scan-all` (root config `include: tests/`) walked test fixtures and
+  generated `README_AI.md` inside `tests/fixtures/char_graphbuffer/` — the #101
+  characterization fixture that must stay byte-identical. The generated files
+  were not gitignored, so a `git add -A` committed them, drifted the baseline
+  goldens, and broke `test_structural_readmes` /
+  `test_enrich_prompts_and_frozen_ai_readmes` on CI. `.gitignore` now blocks
+  `tests/fixtures/char_graphbuffer/**/README_AI.md` specifically (other fixture
+  READMEs — `cli_parse/`, `graph_export/` — stay committable; they are legit
+  tracked navigation assets).
 - **graph-export Python constructor calls now resolve to the class entity**
   (GH #132). The Python parser tags every `CONSTRUCTOR` call's callee as
   `Class.__init__` (`parsers/python/calls.py`); `_resolve` then keyed on the
