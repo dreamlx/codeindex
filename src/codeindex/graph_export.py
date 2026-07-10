@@ -325,16 +325,60 @@ def _resolve_module(
 # --------------------------------------------------------------------------- #
 # public API
 # --------------------------------------------------------------------------- #
+def _explicit_include(root: Path) -> list[str]:
+    """Return ``include`` only if the user wrote it in ``.codeindex.yaml``.
+
+    ``Config.load`` fills ``include`` with ``DEFAULT_INCLUDE`` when the yaml
+    omits the key, which would make graph-export skip a root-level project
+    entirely. We read the raw yaml so "absent" stays distinct from "default" —
+    absent → whole-tree scan; present (even empty) → honor the list.
+    """
+    import yaml
+
+    cfg = root / ".codeindex.yaml"
+    if not cfg.exists():
+        return []
+    try:
+        data = yaml.safe_load(cfg.read_text()) or {}
+    except yaml.YAMLError:
+        return []
+    if "include" in data:
+        inc = data.get("include") or []
+        return [str(p) for p in inc]
+    return []
+
+
 def walk_and_parse(root: Path, config: Config) -> GraphBuffer:
     """Export-shaped clean parse: every source file under ``root`` exactly once.
 
     Unlike scan-all (which re-parses subtrees per render level and excludes
     pass-through dirs), this does ONE recursive scan and groups by parent dir,
     so the export sees every file once and loses none.
+
+    Honors ``config.include`` only when the user **explicitly** wrote it in
+    ``.codeindex.yaml`` — then only the listed roots are scanned, so
+    ``include: [src/]`` keeps ``docs/``/``tests/`` out of the graph (GH
+    loomgraph#107). When ``include`` is absent the whole tree is scanned
+    (backward-compatible with root-level projects). This differs from
+    ``find_all_directories``, which treats the ``DEFAULT_INCLUDE`` fallback as
+    active — graph-export must not, or a repo with no ``src/`` would index
+    nothing. ``exclude`` is applied by ``scan_directory`` either way.
     """
-    result = scan_directory(root, config, recursive=True)
+    explicit_include = _explicit_include(root)
+    scan_roots: list[Path] = []
+    if explicit_include:
+        for rel in explicit_include:
+            inc = (root / rel).resolve()
+            if inc.is_dir():
+                scan_roots.append(inc)
+    else:
+        scan_roots = [root]
+
+    files: list[Path] = []
+    for inc in scan_roots:
+        files.extend(scan_directory(inc, config, recursive=True).files)
     parse_results = (
-        parse_files_parallel(result.files, config, quiet=True) if result.files else []
+        parse_files_parallel(files, config, quiet=True) if files else []
     )
 
     by_dir: dict[Path, list] = defaultdict(list)
