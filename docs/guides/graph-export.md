@@ -72,13 +72,13 @@ sibling classes/modules (the spike's F-class) and makes ownership explicit.
 
 | field | meaning |
 |---|---|
-| `kind` | `CALLS` \| `INHERITS` \| `IMPORTS` |
+| `kind` | `CALLS` \| `INHERITS` \| `IMPORTS` \| `REFERENCES` |
 | `src` | resolved entity id of the caller / child class |
 | `dst` | resolved entity id of the callee / parent, or `null` if not resolved |
 | `dst_raw` | the original best-effort name the resolver tried (file-local). Always present; **load-bearing when `dst` is null** — it is the only record of *what* was called, so a consumer can synthesise an external stub or filter framework noise (e.g. `expect`, `Date.now`) |
 | `resolution_qualifier` | `resolved` \| `ambiguous` \| `unresolved` |
 | `candidates` | (ambiguous only) the entity ids the name could refer to |
-| `source_id` | `relpath:line` of the call / class definition / **import statement (IMPORTS)** |
+| `source_id` | `relpath:line` of the call / class definition / **import statement (IMPORTS/REFERENCES)** |
 
 ### IMPORTS edges (GH #117, #118)
 
@@ -114,6 +114,40 @@ unlike `CALLS`/`INHERITS` (entity→entity):
 
 `loomgraph deps` aggregates these into module-level dependency graphs;
 downstream `VALID_EDGE_KINDS` already includes `IMPORTS`.
+
+### REFERENCES edges (GH #128, v1 — TS/JS)
+
+`REFERENCES` is **module→entity** (additive, no version bump), connecting
+exported symbols that are referenced but never *called* or *inherited* —
+non-callable declarations (`const` / `interface` / `type_alias`) that were
+previously zero-edge and got falsely flagged `orphan` by downstream topology.
+Two sub-passes:
+
+- **import-ref** — each named/default import whose target module resolves and
+  whose name matches an exported entity emits `importer-module → {target}.{name}`.
+  `dst_raw` = `{original_import_string}.{name}` (e.g. `./api.fetchUser`).
+  Namespace (`*`) imports are skipped (per-usage member tracking is out of v1
+  scope).
+- **type-ref** — each `type_identifier` used in **type position** (param/return
+  annotations `: Foo`, generic args `Array<Foo>`, `as Foo` assertions), resolved
+  via the global last-segment index (same-module exact preferred, mirroring
+  `CALLS`/`INHERITS` resolution). `dst_raw` = the type name. This reaches the
+  same-module `XxxProps` pattern import-ref cannot (no import exists).
+  Declaration-name nodes are skipped (no spurious self-refs); builtins
+  (`string`/`number`, the `predefined_type` node) are not collected — they never
+  resolve to a scan-tree entity, so collecting them would only add noise (the
+  #127 lesson: don't manufacture edges).
+
+Both dedup to **one edge per (src-module, dst-entity)** — a symbol imported by
+name and also used in a type annotation yields a single edge. `src` is the
+module id (no backing entity record, same shape as IMPORTS).
+
+Impact (fabricOS, TS): orphan 55.8% → 36.5%; `interface` orphan 95.7% → 5.4%,
+`type_alias` 100% → 3.7%. The type-declaration orphan problem is effectively
+solved. Remaining orphans are `variable` (local consts used as values — value-ref
+is hard and risks the #127 over-broad-candidate pattern, deferred) and JSX
+component functions. v1 is TS/JS only; Python/Java carry the same gap at lower
+declaration density (follow-up).
 
 ## Scope — a structural slice, not a full graph index
 

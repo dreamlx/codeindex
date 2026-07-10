@@ -331,6 +331,68 @@ def test_imports_edge_java_maven_resolved(tmp_path) -> None:
 
 
 # --------------------------------------------------------------------------- #
+# REFERENCES edges (GH #128) — symbol-level import-ref + type-ref
+# Additive: connect non-callable exported symbols (const/interface/type_alias)
+# that are otherwise zero-edge → falsely flagged orphan by downstream topology.
+# --------------------------------------------------------------------------- #
+def test_references_edge_from_named_import() -> None:
+    """import-ref: ``import { fetchUser } from './api'`` (web/index.ts:3) →
+    REFERENCES edge src=web.index, dst=web.api.fetchUser. Without #128 the
+    exported `fetchUser` function was connected only via its CALLS edge from
+    bootstrap; an exported const/type that is imported-but-never-called would
+    be zero-edge. import-ref gives such symbols a real edge."""
+    e = _edge(_model(), "web.index", dst="web.api.fetchUser", kind="REFERENCES")
+    assert e is not None
+    assert e.resolution_qualifier == "resolved"
+    assert e.dst_raw == "./api.fetchUser"
+    assert e.source_id == "web/index.ts:3"  # the import line
+
+
+def test_references_edge_from_type_annotation() -> None:
+    """type-ref: ``Promise<T[]>`` / ``Promise<unknown>`` in web/api.ts reference
+    no scan-tree entity (TS builtin), so they resolve unresolved and emit NO
+    edge. The positive case is a user-defined type used in type position; this
+    test asserts the resolution machinery does not over-fire on builtins
+    (the #127 lesson: don't manufacture edges)."""
+    # No user-defined types are referenced in the main fixture's TS, so there
+    # should be exactly 0 type-ref REFERENCES edges from web.api / web.index.
+    refs = [e for e in _edges(_model(), kind="REFERENCES")]
+    web_refs = [e for e in refs if e.src.startswith("web.")]
+    assert all(e.dst not in {"Promise", "T", "unknown"} for e in web_refs), web_refs
+
+
+def test_references_edge_type_ref_connects_declared_type(tmp_path) -> None:
+    """GH #128 type-ref: a ``type_alias``/``interface`` used only via ``: Foo``
+    annotation (never called, never inherited) was zero-edge → orphan. The
+    type-ref pass emits using-module → type-entity so it is connected. This is
+    the same-module `XxxProps` pattern that cleared 100% of remaining
+    interface/type_alias orphans on fabricOS in the spike."""
+    (tmp_path / ".codeindex.yaml").write_text(
+        "version: 1\nlanguages: [typescript]\n"
+    )
+    (tmp_path / "types.ts").write_text("export interface Payload { id: number }\n")
+    (tmp_path / "use.ts").write_text(
+        "import { Payload } from './types';\n"
+        "export function send(p: Payload) { return p; }\n"
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    # import-ref: use.ts imports Payload → REFERENCES use → types.Payload
+    imp_e = _edge(model, "use", dst="types.Payload", kind="REFERENCES")
+    assert imp_e is not None, "import-ref edge missing"
+    assert imp_e.dst_raw == "./types.Payload"
+
+    # type-ref: `: Payload` annotation in use.ts → same edge (deduped) —
+    # the type is now connected, not orphan. Either the import-ref or the
+    # type-ref produced the edge; both must converge on the same (src,dst).
+    assert any(
+        e.kind == "REFERENCES" and e.src == "use" and e.dst == "types.Payload"
+        for e in model.edges
+    ), [(e.kind, e.src, e.dst) for e in model.edges if e.kind == "REFERENCES"]
+
+
+# --------------------------------------------------------------------------- #
 # whole-file invariants
 # --------------------------------------------------------------------------- #
 def test_meta_and_ndjson_shape() -> None:

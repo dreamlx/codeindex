@@ -24,6 +24,7 @@ from .calls import extract_calls
 from .imports import extract_imports
 from .inheritance import extract_inheritances
 from .symbols import extract_module_docstring, extract_symbols
+from .type_refs import extract_type_refs
 
 __all__ = ["TypeScriptParser", "is_typescript_file", "get_typescript_parser"]
 
@@ -136,6 +137,21 @@ class TypeScriptParser(BaseLanguageParser):
         """
         return extract_inheritances(tree, source_bytes)
 
+    def extract_type_refs(self, tree: Tree, source_bytes: bytes) -> list:
+        """Extract type references (type-position identifiers) from the parse tree.
+
+        Feeds graph-export REFERENCES edges so declared types used via `: Foo`
+        annotations or generic args get connected (GH #128).
+
+        Args:
+            tree: The tree-sitter parse tree
+            source_bytes: The source code as bytes
+
+        Returns:
+            List of TypeRef objects
+        """
+        return extract_type_refs(tree, source_bytes)
+
     def parse(self, path: Path):
         """Parse a TypeScript/JavaScript source file.
 
@@ -176,6 +192,7 @@ class TypeScriptParser(BaseLanguageParser):
             imports = self.extract_imports(tree, source_bytes)
             inheritances = self.extract_inheritances(tree, source_bytes)
             calls = self.extract_calls(tree, source_bytes, symbols, imports)
+            type_refs = self.extract_type_refs(tree, source_bytes)
             module_docstring = extract_module_docstring(tree, source_bytes)
         except Exception as e:
             return ParseResult(
@@ -198,6 +215,7 @@ class TypeScriptParser(BaseLanguageParser):
             imports=imports,
             inheritances=inheritances,
             calls=calls,
+            type_refs=type_refs,
             file_lines=file_lines,
             module_docstring=module_docstring,
             partial=had_error,

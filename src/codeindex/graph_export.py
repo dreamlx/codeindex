@@ -396,6 +396,66 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
                     )
                 )
 
+    # Pass 4: REFERENCES edges — symbol-level import-ref (GH #128).
+    # For each named/default import whose target module resolved AND whose
+    # imported name matches an exported entity in that module, emit an edge
+    # importer-module → {target_module}.{name}. Connects non-callable exported
+    # symbols (const / interface / type_alias) imported by name that are
+    # otherwise zero-edge and get falsely flagged orphan. Namespace (`*`)
+    # imports are skipped (they need per-usage member tracking, out of scope).
+    entity_ids = {e.id for e in entities}
+    seen_refs: set[tuple[str, str]] = set()  # dedup (src-module, dst-entity)
+    for node in buffer.directories():
+        for pr in node.parse_results:
+            module = _module_of(pr.path, root)
+            for imp in pr.imports:
+                _q, target = _resolve_module(imp.module, module, module_set)
+                if not target:
+                    continue
+                for name in imp.names:
+                    if not name or name == "*":
+                        continue
+                    cand = f"{target}.{name}"
+                    if cand not in entity_ids or (module, cand) in seen_refs:
+                        continue
+                    seen_refs.add((module, cand))
+                    edges.append(
+                        Edge(
+                            kind="REFERENCES",
+                            src=module,
+                            dst=cand,
+                            resolution_qualifier="resolved",
+                            source_id=_source_id(pr.path, root, imp.line),
+                            dst_raw=f"{imp.module}.{name}",
+                        )
+                    )
+
+    # Pass 5: REFERENCES edges — type-ref (GH #128). For each type identifier
+    # used in type position, resolve it via the global last-segment index
+    # (same-module exact preferred, mirroring _resolve) and emit
+    # using-module → type entity. Connects declared types that are referenced
+    # only via `: Foo` annotations — including same-module `XxxProps` — which
+    # import-ref cannot reach (no import exists). Multi-match names resolve
+    # unresolved and are skipped (the #127 lesson: don't manufacture edges).
+    for node in buffer.directories():
+        for pr in node.parse_results:
+            module = _module_of(pr.path, root)
+            for tr in pr.type_refs:
+                _q, dst, _c = _resolve(tr.name, module, last_index)
+                if not dst or (module, dst) in seen_refs:
+                    continue
+                seen_refs.add((module, dst))
+                edges.append(
+                    Edge(
+                        kind="REFERENCES",
+                        src=module,
+                        dst=dst,
+                        resolution_qualifier="resolved",
+                        source_id=_source_id(pr.path, root, tr.line),
+                        dst_raw=tr.name or "",
+                    )
+                )
+
     return ExportModel(entities=entities, edges=edges)
 
 

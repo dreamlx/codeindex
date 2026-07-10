@@ -26,3 +26,5 @@
 {"dst": "app.validators", "dst_raw": "app.validators", "kind": "IMPORTS", "resolution_qualifier": "resolved", "source_id": "app/service.py:5", "src": "app.service", "type": "edge"}
 {"dst": "web.api", "dst_raw": "./api", "kind": "IMPORTS", "resolution_qualifier": "resolved", "source_id": "web/index.ts:3", "src": "web.index", "type": "edge"}
 {"dst": "app.service.AuthService", "dst_raw": "AuthService", "kind": "INHERITS", "resolution_qualifier": "resolved", "source_id": "app/service.py:18", "src": "app.service.AdminService", "type": "edge"}
+{"dst": "app.validators.validate", "dst_raw": "app.validators.validate", "kind": "REFERENCES", "resolution_qualifier": "resolved", "source_id": "app/service.py:5", "src": "app.service", "type": "edge"}
+{"dst": "web.api.fetchUser", "dst_raw": "./api.fetchUser", "kind": "REFERENCES", "resolution_qualifier": "resolved", "source_id": "web/index.ts:3", "src": "web.index", "type": "edge"}
