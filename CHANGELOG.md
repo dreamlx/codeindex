@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **graph-export REFERENCES edges: symbol-level import-ref + type-ref**
+  (GH #128, v1 — TS/JS only). A new `REFERENCES` edge kind connects exported
+  symbols referenced only via `import { X }` or `: X` type annotations —
+  non-callable declarations (`const` / `interface` / `type_alias`) that were
+  previously zero-edge and got falsely flagged `orphan` by downstream topology.
+  Two passes: (a) **import-ref** — each named/default import whose target
+  module resolves and whose name matches an exported entity emits
+  importer-module → `{target}.{name}`; (b) **type-ref** — each `type_identifier`
+  in type position (param/return annotations, generic args, `as` assertions),
+  resolved via the global last-segment index (same-module exact preferred),
+  emits using-module → type entity. Declaration-name nodes are skipped (no
+  spurious self-refs). Both dedup to one edge per (src-module, dst-entity).
+  Impact on fabricOS (TS): orphan 55.8% → 36.5%; `interface` orphan 95.7% →
+  5.4%, `type_alias` 100% → 3.7% — the type-declaration orphan problem is
+  effectively solved. Remaining orphans are `variable` (local consts, out of
+  v1 scope — value-ref is hard and risks the #127 over-broad-candidate
+  pattern) and JSX component functions. v1 is TS/JS only; Python/Java have the
+  same gap but lower declaration density (follow-up).
 - **graph-export IMPORTS edges: Java/PHP/Swift/ObjC `source_id` line +
   Java/PHP resolution** (GH #118, follow-up to #117). `Import.line` is now
   filled for Java/PHP/Swift/ObjC — previously default `0`, so the IMPORTS

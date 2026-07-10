@@ -206,6 +206,33 @@ class Annotation:
 
 
 @dataclass
+class TypeRef:
+    """A type reference — a type identifier used in type position (GH #128).
+
+    Captures references such as ``: Foo`` parameter/return annotations, generic
+    type arguments ``Array<Foo>``, and ``as Foo`` assertions, so graph-export
+    can emit a symbol-level reference edge to the referenced type entity
+    (``interface`` / ``type_alias`` / ``class``). Without these edges, declared
+    types that are never *called* or *inherited* are zero-edge and get falsely
+    flagged orphan by downstream topology (#128: 88/92 interfaces + 25/25
+    type_aliases orphan on fabricOS before type-ref).
+
+    Attributes:
+        name: The type identifier text. Qualified names are reduced to the last
+            segment (``Foo.Bar`` → ``Bar``) to match the entity last-segment
+            used by ``last_index`` resolution.
+        line: 1-based source line of the type annotation (for ``source_id``).
+    """
+
+    name: str
+    line: int
+
+    def to_dict(self) -> dict:
+        """Convert TypeRef to JSON-serializable dict."""
+        return {"name": self.name, "line": self.line}
+
+
+@dataclass
 class ParseResult:
     """Result of parsing a file (extended for LoomGraph).
 
@@ -226,6 +253,7 @@ class ParseResult:
     imports: list[Import] = field(default_factory=list)
     inheritances: list[Inheritance] = field(default_factory=list)  # Added in v0.9.0
     calls: list[Call] = field(default_factory=list)  # Added in v0.13.0 (Epic 11)
+    type_refs: list[TypeRef] = field(default_factory=list)  # GH #128 (type-ref edges)
     module_docstring: str = ""
     namespace: str = ""  # PHP namespace
     error: str | None = None
@@ -240,6 +268,7 @@ class ParseResult:
             "imports": [imp.to_dict() for imp in self.imports],
             "inheritances": [inh.to_dict() for inh in self.inheritances],
             "calls": [call.to_dict() for call in self.calls],  # Epic 11
+            "type_refs": [tr.to_dict() for tr in self.type_refs],  # GH #128
             "module_docstring": self.module_docstring,
             "namespace": self.namespace,
             "error": self.error,

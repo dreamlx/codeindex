@@ -1000,3 +1000,45 @@ class Bar extends Foo {
         assert "inheritances" in d
         assert "calls" in d
         assert "file_lines" in d
+        assert "type_refs" in d  # GH #128
+
+
+class TestTypeRefExtraction:
+    """GH #128: type identifiers in type position → TypeRef list.
+
+    These feed graph-export REFERENCES edges so non-callable type declarations
+    (interface / type_alias) referenced via `: Foo` annotations or generic args
+    `Array<Foo>` get connected instead of being zero-edge orphan.
+    """
+
+    def test_type_refs_from_param_return_and_generic(self, tmp_path):
+        code = """\
+interface Props { name: string }
+type Handler = (e: Event) => void;
+interface Item { id: number }
+function render(props: Props): Handler {
+  const items: Array<Item> = [];
+  return null as unknown as Handler;
+}
+"""
+        (tmp_path / "comp.tsx").write_text(code)
+        result = parse_file(tmp_path / "comp.tsx")
+        names = {tr.name for tr in result.type_refs}
+        # Props (param annotation), Handler (return + `as`), Item (generic arg)
+        assert "Props" in names, names
+        assert "Handler" in names, names
+        assert "Item" in names, names
+        assert all(tr.line > 0 for tr in result.type_refs), result.type_refs
+
+    def test_no_type_refs_in_plain_js(self, tmp_path):
+        """JS (no type annotations) yields no type refs."""
+        (tmp_path / "plain.js").write_text("function add(a, b) { return a + b; }\n")
+        result = parse_file(tmp_path / "plain.js")
+        assert result.type_refs == []
+
+    def test_qualified_type_uses_last_segment(self, tmp_path):
+        """`Mod.Inner` (nested_type_identifier) → name 'Inner' (entity last-segment)."""
+        (tmp_path / "q.ts").write_text("let x: Mod.Inner = null;\n")
+        result = parse_file(tmp_path / "q.ts")
+        names = {tr.name for tr in result.type_refs}
+        assert "Inner" in names, names
