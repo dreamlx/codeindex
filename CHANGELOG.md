@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **graph-export now honors `include:` in `.codeindex.yaml`** (GH #137).
+  `codeindex graph-export` ignored `include:` — it scanned the whole tree from
+  `--root`, applying only `exclude:` (via `should_exclude`), so a repo with
+  `include: [src/]` still ingested `docs/`/`tests/`/`spikes/` code, polluting
+  downstream `loomgraph topology` (god/hub/orphan false positives dominated by
+  experiment scripts). `walk_and_parse` now reads the raw yaml to detect an
+  **explicit** `include:` key — present → scan only the listed roots; absent →
+  whole-tree scan (backward-compatible with root-level repos). It deliberately
+  does not reuse `config.include`, which `Config.load` fills with
+  `DEFAULT_INCLUDE` when the key is omitted — that would make graph-export skip
+  a repo with no `src/` entirely. (Downstream: loomgraph#107.)
+
 ## [0.33.0] - 2026-07-10
 
 ### Fixed
