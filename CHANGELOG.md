@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.33.0] - 2026-07-10
+
 ### Fixed
 
 - **scan-all can no longer pollute the characterization fixture** (GH #135).
