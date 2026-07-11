@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **graph-export now resolves TS path aliases (`@/...`)** (GH #139).
+  `codeindex graph-export` never read `tsconfig.json`, so `compilerOptions.paths`
+  / `baseUrl` were silently ignored — every `@/components/Foo` import hit the
+  bare-module fallback (`_module_target`), got dot-ified to
+  `@.components.Foo`, never matched the scan tree, and dropped ALL IMPORTS /
+  REFERENCES edges through the alias → downstream `loomgraph topology` orphan
+  false-positives. `_resolve_module` now expands aliases (with `*` wildcard,
+  multi-target list fallback, `baseUrl` prefix joining) BEFORE the relative/
+  absolute fallback chain; an alias that matches but resolves to nothing STAYS
+  `unresolved` (it must not fall through, which would re-mangle the specifier).
+  Single root `tsconfig.json` only — no `extends` / project references /
+  monorepo multi-tsconfig (out of scope). JSONC `//` and `/* */` comments are
+  stripped without adding a dependency (json5/commentjson not in the wheel).
+
 ## [0.33.1] - 2026-07-11
 
 ### Fixed

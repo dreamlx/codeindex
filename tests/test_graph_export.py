@@ -515,6 +515,190 @@ def test_references_edge_type_ref_connects_declared_type(tmp_path) -> None:
     ), [(e.kind, e.src, e.dst) for e in model.edges if e.kind == "REFERENCES"]
 
 
+
+
+# --------------------------------------------------------------------------- #
+# TS path-alias resolution (GH #139) — tsconfig.json paths/baseUrl
+# Independent tmp_path fixtures (no main-golden pollution). A bare `@/...`
+# specifier previously hit the bare-module fallback (_module_target:265),
+# got dot-ified to `@.components.Foo`, never matched the scan tree, and the
+# IMPORTS/REFERENCES edges through the alias were silently dropped → downstream
+# orphan false-positives. _resolve_module now expands aliases BEFORE the
+# fallback chain.
+# --------------------------------------------------------------------------- #
+def test_ts_path_alias_resolves(tmp_path) -> None:
+    """GH #139: ``@/components/Foo`` resolves via tsconfig ``paths`` (no
+    baseUrl). Before #139 the bare-module fallback turned it into
+    ``@.components.Foo`` (never in the scan tree) and every alias import got
+    zero IMPORTS/REFERENCES edges → orphan false-positive downstream."""
+    (tmp_path / ".codeindex.yaml").write_text(
+        "version: 1\nlanguages: [typescript]\n"
+    )
+    (tmp_path / "tsconfig.json").write_text(
+        json.dumps({"compilerOptions": {"paths": {"@/*": ["src/*"]}}})
+    )
+    comp = tmp_path / "src" / "components"
+    comp.mkdir(parents=True)
+    (comp / "Foo.ts").write_text("export function Foo(): number { return 1; }\n")
+    (tmp_path / "src" / "app.ts").write_text(
+        'import { Foo } from "@/components/Foo";\nexport function run() { return Foo(); }\n'
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    imp = _edge(model, "src.app", dst="src.components.Foo", kind="IMPORTS")
+    assert imp is not None, "alias IMPORTS edge missing"
+    assert imp.resolution_qualifier == "resolved"
+    assert imp.dst_raw == "@/components/Foo"  # original alias preserved
+
+    ref = _edge(
+        model, "src.app", dst="src.components.Foo.Foo", kind="REFERENCES"
+    )
+    assert ref is not None, "alias REFERENCES edge missing"
+    assert ref.dst_raw == "@/components/Foo.Foo"
+
+
+def test_ts_path_alias_baseurl_subdir(tmp_path) -> None:
+    """GH #139: ``baseUrl`` is the dir paths targets resolve against.
+    ``baseUrl: "src"`` + ``paths: {"@/*": ["components/*"]}`` means ``@/Foo``
+    → ``src/components/Foo`` (the target ``components/*`` is relative to
+    baseUrl ``src``). Without baseUrl handling the resolved target would miss
+    the ``src.`` prefix the file-path-derived module id carries."""
+    (tmp_path / ".codeindex.yaml").write_text(
+        "version: 1\nlanguages: [typescript]\n"
+    )
+    (tmp_path / "tsconfig.json").write_text(
+        json.dumps(
+            {
+                "compilerOptions": {
+                    "baseUrl": "src",
+                    "paths": {"@/*": ["components/*"]},
+                }
+            }
+        )
+    )
+    comp = tmp_path / "src" / "components"
+    comp.mkdir(parents=True)
+    (comp / "Foo.ts").write_text("export function Foo(): number { return 1; }\n")
+    (tmp_path / "src" / "app.ts").write_text(
+        'import { Foo } from "@/Foo";\nexport function run() { return Foo(); }\n'
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    e = _edge(model, "src.app", dst="src.components.Foo", kind="IMPORTS")
+    assert e is not None, "alias with baseUrl IMPORTS edge missing"
+    assert e.resolution_qualifier == "resolved"
+
+
+def test_ts_path_alias_non_alias_falls_through(tmp_path) -> None:
+    """GH #139 guard: a tsconfig with ``@/*`` alias must NOT mangle a plain
+    relative import ``./local``. The alias branch only fires when an alias key
+    matches; non-alias specifiers fall through to the normal relative-path
+    resolution unchanged."""
+    (tmp_path / ".codeindex.yaml").write_text(
+        "version: 1\nlanguages: [typescript]\n"
+    )
+    (tmp_path / "tsconfig.json").write_text(
+        json.dumps({"compilerOptions": {"paths": {"@/*": ["src/*"]}}})
+    )
+    (tmp_path / "local.ts").write_text("export function L(): number { return 1; }\n")
+    (tmp_path / "app.ts").write_text(
+        'import { L } from "./local";\nexport function run() { return L(); }\n'
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    e = _edge(model, "app", dst="local", kind="IMPORTS")
+    assert e is not None, "non-alias relative IMPORTS edge missing"
+    assert e.resolution_qualifier == "resolved"
+    assert e.dst_raw == "./local"
+
+
+def test_ts_path_alias_unmatched_stays_unresolved(tmp_path) -> None:
+    """GH #139 guard: an alias that MATCHES a paths key but points at a file
+    not in the scan tree must stay ``unresolved`` — it must NOT fall through to
+    _module_target, which would dot-ify ``@/nonexistent/Foo`` into the bogus
+    ``@.nonexistent.Foo``. dst_raw keeps the original alias string."""
+    (tmp_path / ".codeindex.yaml").write_text(
+        "version: 1\nlanguages: [typescript]\n"
+    )
+    (tmp_path / "tsconfig.json").write_text(
+        json.dumps({"compilerOptions": {"paths": {"@/*": ["src/*"]}}})
+    )
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "app.ts").write_text(
+        'import { Foo } from "@/nonexistent/Foo";\nexport function run() { return 0; }\n'
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    e = _edge(model, "src.app", kind="IMPORTS")
+    assert e is not None
+    assert e.resolution_qualifier == "unresolved"
+    assert e.dst is None
+    assert e.dst_raw == "@/nonexistent/Foo"  # NOT mangled to @.nonexistent.Foo
+
+
+def test_tsconfig_jsonc_comments_parse(tmp_path) -> None:
+    """GH #139: tsconfig.json commonly carries ``//`` line and ``/* */`` block
+    comments (JSONC, not strict JSON). Without stripping them, ``json.loads``
+    fails and every alias import degrades to unresolved — a silent regression
+    on real-world tsconfigs. Comments are stripped before parsing; no new
+    dependency added."""
+    (tmp_path / ".codeindex.yaml").write_text(
+        "version: 1\nlanguages: [typescript]\n"
+    )
+    (tmp_path / "tsconfig.json").write_text(
+        '{\n'
+        '  // compiler options\n'
+        '  "compilerOptions": {\n'
+        '    /* path aliases */\n'
+        '    "paths": { "@/*": ["src/*"] }\n'
+        '  }\n'
+        '}\n'
+    )
+    comp = tmp_path / "src" / "components"
+    comp.mkdir(parents=True)
+    (comp / "Foo.ts").write_text("export function Foo(): number { return 1; }\n")
+    (tmp_path / "src" / "app.ts").write_text(
+        'import { Foo } from "@/components/Foo";\nexport function run() { return Foo(); }\n'
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    e = _edge(model, "src.app", dst="src.components.Foo", kind="IMPORTS")
+    assert e is not None, "alias from JSONC tsconfig not parsed"
+    assert e.resolution_qualifier == "resolved"
+
+
+def test_ts_path_alias_multi_target(tmp_path) -> None:
+    """GH #139: ``paths`` values are LISTS — TS tries each target in order. A
+    file present only under the SECOND target (``src/legacy/*``) must resolve
+    via that fallback, not stay unresolved because the first (``src/*``)
+    missed."""
+    (tmp_path / ".codeindex.yaml").write_text(
+        "version: 1\nlanguages: [typescript]\n"
+    )
+    (tmp_path / "tsconfig.json").write_text(
+        json.dumps(
+            {"compilerOptions": {"paths": {"@/*": ["src/*", "src/legacy/*"]}}}
+        )
+    )
+    legacy = tmp_path / "src" / "legacy"
+    legacy.mkdir(parents=True)
+    (legacy / "Foo.ts").write_text("export function Foo(): number { return 1; }\n")
+    (tmp_path / "src" / "app.ts").write_text(
+        'import { Foo } from "@/Foo";\nexport function run() { return Foo(); }\n'
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    e = _edge(model, "src.app", dst="src.legacy.Foo", kind="IMPORTS")
+    assert e is not None, "multi-target alias second-target IMPORTS edge missing"
+    assert e.resolution_qualifier == "resolved"
+
+
 # --------------------------------------------------------------------------- #
 # whole-file invariants
 # --------------------------------------------------------------------------- #
@@ -740,3 +924,4 @@ class TestIncludeRespected:
         names = {e.id for e in model.entities}
         assert any("product_fn" in n for n in names), names
         assert any("spike_fn" in n for n in names), names  # docs NOT excluded w/o include key
+

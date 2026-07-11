@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -287,10 +288,156 @@ _SOURCE_ROOT_PREFIXES = (
 )
 
 
+def _check_fallbacks(target: str, module_set: set[str]) -> str | None:
+    """Shared resolution chain for a dotted module-id ``target``.
+
+    Tries, in order: exact scan-tree match → src-layout prefix (GH #118/#133)
+    → Python ``__init__`` barrel (GH #133). Returns the resolved module id, or
+    ``None``. Shared by the main ``_resolve_module`` path and the #139 alias
+    branch so both follow the same fallback order — adding a new fallback here
+    fixes both at once.
+    """
+    if target in module_set:
+        return target
+    for prefix in _SOURCE_ROOT_PREFIXES:
+        candidate = prefix + target
+        if candidate in module_set:
+            return candidate
+    # Package-level import (``from . import X`` / ``from pkg import Y``): the
+    # target is a package/dir name, but the scan tree stores its init module.
+    # Python __init__.py → ``pkg.__init__`` (GH #133).
+    if target + ".__init__" in module_set:
+        return target + ".__init__"
+    return None
+
+
+# --------------------------------------------------------------------------- #
+# TS path-alias resolution (GH #139) — tsconfig.json paths/baseUrl
+# --------------------------------------------------------------------------- #
+# Strip ``//`` line and ``/* */`` block comments from JSONC text WITHOUT
+# touching ``//`` inside string literals. A single alternation matches either a
+# comment (discarded) or a double-quoted string literal (kept via group). Naive
+# ``re.sub(r"//.*", ...)`` would delete the ``://`` inside ``"http://..."``.
+_JSONC_COMMENT_RE = re.compile(
+    r'//[^\n]*'              # // line comment
+    r'|/\*.*?\*/'            # /* block comment */ (DOTALL spans newlines)
+    r'|"(?:\\.|[^"\\])*"',   # " string literal " (preserved)
+    re.DOTALL,
+)
+
+
+def _strip_jsonc_comments(text: str) -> str:
+    """Remove ``//`` and ``/* */`` comments from JSONC, preserving string
+    literals. No new dependency (json5/commentjson not in the wheel)."""
+    def _sub(m: re.Match) -> str:
+        if m.group(0).startswith('"'):
+            return m.group(0)  # keep string literal verbatim
+        return ""              # drop comment
+    return _JSONC_COMMENT_RE.sub(_sub, text)
+
+
+def _load_tsconfig_paths(root: Path) -> dict[str, list[str]]:
+    """Read a single ``root/tsconfig.json`` and return TS path-alias mappings.
+
+    Returns ``{alias_key: [dotted_target_patterns]}`` where both keys and
+    target patterns may contain ``*`` (matching tsconfig ``paths`` semantics).
+    Targets are stored as **dotted module-id patterns** (``src/*`` →
+    ``src.*``), the same form ``module_set`` uses, so expansion needs no
+    re-dotting. No ``extends`` / project-refs / monorepo support (single root
+    tsconfig, per #139 scope). Fails soft — any parse error returns ``{}``,
+    never crashing export.
+    """
+    tsconfig = root / "tsconfig.json"
+    if not tsconfig.exists():
+        return {}
+    raw = tsconfig.read_text(errors="replace")
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        # JSONC (// and /* */ comments) is not strict JSON — strip and retry.
+        try:
+            data = json.loads(_strip_jsonc_comments(raw))
+        except json.JSONDecodeError:
+            return {}  # malformed even after stripping — degrade to no-alias
+    if not isinstance(data, dict):
+        return {}
+    compiler_options = data.get("compilerOptions")
+    if not isinstance(compiler_options, dict):
+        return {}
+    paths = compiler_options.get("paths")
+    if not isinstance(paths, dict) or not paths:
+        return {}
+
+    # baseUrl → dotted prefix (``"src"`` → ``"src"``; ``"."``/``""``/absent →
+    # ``""``). Paths targets are relative to baseUrl.
+    base_prefix = ""
+    base_url = compiler_options.get("baseUrl")
+    if isinstance(base_url, str) and base_url not in ("", "."):
+        base_prefix = ".".join(
+            p for p in base_url.replace("\\", "/").split("/") if p and p != "."
+        )
+
+    def _dot(s: str) -> str:
+        return s.replace("\\", ".").replace("/", ".")
+
+    out: dict[str, list[str]] = {}
+    for alias_key, targets in paths.items():
+        if not isinstance(alias_key, str) or not isinstance(targets, list):
+            continue
+        dotted_targets: list[str] = []
+        for t in targets:
+            if not isinstance(t, str) or not t:
+                continue
+            d = _dot(t)
+            if base_prefix:
+                d = f"{base_prefix}.{d}" if d else base_prefix
+            dotted_targets.append(d)
+        if dotted_targets:
+            out[alias_key] = dotted_targets
+    return out
+
+
+def _expand_alias(specifier: str, alias_map: dict[str, list[str]]) -> list[str]:
+    """Expand a TS import specifier against tsconfig ``paths`` aliases.
+
+    Returns candidate **dotted module-id** strings (list because a paths value
+    is a multi-target fallback list). Empty list = no alias matched → caller
+    falls through to normal relative/absolute resolution. First matching alias
+    key wins (dict insertion order = tsconfig order, matching TS behaviour).
+    """
+    candidates: list[str] = []
+    for alias_key, targets in alias_map.items():
+        if "*" in alias_key:
+            star = alias_key.index("*")
+            prefix = alias_key[:star]
+            suffix = alias_key[star + 1:]
+            if not specifier.startswith(prefix):
+                continue
+            if suffix and not specifier.endswith(suffix):
+                continue
+            if len(prefix) + len(suffix) > len(specifier):
+                continue
+            # remainder is a path fragment (``components/Foo``) — dot-ify to
+            # match the dotted target pattern and module_set form.
+            remainder = (
+                specifier[len(prefix):len(specifier) - len(suffix)]
+                .replace("\\", ".")
+                .replace("/", ".")
+            )
+            for t in targets:
+                candidates.append(t.replace("*", remainder) if "*" in t else t)
+        elif specifier == alias_key:
+            candidates.extend(targets)
+        if candidates:
+            break  # first matching key wins
+    return candidates
+
+
 def _resolve_module(
     import_module: str,
     importer_module: str,
     module_set: set[str],
+    alias_map: dict[str, list[str]] | None = None,
 ) -> tuple[str, str | None]:
     """Resolve an import target to a module id in the scan tree (IMPORTS edges).
 
@@ -304,21 +451,29 @@ def _resolve_module(
     src-layout fallback (GH #118 Java Maven, #133 Python src): the import's
     logical name is prepended with each known source root and re-checked
     against the scan tree.
+
+    TS path-alias (GH #139): if ``alias_map`` is given and the specifier
+    matches a tsconfig ``paths`` key, the alias is expanded to candidate dotted
+    module ids and resolved through the same fallback chain. An alias that
+    matches but resolves to nothing STAYS unresolved — it must NOT fall through
+    to ``_module_target``, which would dot-ify ``@/components`` into the bogus
+    ``@.components``.
     """
     if not import_module:
         return "unresolved", None
+    if alias_map:
+        for cand in _expand_alias(import_module, alias_map):
+            resolved = _check_fallbacks(cand, module_set)
+            if resolved:
+                return "resolved", resolved
+        # Alias matched (non-empty expansion) but nothing resolved → do NOT
+        # fall through; _module_target would mangle the alias specifier.
+        if _expand_alias(import_module, alias_map):
+            return "unresolved", None
     target = _module_target(import_module, importer_module)
-    if target in module_set:
-        return "resolved", target
-    for prefix in _SOURCE_ROOT_PREFIXES:
-        candidate = prefix + target
-        if candidate in module_set:
-            return "resolved", candidate
-    # Package-level import (``from . import X`` / ``from pkg import Y``): the
-    # target is a package name, but the scan tree stores its ``__init__`` module
-    # (``pkg.sub.__init__``, not ``pkg.sub``). Re-check with the init suffix.
-    if target + ".__init__" in module_set:
-        return "resolved", target + ".__init__"
+    resolved = _check_fallbacks(target, module_set)
+    if resolved:
+        return "resolved", resolved
     return "unresolved", None
 
 
@@ -426,6 +581,10 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
                 )
                 last_index[sym.name.rsplit(".", 1)[-1]].append(eid)
 
+    # TS path-alias map (GH #139): read once from a single root tsconfig.json.
+    # Empty when absent/unparseable — _resolve_module then behaves as before.
+    alias_map = _load_tsconfig_paths(root)
+
     # Pass 2: edges (CALLS + INHERITS), resolved against the global index
     edges: list[Edge] = []
     for node in buffer.directories():
@@ -470,7 +629,7 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
         for pr in node.parse_results:
             module = _module_of(pr.path, root)
             for imp in pr.imports:
-                qual, dst = _resolve_module(imp.module, module, module_set)
+                qual, dst = _resolve_module(imp.module, module, module_set, alias_map)
                 edges.append(
                     Edge(
                         kind="IMPORTS",
@@ -495,7 +654,7 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
         for pr in node.parse_results:
             module = _module_of(pr.path, root)
             for imp in pr.imports:
-                _q, target = _resolve_module(imp.module, module, module_set)
+                _q, target = _resolve_module(imp.module, module, module_set, alias_map)
                 if not target:
                     continue
                 for name in imp.names:
