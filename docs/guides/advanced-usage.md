@@ -301,7 +301,7 @@ name: Update Code Index
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master]
   pull_request:
 
 jobs:

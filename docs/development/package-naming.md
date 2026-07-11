@@ -66,8 +66,8 @@ pip install msgpack-python      # → github.com/msgpack/msgpack-python
 
 - **PyPI**: https://pypi.org/project/ai-codeindex/
 - **TestPyPI**: https://test.pypi.org/project/ai-codeindex/
-- **GitHub**: https://github.com/yourusername/codeindex
-- **Documentation**: https://github.com/yourusername/codeindex#readme
+- **GitHub**: https://github.com/dreamlx/codeindex
+- **Documentation**: https://github.com/dreamlx/codeindex#readme
 
 ### 安装
 
@@ -76,10 +76,10 @@ pip install msgpack-python      # → github.com/msgpack/msgpack-python
 pip install ai-codeindex
 
 # 从 GitHub 安装
-pip install git+https://github.com/yourusername/codeindex.git
+pip install git+https://github.com/dreamlx/codeindex.git
 
 # 开发模式
-git clone https://github.com/yourusername/codeindex.git
+git clone https://github.com/dreamlx/codeindex.git
 cd codeindex
 pip install -e ".[dev]"
 ```

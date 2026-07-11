@@ -212,7 +212,7 @@ Auto-commit: "docs: auto-update README_AI.md for <hash>"
 
 **Checks**:
 1. **Lint check** - Runs `ruff check src/ tests/`
-2. **Test suite** - Runs `pytest` (full for develop/master, quick mode for feature/fix branches)
+2. **Test suite** - Runs `pytest` (full for master, quick mode for feature/fix branches)
 3. **Version consistency** (master only) - Runs `scripts/check_version_consistency.py` to ensure version numbers match across all files
 
 **Note**: The CLI-installed pre-push hook (`codeindex hooks install pre-push`) generates a minimal placeholder. For the full-featured pre-push template with lint+tests, see `scripts/hooks/pre-push` and copy it manually to `.git/hooks/pre-push`.

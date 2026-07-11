@@ -91,7 +91,7 @@ A good `CLAUDE.md` answers these questions for Claude Code:
 **4. What NOT to do**
 ```markdown
 ## Do Not
-- Do not run `git push --force` on develop or main
+- Do not run `git push --force` on master
 - Do not modify `package-lock.json` manually
 - Do not add `console.log` to production code — use the logger in `src/utils/logger.ts`
 - Tests must not hit real network or database — use fixtures in `tests/fixtures/`

@@ -83,7 +83,7 @@ Claude Code 可以访问你的文件和终端，但它不会自动知道：
 **4. 禁止事项**
 ```markdown
 ## 禁止
-- 禁止对 develop 或 main 执行 `git push --force`
+- 禁止对 master 执行 `git push --force`
 - 禁止手动修改 `package-lock.json`
 - 禁止在生产代码中使用 `console.log`，使用 `src/utils/logger.ts` 中的 logger
 - 测试禁止访问真实网络或数据库，使用 `tests/fixtures/` 中的 fixture

@@ -8,7 +8,7 @@
 ## 1. Mental Model: Three Rings
 
 ```
-[GitHub Issue]  →  [feature/* branch]  →  [develop]  →  [master + PyPI tag]
+[GitHub Issue]  →  [feature/* branch]  →  [master + PyPI tag]
      ↑                    ↑                    ↑
   Requirements         TDD + hooks          CI gates
 ```
@@ -52,20 +52,23 @@ The checklist becomes your test cases. When all boxes are checked (code + tests 
 
 ---
 
-## 3. Git Workflow: GitFlow Strict
+## 3. Git Workflow: trunk-based + squash-merge
 
 ```
-master          ←── only via PR from develop, tagged releases only
-  └── develop   ←── only via PR from feature/* branches
-        └── feature/short-description   ←── where you work
-        └── fix/short-description
+master   ←── only via squash-merge PR from feature/*, tagged releases only
+  └── feature/short-description   ←── where you work
+  └── fix/short-description
 ```
+
+No `develop` / `release` branches — `master` is both integration and production
+branch; releases are tags. See [gitflow-workflow.md](gitflow-workflow.md) for the
+full flow.
 
 ### Day-to-day commands
 
 ```bash
 # Start work
-git checkout develop && git pull
+git checkout master && git pull
 git checkout -b feature/my-feature
 
 # Commit (conventional format required)
@@ -75,7 +78,7 @@ git commit -m "test(scope): add tests for something"
 
 # Finish
 git push -u origin feature/my-feature
-# → open PR to develop on GitHub
+# → open PR to master on GitHub (squash-merge when approved)
 ```
 
 ### Commit format: `type(scope): description`
@@ -167,7 +170,7 @@ Runs in background, non-blocking.
 Last gate before code leaves your machine.
 
 1. **ruff lint** on full src/
-2. **pytest** — feature branches get fast mode (`-x -q`), develop/master get full suite
+2. **pytest** — feature branches get fast mode (`-x -q`), master gets full suite
 3. **version consistency check** — verifies pyproject.toml version matches CHANGELOG.md
 
 If pre-push fails, your push is blocked. Fix the issue, don't use `--no-verify`.
@@ -184,7 +187,7 @@ make install-hooks              # Same thing via Makefile
 
 ## 6. CI Pipeline: GitHub Actions
 
-Runs on every push to `develop`/`master` and every PR. Must pass before merge.
+Runs on every push to `master` and every PR. Must pass before merge.
 
 **Matrix**: Ubuntu + macOS × Python 3.10 / 3.11 / 3.12 = 6 combinations.
 
@@ -343,7 +346,7 @@ Claude Code runs lint → tests → coverage → version check and reports what'
 ### Things that slow Claude Code down (avoid these)
 
 - Asking it to edit `README_AI.md` directly — it'll do it, then the next scan overwrites it
-- Committing directly to `develop` or `master` — hooks and CI protect these, Claude Code knows to use feature branches
+- Committing directly to `master` — hooks and CI protect it, Claude Code knows to use feature branches
 - Skipping `--no-verify` to get past hooks — the hooks exist for a reason; fix the underlying issue
 
 ---

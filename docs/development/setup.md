@@ -10,7 +10,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/codeindex.git
+git clone https://github.com/dreamlx/codeindex.git
 cd codeindex
 
 # Create virtual environment
@@ -108,8 +108,8 @@ mypy src/
 ### 1. Create Feature Branch
 
 ```bash
-git checkout develop
-git pull origin develop
+git checkout master
+git pull origin master
 git checkout -b feature/your-feature-name
 ```
 

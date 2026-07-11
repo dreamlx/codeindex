@@ -11,7 +11,8 @@ plus the judgment steps a Makefile can't encode.
    as a user).
 2. **Prep docs** — move `CHANGELOG.md` `[Unreleased]` → `[X.Y.Z]`, update
    `docs/planning/ROADMAP.md`, commit.
-3. **Merge to master** — `git checkout master && git merge develop --no-ff`.
+3. **On master** — work merges into `master` via squash-merge PRs (no `develop`
+   branch). Ensure `master` is current: `git checkout master && git pull`.
 4. **Ship** — `make release VERSION=X.Y.Z`.
 
 `make release` runs the pre-release checks, bumps the version, tags, and pushes.

@@ -154,12 +154,11 @@ Read your own release notes as if you were a user who just `pip install
 ### [e] GH Actions CI on the pushed branch
 
 ```bash
-gh run list --branch develop --limit 3
 gh run list --branch master --limit 3
 ```
 
 Acceptance:
-- [ ] Latest run on the branch you'll merge from = success
+- [ ] Latest run on master = success
 - [ ] No in-progress run (wait if so)
 
 ---
@@ -181,8 +180,7 @@ Acceptance:
 
 ```bash
 git checkout master
-git merge develop --no-ff -m "Merge develop for v0.24.0 release"
-git push origin master
+git pull origin master
 git tag -a v0.24.0 -m "Release v0.24.0 — <one-line theme>"
 git push origin v0.24.0   # ← this triggers PyPI publish; irreversible
 ```

@@ -36,7 +36,7 @@ We follow **Agile Development** with **TDD (Test-Driven Development)**:
 
 ### 1. Planning Phase
 - Review [Roadmap](../planning/ROADMAP.md)
-- Pick an Epic/Feature/Story from `docs/planning/`
+- Pick an issue from [GitHub Issues](https://github.com/dreamlx/codeindex/issues)
 
 ### 2. Design Phase
 - Write tests first (TDD Red-Green-Refactor)
@@ -48,8 +48,8 @@ We follow **Agile Development** with **TDD (Test-Driven Development)**:
 
 ```bash
 # Fetch latest
-git checkout develop
-git pull origin develop
+git checkout master
+git pull origin master
 
 # Create feature branch
 git checkout -b feature/your-feature-name
