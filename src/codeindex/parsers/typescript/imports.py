@@ -150,9 +150,15 @@ def _parse_export_as_import(
 
     if module and has_from:
         if is_wildcard:
-            imports.append(Import(module=module, names=["*"], is_from=True, line=node.start_point[0] + 1))
+            imports.append(Import(
+                module=module, names=["*"], is_from=True,
+                line=node.start_point[0] + 1, is_reexport=True,
+            ))
         elif names:
-            imports.append(Import(module=module, names=names, is_from=True, line=node.start_point[0] + 1))
+            imports.append(Import(
+                module=module, names=names, is_from=True,
+                line=node.start_point[0] + 1, is_reexport=True,
+            ))
 
     return imports
 

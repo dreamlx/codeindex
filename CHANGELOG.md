@@ -23,6 +23,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   monorepo multi-tsconfig (out of scope). JSONC `//` and `/* */` comments are
   stripped without adding a dependency (json5/commentjson not in the wheel).
 
+- **graph-export now resolves TS barrel `from "."` and propagates named
+  re-exports** (GH #140). `import { X } from "."` (which means "current
+  directory's `index.ts`") was routed through the Python PEP 328 branch —
+  which correctly yields the directory id, but `_resolve_module` had no TS
+  `.index` fallback (only Python `.__init__`), so the barrel module never
+  resolved → zero IMPORTS/REFERENCES edges through barrels. Additionally,
+  named re-exports (`export { X } from "./mod"` in a barrel) were
+  indistinguishable from regular imports, so an import reaching a barrel
+  could not follow the re-export to the real definition module (the barrel
+  doesn't define `X` locally). `_check_fallbacks` now has a TS `.index`
+  fallback (after `.__init__`, so mixed Python+TS dirs stay Python); `Import`
+  carries an `is_reexport` flag set by the TS parser's `_parse_export_as_import`;
+  and Pass 4 follows re-export chains (barrel → source module, with chained
+  barrels and cycle-breaking via a `visited` set) to the real definition entity.
+  Wildcard `export * from` remains out of scope (documented skip — needs
+  cross-file member tracking). Parallel to #139; the two share the same silent
+  drop point (Pass 4) but are mechanically orthogonal.
+
 ## [0.33.1] - 2026-07-11
 
 ### Fixed
