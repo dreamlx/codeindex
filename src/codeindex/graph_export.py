@@ -292,10 +292,10 @@ def _check_fallbacks(target: str, module_set: set[str]) -> str | None:
     """Shared resolution chain for a dotted module-id ``target``.
 
     Tries, in order: exact scan-tree match → src-layout prefix (GH #118/#133)
-    → Python ``__init__`` barrel (GH #133). Returns the resolved module id, or
-    ``None``. Shared by the main ``_resolve_module`` path and the #139 alias
-    branch so both follow the same fallback order — adding a new fallback here
-    fixes both at once.
+    → Python ``__init__`` barrel (GH #133) → TS ``index`` barrel (GH #140).
+    Returns the resolved module id, or ``None``. Shared by the main
+    ``_resolve_module`` path and the #139 alias branch so both follow the same
+    fallback order — adding a new fallback here fixes both at once.
     """
     if target in module_set:
         return target
@@ -305,9 +305,15 @@ def _check_fallbacks(target: str, module_set: set[str]) -> str | None:
             return candidate
     # Package-level import (``from . import X`` / ``from pkg import Y``): the
     # target is a package/dir name, but the scan tree stores its init module.
-    # Python __init__.py → ``pkg.__init__`` (GH #133).
+    # Python __init__.py → ``pkg.__init__`` (GH #133); checked before TS index
+    # so a (pathological) mixed Python+TS dir resolves to the Python package.
     if target + ".__init__" in module_set:
         return target + ".__init__"
+    # TS/JS barrel: ``from "."`` / ``from "./sub"`` targets a directory whose
+    # ``index.ts`` is the module. The scan tree stores it as ``dir.index``
+    # (web/index.ts → web.index), not as the bare dir id (GH #140).
+    if target + ".index" in module_set:
+        return target + ".index"
     return None
 
 
@@ -555,6 +561,8 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
     last_index: dict[str, list[str]] = defaultdict(list)
     # all scanned module ids, for IMPORTS resolution (GH #117)
     module_set: set[str] = set()
+    # TS path-alias map from tsconfig.json (GH #139); empty when no tsconfig.
+    alias_map = _load_tsconfig_paths(root)
 
     # Pass 1: entities + resolution index
     for node in buffer.directories():
@@ -580,10 +588,6 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
                     )
                 )
                 last_index[sym.name.rsplit(".", 1)[-1]].append(eid)
-
-    # TS path-alias map (GH #139): read once from a single root tsconfig.json.
-    # Empty when absent/unparseable — _resolve_module then behaves as before.
-    alias_map = _load_tsconfig_paths(root)
 
     # Pass 2: edges (CALLS + INHERITS), resolved against the global index
     edges: list[Edge] = []
@@ -648,7 +652,31 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
     # symbols (const / interface / type_alias) imported by name that are
     # otherwise zero-edge and get falsely flagged orphan. Namespace (`*`)
     # imports are skipped (they need per-usage member tracking, out of scope).
+    #
+    # Barrel re-export propagation (GH #140): a barrel module re-exports names
+    # it does NOT define locally (``export { X } from "./mod"``). When an
+    # import resolves to such a barrel, ``cand = barrel.X`` misses (X is not a
+    # local entity). A pre-pass built ``reexport_map`` (barrel_module →
+    # {exported_name: source_module}); here we follow the chain to the real
+    # definition module. Wildcard ``export * from`` is excluded (no member
+    # tracking, documented skip). The ``visited`` set bounds chained barrels
+    # (A→B→C→def) and breaks cycles (A↔B) — no ghost edges, no hang.
     entity_ids = {e.id for e in entities}
+    # Re-export pre-pass: barrel_module → {exported_name: source_module}.
+    reexport_map: dict[str, dict[str, str]] = defaultdict(dict)
+    for node in buffer.directories():
+        for pr in node.parse_results:
+            module = _module_of(pr.path, root)
+            for imp in pr.imports:
+                if not imp.is_reexport:
+                    continue
+                _rq, target = _resolve_module(imp.module, module, module_set, alias_map)
+                if not target:
+                    continue
+                for name in imp.names:
+                    if not name or name == "*":
+                        continue
+                    reexport_map[module][name] = target
     seen_refs: set[tuple[str, str]] = set()  # dedup (src-module, dst-entity)
     for node in buffer.directories():
         for pr in node.parse_results:
@@ -660,7 +688,17 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
                 for name in imp.names:
                     if not name or name == "*":
                         continue
-                    cand = f"{target}.{name}"
+                    cand_target = target
+                    cand = f"{cand_target}.{name}"
+                    # Follow the barrel re-export chain to the real definition.
+                    visited = {cand_target}
+                    while cand not in entity_ids:
+                        nxt = reexport_map.get(cand_target, {}).get(name)
+                        if not nxt or nxt in visited:
+                            break  # no re-export, or cycle — give up honestly
+                        visited.add(nxt)
+                        cand_target = nxt
+                        cand = f"{cand_target}.{name}"
                     if cand not in entity_ids or (module, cand) in seen_refs:
                         continue
                     seen_refs.add((module, cand))

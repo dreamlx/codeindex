@@ -699,6 +699,224 @@ def test_ts_path_alias_multi_target(tmp_path) -> None:
     assert e.resolution_qualifier == "resolved"
 
 
+
+
+# --------------------------------------------------------------------------- #
+# TS barrel resolution (GH #140) — `from "."` / `from "./sub"` + re-export
+# Independent tmp_path fixtures. `from "."` (current dir's index.ts) was routed
+# through the Python PEP 328 branch and produced the right directory id, but
+# _resolve_module had no `.index` fallback (only `.__init__`), so barrel
+# IMPORTS/REFERENCES edges were dropped. Named re-exports (`export { X } from
+# "./mod"` in a barrel) were indistinguishable from regular imports, so
+# `import { X } from "."` reaching a barrel could not follow the re-export to
+# the real definition module. Wildcard `export * from` stays out of scope.
+# --------------------------------------------------------------------------- #
+def test_ts_from_dot_resolves_to_index(tmp_path) -> None:
+    """GH #140: ``import { foo } from "."`` (web/main.ts) targets the current
+    directory's ``index.ts``. The PEP 328 branch yields the dir id ``web``;
+    the new ``.index`` fallback resolves it to ``web.index``. Before #140 there
+    was no `.index` fallback (only `.__init__`), so the barrel module never
+    resolved → zero IMPORTS/REFERENCES edges → orphan false-positive."""
+    (tmp_path / ".codeindex.yaml").write_text(
+        "version: 1\nlanguages: [typescript]\n"
+    )
+    web = tmp_path / "web"
+    web.mkdir()
+    (web / "index.ts").write_text("export function foo(): number { return 1; }\n")
+    (web / "main.ts").write_text(
+        'import { foo } from ".";\nexport function run() { return foo(); }\n'
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    imp = _edge(model, "web.main", dst="web.index", kind="IMPORTS")
+    assert imp is not None, "from '.' IMPORTS edge missing"
+    assert imp.resolution_qualifier == "resolved"
+    assert imp.dst_raw == "."
+
+    ref = _edge(model, "web.main", dst="web.index.foo", kind="REFERENCES")
+    assert ref is not None, "from '.' REFERENCES edge missing"
+
+
+def test_ts_from_subdir_resolves_to_index(tmp_path) -> None:
+    """GH #140: ``import { foo } from "./components"`` targets a subdirectory
+    whose ``index.ts`` is the module. ``./components`` → dir id
+    ``web.components`` → ``.index`` fallback → ``web.components.index``."""
+    (tmp_path / ".codeindex.yaml").write_text(
+        "version: 1\nlanguages: [typescript]\n"
+    )
+    web = tmp_path / "web"
+    comp = web / "components"
+    comp.mkdir(parents=True)
+    (comp / "index.ts").write_text("export function foo(): number { return 1; }\n")
+    (web / "main.ts").write_text(
+        'import { foo } from "./components";\nexport function run() { return foo(); }\n'
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    e = _edge(model, "web.main", dst="web.components.index", kind="IMPORTS")
+    assert e is not None, "from './subdir' IMPORTS edge missing"
+    assert e.resolution_qualifier == "resolved"
+
+
+def test_ts_barrel_named_reexport_propagates(tmp_path) -> None:
+    """GH #140 core: barrel re-export propagation. ``web/index.ts`` does
+    ``export { fetchUser } from "./api"`` (re-exports api's symbol — it does
+    NOT define ``fetchUser`` locally). Downstream ``import { fetchUser } from
+    "."`` resolves the module to ``web.index`` but ``web.index.fetchUser`` is
+    not a local entity. The re-export pre-pass builds
+    ``{web.index: {fetchUser: web.api}}`` and Pass 4 follows the chain to the
+    real definition ``web.api.fetchUser``. Without this, ``fetchUser`` got zero
+    in-edges → falsely orphan downstream."""
+    (tmp_path / ".codeindex.yaml").write_text(
+        "version: 1\nlanguages: [typescript]\n"
+    )
+    web = tmp_path / "web"
+    web.mkdir()
+    (web / "api.ts").write_text("export function fetchUser(): number { return 1; }\n")
+    (web / "index.ts").write_text('export { fetchUser } from "./api";\n')
+    (web / "main.ts").write_text(
+        'import { fetchUser } from ".";\nexport function run() { return fetchUser(); }\n'
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    # module resolves to the barrel
+    imp = _edge(model, "web.main", dst="web.index", kind="IMPORTS")
+    assert imp is not None, "barrel IMPORTS edge missing"
+
+    # REFERENCES edge follows the re-export to the real definition module
+    ref = _edge(model, "web.main", dst="web.api.fetchUser", kind="REFERENCES")
+    assert ref is not None, "barrel re-export REFERENCES edge missing"
+    assert ref.dst_raw == "..fetchUser"  # dst_raw = imp.module + "." + name = "." + "fetchUser"
+
+
+def test_ts_barrel_chained_reexport(tmp_path) -> None:
+    """GH #140: chained barrels (A → B → C → definition). ``web/index.ts``
+    re-exports from ``./b``, which re-exports from ``./c``, which defines
+    ``foo``. Pass 4's while-loop follows the chain through two barrels to
+    ``web.c.foo``."""
+    (tmp_path / ".codeindex.yaml").write_text(
+        "version: 1\nlanguages: [typescript]\n"
+    )
+    web = tmp_path / "web"
+    web.mkdir()
+    (web / "c.ts").write_text("export function foo(): number { return 1; }\n")
+    (web / "b.ts").write_text('export { foo } from "./c";\n')
+    (web / "index.ts").write_text('export { foo } from "./b";\n')
+    (web / "main.ts").write_text(
+        'import { foo } from ".";\nexport function run() { return foo(); }\n'
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    ref = _edge(model, "web.main", dst="web.c.foo", kind="REFERENCES")
+    assert ref is not None, "chained barrel re-export REFERENCES edge missing"
+
+
+def test_ts_barrel_reexport_cycle_safe(tmp_path) -> None:
+    """GH #140 guard: cyclic re-exports (a re-exports from b, b re-exports
+    from a) must terminate — the ``visited`` set breaks the cycle — and emit
+    NO REFERENCES edge for the unresolved name (honest unresolved, no hang, no
+    ghost edge)."""
+    (tmp_path / ".codeindex.yaml").write_text(
+        "version: 1\nlanguages: [typescript]\n"
+    )
+    web = tmp_path / "web"
+    web.mkdir()
+    # Neither a nor b defines `foo` locally — they only re-export each other.
+    (web / "a.ts").write_text('export { foo } from "./b";\n')
+    (web / "b.ts").write_text('export { foo } from "./a";\n')
+    (web / "index.ts").write_text('export { foo } from "./a";\n')
+    (web / "main.ts").write_text(
+        'import { foo } from ".";\nexport function run() { return 0; }\n'
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    refs = [
+        e for e in model.edges
+        if e.kind == "REFERENCES" and e.src == "web.main" and e.dst and "foo" in e.dst
+    ]
+    assert refs == [], f"cyclic re-export must not manufacture a foo edge: {refs}"
+
+
+def test_ts_barrel_wildcard_still_skipped(tmp_path) -> None:
+    """GH #140 guard: wildcard ``export * from "./api"`` in a barrel is still
+    skipped (documented out-of-scope at :502-503 — needs cross-file member
+    tracking). The barrel module IMPORTS edge IS emitted; the propagated
+    REFERENCES edge for ``foo`` is NOT. Must not crash and must not
+    manufacture a ghost edge."""
+    (tmp_path / ".codeindex.yaml").write_text(
+        "version: 1\nlanguages: [typescript]\n"
+    )
+    web = tmp_path / "web"
+    web.mkdir()
+    (web / "api.ts").write_text("export function foo(): number { return 1; }\n")
+    (web / "index.ts").write_text('export * from "./api";\n')
+    (web / "main.ts").write_text(
+        'import { foo } from ".";\nexport function run() { return foo(); }\n'
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    imp = _edge(model, "web.main", dst="web.index", kind="IMPORTS")
+    assert imp is not None, "wildcard barrel IMPORTS edge missing"
+
+    ref = _edge(model, "web.main", dst="web.api.foo", kind="REFERENCES")
+    assert ref is None, "wildcard re-export must NOT propagate (out of scope)"
+
+
+def test_ts_barrel_reexport_via_alias(tmp_path) -> None:
+    """GH #139 + #140 interaction: a barrel re-export using an alias specifier
+    (``export { fetchUser } from "@/api"``). The re-export pre-pass calls
+    _resolve_module with ``alias_map``, so the alias expands before the barrel
+    table is built, and Pass 4 follows the chain to ``src.api.fetchUser``.
+    Without #139 landing first, this re-export target would be unresolved."""
+    (tmp_path / ".codeindex.yaml").write_text(
+        "version: 1\nlanguages: [typescript]\n"
+    )
+    (tmp_path / "tsconfig.json").write_text(
+        json.dumps({"compilerOptions": {"paths": {"@/*": ["src/*"]}}})
+    )
+    src = tmp_path / "src"
+    src.mkdir()
+    (src / "api.ts").write_text("export function fetchUser(): number { return 1; }\n")
+    (src / "index.ts").write_text('export { fetchUser } from "@/api";\n')
+    (src / "main.ts").write_text(
+        'import { fetchUser } from ".";\nexport function run() { return fetchUser(); }\n'
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    ref = _edge(model, "src.main", dst="src.api.fetchUser", kind="REFERENCES")
+    assert ref is not None, "barrel re-export via alias REFERENCES edge missing"
+
+
+def test_python_from_dot_still_uses_init(tmp_path) -> None:
+    """GH #140 guard: Python ``from . import X`` must still resolve to the
+    ``__init__`` module (NOT the TS ``.index`` fallback). ``.__init__`` is
+    checked before ``.index`` in ``_check_fallbacks`` so a (pathological)
+    mixed Python+TS dir resolves to the Python package. This re-asserts the
+    #133 ``__init__`` path is unaffected by the new ``.index`` branch."""
+    (tmp_path / ".codeindex.yaml").write_text(
+        "version: 1\nlanguages: [python]\n"
+    )
+    pkg = tmp_path / "pkg"
+    sub = pkg / "sub"
+    sub.mkdir(parents=True)
+    (pkg / "__init__.py").write_text("")
+    (sub / "__init__.py").write_text("")
+    (sub / "svc.py").write_text("def s():\n    return 1\n")
+    (sub / "cli.py").write_text("from . import svc\n")
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    e = _edge(model, "pkg.sub.cli", dst="pkg.sub.__init__", kind="IMPORTS")
+    assert e is not None, "Python from . import X edge missing"
+    assert e.resolution_qualifier == "resolved"
+    assert e.dst == "pkg.sub.__init__"  # NOT pkg.sub.index
 # --------------------------------------------------------------------------- #
 # whole-file invariants
 # --------------------------------------------------------------------------- #

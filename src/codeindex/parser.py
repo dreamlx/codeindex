@@ -144,6 +144,7 @@ class Import:
     is_from: bool = False
     alias: str | None = None  # Added in v0.9.0 for LoomGraph integration
     line: int = 0  # 1-based source line for IMPORTS edge source_id (GH #117)
+    is_reexport: bool = False  # GH #140: TS `export { X } from "./mod"` (barrel re-export)
 
     def to_dict(self) -> dict:
         """Convert Import to JSON-serializable dict."""
@@ -153,6 +154,7 @@ class Import:
             "is_from": self.is_from,
             "alias": self.alias,
             "line": self.line,
+            "is_reexport": self.is_reexport,
         }
 
 
