@@ -687,3 +687,56 @@ class TestLanguageMismatchWarning:
         )
         assert result.exit_code == 0
         assert "java" not in result.output.lower()
+
+
+class TestIncludeRespected:
+    """walk_and_parse must honor ``config.include`` (GH loomgraph#107).
+
+    graph-export previously scanned the whole tree from root, ignoring
+    ``.codeindex.yaml include:`` — only ``exclude:`` was applied (via
+    ``should_exclude``). So a repo with ``include: [src/]`` still ingested
+    ``docs/``/``tests/`` code, polluting downstream topology. scan-all's
+    ``find_all_directories`` applies include correctly; graph-export's
+    ``walk_and_parse`` must match that behaviour.
+    """
+
+    @staticmethod
+    def _repo(tmp_path: Path) -> Path:
+        """src/ (product code) + docs/spikes/ (non-product code)."""
+        src = tmp_path / "src"
+        docs = tmp_path / "docs" / "spikes"
+        src.mkdir(parents=True)
+        docs.mkdir(parents=True)
+        (src / "real.py").write_text("def product_fn():\n    return 1\n")
+        (docs / "junk.py").write_text("def spike_fn():\n    return 2\n")
+        return tmp_path
+
+    def test_include_limits_scan_to_listed_paths(self, tmp_path: Path) -> None:
+        root = self._repo(tmp_path)
+        (root / ".codeindex.yaml").write_text(
+            "version: 1\nlanguages: [python]\ninclude: [src/]\n"
+        )
+        config = Config.load(root / ".codeindex.yaml")
+        model = build_export(walk_and_parse(root, config), root)
+        names = {e.id for e in model.entities}
+        assert any("product_fn" in n for n in names), names
+        assert not any("spike_fn" in n for n in names), f"include ignored — docs leaked: {names}"
+
+    def test_no_include_scans_everything(self, tmp_path: Path) -> None:
+        """No .codeindex.yaml → graph-export scans the whole tree."""
+        root = self._repo(tmp_path)
+        config = Config()
+        model = build_export(walk_and_parse(root, config), root)
+        names = {e.id for e in model.entities}
+        assert any("product_fn" in n for n in names)
+        assert any("spike_fn" in n for n in names), names
+
+    def test_no_include_key_scans_whole_tree(self, tmp_path: Path) -> None:
+        """No `include:` key in .codeindex.yaml → whole-tree scan (root-level repos)."""
+        root = self._repo(tmp_path)
+        (root / ".codeindex.yaml").write_text("version: 1\nlanguages: [python]\n")
+        config = Config.load(root / ".codeindex.yaml")
+        model = build_export(walk_and_parse(root, config), root)
+        names = {e.id for e in model.entities}
+        assert any("product_fn" in n for n in names), names
+        assert any("spike_fn" in n for n in names), names  # docs NOT excluded w/o include key
