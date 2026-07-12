@@ -699,6 +699,72 @@ def test_ts_path_alias_multi_target(tmp_path) -> None:
     assert e.resolution_qualifier == "resolved"
 
 
+def test_ts_path_alias_dotprefix_target(tmp_path) -> None:
+    """GH #144: paths targets commonly carry a leading ``./`` (Vite, Next.js,
+    fabricOS — and the TS handbook example itself): ``"@/*": ["./src/*"]``.
+    Before #144 the ``_dot`` closure inside ``_load_tsconfig_paths`` did a raw
+    ``.replace("/", ".")`` which turned ``./src/*`` into ``..src.*`` (leading
+    ``.`` → dot, then ``src`` → ``..src``), never matching ``module_set``'s
+    ``src.*`` entries → 100% of ``@/`` alias imports stayed unresolved.
+    Fix: normalize like ``baseUrl`` already does (drop empty + ``.`` segments)."""
+    (tmp_path / ".codeindex.yaml").write_text(
+        "version: 1\nlanguages: [typescript]\n"
+    )
+    (tmp_path / "tsconfig.json").write_text(
+        json.dumps({"compilerOptions": {"paths": {"@/*": ["./src/*"]}}})
+    )
+    comp = tmp_path / "src" / "components"
+    comp.mkdir(parents=True)
+    (comp / "Foo.ts").write_text("export function Foo(): number { return 1; }\n")
+    (tmp_path / "src" / "app.ts").write_text(
+        'import { Foo } from "@/components/Foo";\nexport function run() { return Foo(); }\n'
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    imp = _edge(model, "src.app", dst="src.components.Foo", kind="IMPORTS")
+    assert imp is not None, "dotprefix-target alias IMPORTS edge missing"
+    assert imp.resolution_qualifier == "resolved"
+    assert imp.dst_raw == "@/components/Foo"
+
+    ref = _edge(
+        model, "src.app", dst="src.components.Foo.Foo", kind="REFERENCES"
+    )
+    assert ref is not None, "dotprefix-target alias REFERENCES edge missing"
+
+
+def test_ts_path_alias_dotprefix_with_baseurl(tmp_path) -> None:
+    """GH #144: ``./``-prefix must also be stripped when ``baseUrl`` is set —
+    ``baseUrl: "src"`` + ``paths: {"@/*": ["./components/*"]}`` → ``@/Foo``
+    resolves to ``src.components.Foo``. Before #144 ``./components/*`` became
+    ``..components.*`` and with base_prefix → ``src...components.*`` (orphan)."""
+    (tmp_path / ".codeindex.yaml").write_text(
+        "version: 1\nlanguages: [typescript]\n"
+    )
+    (tmp_path / "tsconfig.json").write_text(
+        json.dumps(
+            {
+                "compilerOptions": {
+                    "baseUrl": "src",
+                    "paths": {"@/*": ["./components/*"]},
+                }
+            }
+        )
+    )
+    comp = tmp_path / "src" / "components"
+    comp.mkdir(parents=True)
+    (comp / "Foo.ts").write_text("export function Foo(): number { return 1; }\n")
+    (tmp_path / "src" / "app.ts").write_text(
+        'import { Foo } from "@/Foo";\nexport function run() { return Foo(); }\n'
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    e = _edge(model, "src.app", dst="src.components.Foo", kind="IMPORTS")
+    assert e is not None, "dotprefix-target + baseUrl IMPORTS edge missing"
+    assert e.resolution_qualifier == "resolved"
+
+
 
 
 # --------------------------------------------------------------------------- #
