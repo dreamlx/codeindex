@@ -384,7 +384,11 @@ def _load_tsconfig_paths(root: Path) -> dict[str, list[str]]:
         )
 
     def _dot(s: str) -> str:
-        return s.replace("\\", ".").replace("/", ".")
+        # Normalize like baseUrl above: drop empty + ``.`` segments so a
+        # ``./``-prefixed target (``./src/*`` — Vite/Next.js/fabricOS default,
+        # GH #144) dots to ``src.*`` not ``..src.*`` (leading ``.`` → dot).
+        parts = [p for p in s.replace("\\", "/").split("/") if p and p != "."]
+        return ".".join(parts)
 
     out: dict[str, list[str]] = {}
     for alias_key, targets in paths.items():

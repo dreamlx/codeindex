@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **graph-export TS path alias now handles `./`-prefixed targets** (GH #144).
+  #139 (v0.33.2) resolved `tsconfig.json` `paths` aliases but only when the
+  target was written **without** a leading `./` — `paths: {"@/*": ["src/*"]}`.
+  The common form `{"@/*": ["./src/*"]}` (Vite, Next.js, fabricOS, and the TS
+  handbook example) stayed **100% unresolved** because `_load_tsconfig_paths`'s
+  `_dot` closure did a raw `.replace("/", ".")` that turned `./src/*` into
+  `..src.*` (leading `.` → dot, then `src` → `..src`), never matching
+  `module_set`'s `src.*` entries. Fix: normalize like the adjacent `baseUrl`
+  handling already does (drop empty + `.` segments). On fabricOS this lifts
+  `@/`-alias IMPORTS edge resolution from 0 / 381 (0%) to 840 / 868 (96%; the
+  residual 4% target modules outside the `include:` scan root — correct
+  `unresolved`). Single-function change in `graph_export.py`; no schema/version
+  impact.
+
 ## [0.33.2] - 2026-07-12
 
 ### Fixed
