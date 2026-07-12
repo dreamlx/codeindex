@@ -455,7 +455,7 @@ def run_post_commit_hook() -> int:
 
     This is called by the thin wrapper shell script via
     `codeindex hooks run post-commit`. All logic lives here so that
-    `pip install --upgrade` automatically updates the behavior.
+    `pipx upgrade ai-codeindex` automatically updates the behavior.
 
     Returns:
         Exit code (0 = success)
@@ -775,7 +775,7 @@ def run_hook(hook_name: str):
 
     This is not intended for direct user invocation.
     The shell hook script delegates to this command so that
-    hook logic can be updated via pip install --upgrade.
+    hook logic can be updated via pipx upgrade ai-codeindex.
 
     Example: codeindex hooks run post-commit
     """
