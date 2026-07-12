@@ -5,8 +5,9 @@
 ## 🚀 TL;DR
 
 ```bash
-# 安装 codeindex
-pip install ai-codeindex[all]
+# 安装 codeindex (终端用户: pipx install loomgraph 会自动拉取 ai-codeindex,
+# 无需单独安装 —— 见 README ADR-009。以下仅 LoomGraph 开发者直接调用 CLI 时需要)
+pipx install ai-codeindex[all]
 
 # 解析单个文件，输出 JSON
 codeindex parse src/user.py | jq .

@@ -176,7 +176,7 @@ All checks passed!
 **Architecture** (v0.23.0+): Thin wrapper pattern
 - Shell script (~30 lines): loop guard + venv activation
 - Python logic via `codeindex hooks run post-commit`: all business logic
-- **Upgrade path**: `pip install --upgrade ai-codeindex` automatically updates hook behavior (no need to reinstall hooks)
+- **Upgrade path**: `pipx upgrade ai-codeindex` automatically updates hook behavior (no need to reinstall hooks)
 
 **Features**:
 - Analyzes commit changes (`codeindex affected`)
@@ -542,7 +542,7 @@ codeindex hooks run post-commit (Python, in cli_hooks.py)
 ```
 
 **Upgrade behavior**:
-- `pip install --upgrade ai-codeindex` → Python logic auto-updates, no hook reinstall needed
+- `pipx upgrade ai-codeindex` → Python logic auto-updates, no hook reinstall needed
 - `codeindex hooks install --force` → only needed if shell wrapper itself changes (rare)
 - Hooks are marked with `# codeindex-managed hook` comment
 

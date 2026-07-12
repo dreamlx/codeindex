@@ -49,7 +49,7 @@ When using codeindex:
 
 3. **Keep Updated**
    ```bash
-   pip install --upgrade ai-codeindex
+   pipx upgrade ai-codeindex
    ```
 
 4. **Validate Inputs**
