@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.33.3] - 2026-07-12
+
 ### Fixed
 
 - **graph-export TS path alias now handles `./`-prefixed targets** (GH #144).
@@ -22,6 +24,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   residual 4% target modules outside the `include:` scan root — correct
   `unresolved`). Single-function change in `graph_export.py`; no schema/version
   impact.
+
+### Changed
+
+- **Install/upgrade docs aligned to pipx** (GH #146). Since v0.25.0 the
+  recommended install is `pipx install ai-codeindex`; several secondary spots
+  (SECURITY.md, git-hooks guide, `cli_hooks.py` docstrings, FOR_LOOMGRAPH.md)
+  still told users to upgrade via `pip install --upgrade ai-codeindex`, which
+  does NOT update a pipx-installed CLI (pipx bins are isolated). Aligned to
+  `pipx upgrade ai-codeindex`. No code behavior change.
 
 ## [0.33.2] - 2026-07-12
 
