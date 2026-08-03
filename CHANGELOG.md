@@ -27,6 +27,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   into the working tree. `codeindex init` now adds it alongside `README_AI.md`,
   and re-running init backfills only the missing entry on repos that already
   ignore `README_AI.md`.
+- **graph-export summary shows unresolved breakdown + high-ratio warning**
+  (GH #148). The flat `N unresolved` total hid whether the noise was
+  exclude-able (external / stdlib / test-framework globals like `expect` /
+  `screen` — bare tokens) or the AST ceiling (`this.x` / `obj.run` dynamic
+  dispatch — dotted). The summary now buckets unresolved edges as
+  `bare` / `member`, and emits a WARNING when unresolved CALLS exceed 70%
+  ("may include test files; consider excluding them in `.codeindex.yaml`").
+  Scoped to CALLS: IMPORTS-unresolved is by-design (external packages) and
+  would false-fire on a normal repo. Per `no_gate_from_dogfood`, this is a
+  hint — init never auto-excludes test files.
 
 ## [0.33.3] - 2026-07-12
 

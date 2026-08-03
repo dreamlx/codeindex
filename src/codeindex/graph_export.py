@@ -227,6 +227,44 @@ def _resolve(
     return "unresolved", None, []
 
 
+def _unresolved_breakdown(edges: list[Edge]) -> dict[str, int]:
+    """Bucket unresolved edges by ``dst_raw`` shape (GH #148).
+
+    The flat ``N unresolved`` total hid whether the noise was exclude-able
+    (external / stdlib / test-framework globals like ``expect``/``screen`` —
+    bare tokens) or the AST ceiling (``this.x``/``obj.run`` dynamic dispatch
+    per GH #127 — dotted). Two buckets, both mechanically honest:
+
+    - ``bare``   — no ``.`` in ``dst_raw`` (external / stdlib / test globals)
+    - ``member`` — dotted ``dst_raw`` (dynamic dispatch, AST ceiling)
+
+    Counts only unresolved edges; resolved/ambiguous are not bucketed. Sums
+    to the unresolved total shown in the CLI summary.
+    """
+    counts = {"bare": 0, "member": 0}
+    for e in edges:
+        if e.resolution_qualifier != "unresolved":
+            continue
+        key = "member" if "." in (e.dst_raw or "") else "bare"
+        counts[key] += 1
+    return counts
+
+
+def _calls_unresolved_ratio(edges: list[Edge]) -> float | None:
+    """Unresolved CALLS as a fraction of all CALLS, or ``None`` if no calls.
+
+    Used by the graph-export summary's high-ratio WARNING (GH #148). Scoped
+    to CALLS, not all edges: IMPORTS-unresolved is by-design (external
+    packages) and would false-fire on every normal repo with many external
+    imports. Test-library noise (``expect``/``screen``) lives in CALLS.
+    """
+    calls = [e for e in edges if e.kind == "CALLS"]
+    if not calls:
+        return None
+    n_unres = sum(1 for e in calls if e.resolution_qualifier == "unresolved")
+    return n_unres / len(calls)
+
+
 def _module_target(import_module: str, importer_module: str) -> str:
     """Normalise an import module string to an absolute dotted module id.
 

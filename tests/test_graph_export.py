@@ -1160,6 +1160,202 @@ class TestLanguageMismatchWarning:
         assert "java" not in result.output.lower()
 
 
+# --------------------------------------------------------------------------- #
+# unresolved breakdown + high-ratio warning (GH #148)
+# --------------------------------------------------------------------------- #
+class TestUnresolvedBreakdown:
+    """GH #148: the graph-export summary reported only a flat ``N unresolved``
+    total, so a dogfood repo drowned by test-library calls (``expect``/
+    ``screen``/``jest``) was indistinguishable from a graph hitting the AST
+    ceiling (``this.x``/``obj.run`` dynamic dispatch, GH #127).
+
+    Two additions share the summary pipe:
+      (a) breakdown — bucket unresolved edges by ``dst_raw`` shape into
+          ``bare`` (no ``.``: external / stdlib / test-framework globals) and
+          ``member`` (dotted: dynamic dispatch, the AST ceiling).
+      (b) hint, not gate — if unresolved CALLS exceed ~70% of CALLS, emit a
+          WARNING pointing at test files. IMPORTS-unresolved is by-design
+          (external packages) and deliberately excluded from the ratio so a
+          normal repo with many external imports doesn't false-fire. Per
+          ``no_gate_from_dogfood`` this never auto-excludes; the user keeps
+          control.
+    """
+
+    def test_breakdown_buckets_bare_and_member(self) -> None:
+        from codeindex.graph_export import Edge, _unresolved_breakdown
+
+        edges = [
+            Edge(
+                kind="CALLS",
+                src="m.a",
+                dst=None,
+                resolution_qualifier="unresolved",
+                source_id="a.py:1",
+                dst_raw="expect",
+            ),
+            Edge(
+                kind="CALLS",
+                src="m.a",
+                dst=None,
+                resolution_qualifier="unresolved",
+                source_id="a.py:2",
+                dst_raw="this.run",
+            ),
+            Edge(
+                kind="CALLS",
+                src="m.a",
+                dst="m.b",
+                resolution_qualifier="resolved",
+                source_id="a.py:3",
+                dst_raw="b",
+            ),
+            Edge(
+                kind="CALLS",
+                src="m.a",
+                dst=None,
+                resolution_qualifier="ambiguous",
+                source_id="a.py:4",
+                dst_raw="dup",
+            ),
+            Edge(
+                kind="IMPORTS",
+                src="m.a",
+                dst=None,
+                resolution_qualifier="unresolved",
+                source_id="a.py:5",
+                dst_raw="react",
+            ),
+            # empty dst_raw counts as bare (no dot)
+            Edge(
+                kind="CALLS",
+                src="m.a",
+                dst=None,
+                resolution_qualifier="unresolved",
+                source_id="a.py:6",
+                dst_raw="",
+            ),
+        ]
+        bd = _unresolved_breakdown(edges)
+        # bare = expect, react, "" (3); member = this.run (1); sums to all unresolved (4)
+        assert bd == {"bare": 3, "member": 1}
+
+    def test_calls_unresolved_ratio(self) -> None:
+        from codeindex.graph_export import Edge, _calls_unresolved_ratio
+
+        # no CALLS edges → None (avoid divide-by-zero, nothing to warn about)
+        assert _calls_unresolved_ratio([]) is None
+        assert _calls_unresolved_ratio(
+            [
+                Edge(
+                    kind="IMPORTS",
+                    src="m.a",
+                    dst=None,
+                    resolution_qualifier="unresolved",
+                    source_id="a.py:1",
+                    dst_raw="react",
+                )
+            ]
+        ) is None
+
+        # ratio is over CALLS only: imports don't expand the denominator
+        edges = [
+            Edge(
+                kind="CALLS",
+                src="m.a",
+                dst="m.b",
+                resolution_qualifier="resolved",
+                source_id="a.py:1",
+                dst_raw="b",
+            ),
+            Edge(
+                kind="CALLS",
+                src="m.a",
+                dst=None,
+                resolution_qualifier="unresolved",
+                source_id="a.py:2",
+                dst_raw="print",
+            ),
+            Edge(
+                kind="IMPORTS",
+                src="m.a",
+                dst=None,
+                resolution_qualifier="unresolved",
+                source_id="a.py:3",
+                dst_raw="os",
+            ),
+        ]
+        # 1 unresolved call / 2 calls = 0.5
+        assert _calls_unresolved_ratio(edges) == 0.5
+
+        # all calls unresolved → 1.0
+        all_unres = [
+            Edge(
+                kind="CALLS",
+                src="m.a",
+                dst=None,
+                resolution_qualifier="unresolved",
+                source_id="a.py:1",
+                dst_raw="expect",
+            ),
+            Edge(
+                kind="CALLS",
+                src="m.a",
+                dst=None,
+                resolution_qualifier="unresolved",
+                source_id="a.py:2",
+                dst_raw="screen",
+            ),
+        ]
+        assert _calls_unresolved_ratio(all_unres) == 1.0
+
+    def test_cli_warns_on_high_unresolved_ratio(self, tmp_path) -> None:
+        """A function whose body calls only external/test-framework names
+        yields 100% unresolved CALLS → the high-ratio WARNING must fire and
+        name test files as the likely cause."""
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "t.py").write_text(
+            "def f():\n    expect(screen).toBe(1)\n    render(x)\n", encoding="utf-8"
+        )
+        from click.testing import CliRunner
+
+        from codeindex.cli import main
+
+        result = CliRunner().invoke(
+            main,
+            ["graph-export", "--root", str(tmp_path), "-o", str(tmp_path / "out.ndjson")],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+        # the high-ratio WARNING (not the dim "unresolved" total) names test files
+        assert "high unresolved" in result.output.lower()
+        assert "test" in result.output.lower()
+
+    def test_cli_no_warning_when_low_ratio(self, tmp_path) -> None:
+        """A repo with a healthy resolved-call majority (one internal call
+        resolved, one external) sits at 50% — below the 70% threshold, so no
+        high-ratio WARNING."""
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "t.py").write_text(
+            "def a():\n    return 1\n"
+            "def b():\n    a()\n    print(1)\n",
+            encoding="utf-8",
+        )
+        from click.testing import CliRunner
+
+        from codeindex.cli import main
+
+        result = CliRunner().invoke(
+            main,
+            ["graph-export", "--root", str(tmp_path), "-o", str(tmp_path / "out.ndjson")],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0
+        # the dim summary line still names "unresolved", but no WARNING line
+        assert "WARNING" not in result.output
+
+
 class TestIncludeRespected:
     """walk_and_parse must honor ``config.include`` (GH loomgraph#107).
 
