@@ -19,6 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   truly-empty-repo carve-out is preserved (mirrors `list-dirs`, `cli_config.py`):
   no language-mismatch hint → still exit 0.
 
+### Changed
+
+- **init now gitignores `graph-export.ndjson`** (GH #149). The codeindex-managed
+  `.gitignore` section previously ignored only `README_AI.md`; the generated
+  `graph-export.ndjson` (default `--output` of `codeindex graph-export`) leaked
+  into the working tree. `codeindex init` now adds it alongside `README_AI.md`,
+  and re-running init backfills only the missing entry on repos that already
+  ignore `README_AI.md`.
+
 ## [0.33.3] - 2026-07-12
 
 ### Fixed
