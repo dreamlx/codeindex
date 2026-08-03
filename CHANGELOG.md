@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **graph-export exits non-zero on 0-entity export** (GH #147). A 0-entity
+  export (missing tree-sitter parser / language mismatch) previously emitted a
+  WARNING, wrote the empty NDJSON anyway, printed a green checkmark, and exited
+  0 — but the empty graph is consumed directly by loomgraph, so downstream built
+  deps/topology on a broken graph with no signal. Now raises `SystemExit(1)` so
+  CI / loomgraph / scripts detect it; the empty NDJSON is no longer written, and
+  `--quiet` suppresses the hint text but cannot bypass the exit code. The
+  truly-empty-repo carve-out is preserved (mirrors `list-dirs`, `cli_config.py`):
+  no language-mismatch hint → still exit 0.
+
+### Changed
+
+- **init now gitignores `graph-export.ndjson`** (GH #149). The codeindex-managed
+  `.gitignore` section previously ignored only `README_AI.md`; the generated
+  `graph-export.ndjson` (default `--output` of `codeindex graph-export`) leaked
+  into the working tree. `codeindex init` now adds it alongside `README_AI.md`,
+  and re-running init backfills only the missing entry on repos that already
+  ignore `README_AI.md`.
+
 ## [0.33.3] - 2026-07-12
 
 ### Fixed

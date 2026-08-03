@@ -21,22 +21,33 @@ from .scanner import find_all_directories
 
 
 def _update_gitignore(project_dir: Path) -> bool:
-    """Add README_AI.md to .gitignore if not already present. Returns True if modified."""
+    """Append codeindex-generated artifacts to .gitignore if not already present.
+
+    Returns True if the file was modified. Each entry is checked independently
+    so re-running init on a repo that already ignores ``README_AI.md`` but not
+    ``graph-export.ndjson`` backfills only the missing entry (GH #149).
+    """
     gitignore = project_dir / ".gitignore"
-    marker = "README_AI.md"
-
+    # ponytail: graph-export.ndjson mirrors cli_graph_export.py:27 default --output;
+    # two call-sites is short of a shared constant (YAGNI).
+    entries = ["README_AI.md", "graph-export.ndjson"]
     comment = "# codeindex - AI-generated indexes (regenerate with: codeindex scan-all)"
-    entry = f"{comment}\nREADME_AI.md\n"
 
-    if gitignore.exists():
-        content = gitignore.read_text()
-        if marker in content:
-            return False
-        prefix = "\n" if not content.endswith("\n") else ""
-        gitignore.write_text(content + prefix + "\n" + entry)
+    content = gitignore.read_text() if gitignore.exists() else ""
+    missing = [e for e in entries if e not in content]
+    if not missing:
+        return False
+
+    parts = [comment] if comment not in content else []
+    parts.extend(missing)
+    block = "\n".join(parts) + "\n"
+    if not content:
+        sep = ""
+    elif content.endswith("\n"):
+        sep = "\n"
     else:
-        gitignore.write_text(entry)
-
+        sep = "\n\n"
+    gitignore.write_text(content + sep + block)
     return True
 
 
@@ -55,8 +66,9 @@ def _collect_init_targets(project_dir: Path) -> list[tuple[str, str, str]]:
     has_section = claude_md.exists() and "## codeindex" in claude_md.read_text()
     targets.append(("exists" if has_section else "modify", "CLAUDE.md", "inject ## codeindex section"))
     gitignore = project_dir / ".gitignore"
-    has_entry = gitignore.exists() and "README_AI.md" in gitignore.read_text()
-    targets.append(("exists" if has_entry else "modify", ".gitignore", "append README_AI.md"))
+    gi_content = gitignore.read_text() if gitignore.exists() else ""
+    gi_complete = "README_AI.md" in gi_content and "graph-export.ndjson" in gi_content
+    targets.append(("exists" if gi_complete else "modify", ".gitignore", "append README_AI.md, graph-export.ndjson"))
     return targets
 
 

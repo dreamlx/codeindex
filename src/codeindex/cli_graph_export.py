@@ -55,44 +55,56 @@ def graph_export(root: Path, output: str, quiet: bool):
     #     renders its own partial-graph wording from ``diagnose_language_mismatch``.
     # scan-all deliberately stays at the 0-files guard: its partial output
     # (only some READMEs) is *visible*, whereas graph-export's is silent.
-    if not quiet:
-        if not model.entities:
-            from .scanner import language_mismatch_hint
+    if not model.entities:
+        from .scanner import language_mismatch_hint
 
-            hint = language_mismatch_hint(root, config)
-            if hint:
+        hint = language_mismatch_hint(root, config)
+        if hint:
+            if not quiet:
                 click.echo(f"WARNING: {hint}", err=True)
-        else:
-            from .scanner import diagnose_language_mismatch, get_language_extensions
+            # GH #147: a 0-entity export is data-loss-class — the empty NDJSON
+            # is consumed directly by loomgraph into a knowledge graph, so a
+            # silent exit 0 lets downstream build deps/topology on a broken
+            # graph. Exit non-zero so CI / loomgraph / scripts detect it.
+            # SystemExit (not ClickException) so --quiet can suppress the hint
+            # text while the exit code still signals failure; the raise also
+            # skips writing the empty NDJSON + green checkmark. Mirrors list-dirs
+            # (cli_config.py:319), which exits non-zero on the same hint.
+            raise SystemExit(1)
+        # truly empty repo (no language-mismatch hint) → fall through to write
+        # the empty NDJSON + exit 0, mirroring list-dirs' carve-out
+        # (cli_config.py:324): an actually-empty project isn't data-loss.
+    elif not quiet:
+        from .scanner import diagnose_language_mismatch, get_language_extensions
 
-            diag = diagnose_language_mismatch(root, config)
-            if diag["candidate_languages"]:
-                # Files present whose extensions belong to an UNCONFIGURED but
-                # SUPPORTED language — the code graph-export is leaving on the
-                # table. Filtering to candidate-language extensions (instead of
-                # "every ext not in configured set") keeps the list honest: a
-                # stray ``.md``/``.yaml`` is never a ``languages:`` target, so
-                # showing it here (GH #129 comment) only drowns the real signal
-                # (the ``.java``/``.ts`` files the user should add a language
-                # for). candidate_languages already uses this filter; the inline
-                # list now matches it.
-                wanted = get_language_extensions(diag["candidate_languages"])
-                present = diag["extensions_present"]
-                uncaptured = [
-                    (ext, n)
-                    for ext, n in present.most_common()
-                    if ext in wanted
-                ]
-                top = ", ".join(f"{ext} ({n})" for ext, n in uncaptured[:5])
-                cands = " / ".join(diag["candidate_languages"])
-                click.echo(
-                    "WARNING: partial graph — graph-export captured "
-                    f"{len(model.entities)} entities but configured languages "
-                    f"{diag['configured_languages']} leave code files uncaptured "
-                    f"({top}). Add {cands} to .codeindex.yaml `languages:` to "
-                    "capture them (run: codeindex config explain languages)",
-                    err=True,
-                )
+        diag = diagnose_language_mismatch(root, config)
+        if diag["candidate_languages"]:
+            # Files present whose extensions belong to an UNCONFIGURED but
+            # SUPPORTED language — the code graph-export is leaving on the
+            # table. Filtering to candidate-language extensions (instead of
+            # "every ext not in configured set") keeps the list honest: a
+            # stray ``.md``/``.yaml`` is never a ``languages:`` target, so
+            # showing it here (GH #129 comment) only drowns the real signal
+            # (the ``.java``/``.ts`` files the user should add a language
+            # for). candidate_languages already uses this filter; the inline
+            # list now matches it.
+            wanted = get_language_extensions(diag["candidate_languages"])
+            present = diag["extensions_present"]
+            uncaptured = [
+                (ext, n)
+                for ext, n in present.most_common()
+                if ext in wanted
+            ]
+            top = ", ".join(f"{ext} ({n})" for ext, n in uncaptured[:5])
+            cands = " / ".join(diag["candidate_languages"])
+            click.echo(
+                "WARNING: partial graph — graph-export captured "
+                f"{len(model.entities)} entities but configured languages "
+                f"{diag['configured_languages']} leave code files uncaptured "
+                f"({top}). Add {cands} to .codeindex.yaml `languages:` to "
+                "capture them (run: codeindex config explain languages)",
+                err=True,
+            )
 
     text = dump_ndjson(model)
 
