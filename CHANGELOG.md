@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.34.0] - 2026-08-03
+
 ### Fixed
 
 - **graph-export exits non-zero on 0-entity export** (GH #147). A 0-entity
