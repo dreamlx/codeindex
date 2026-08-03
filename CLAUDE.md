@@ -211,6 +211,14 @@ Guide: `docs/guides/git-hooks-integration.md`
 
 ---
 
+## Historical Decision Notes (non-derivable from code, kept short)
+
+- **graph-export is Path A, independent of render-flip**: `graph-export` does its own clean tree parse per file; it does not depend on or require the README-render path being "flipped". If a future spike justifies render-flip, that's a separate decision on its own merits — don't bundle it just because graph-export shipped.
+- **Enrichment quality bugs (leaf-dir punt) root cause pattern**: when `scan-all --ai` enrichment silently punts on leaf directories, first suspect is a **thin prompt** (subdir-only context fed to a prompt that claims richer input), not concurrency — enrichment runs serially, there's no parallel-worker confound. A single non-informative subdirectory can short-circuit the fallback that should otherwise pull in real content. Verify with same-repo git-stash A/B (buggy vs fixed source), and count `<!-- enrichment: ok -->` markers via `find | while read` (not `grep -rl --include`, which can silently short-circuit under BSD grep).
+- **graph-export content_hash (schema v1)**: per-symbol content hash added so stale line-number anchors become detectable instead of silently rotting. loomgraph's `export_reader.py` warns (not raises) on unsupported schema versions, so this was fully backward-compatible — no `--schema-version` flag needed.
+
+---
+
 ## Common Mistakes
 
 1. **Directly modify README_AI.md** → It gets overwritten. Modify source docstrings instead.
