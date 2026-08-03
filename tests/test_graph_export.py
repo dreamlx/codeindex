@@ -1057,8 +1057,9 @@ class TestLanguageMismatchWarning:
             ["graph-export", "--root", str(tmp_path), "-o", "-"],
             catch_exceptions=False,
         )
-        # backward compat: still exits 0 and emits NDJSON (does not fail)
-        assert result.exit_code == 0
+        # GH #147: 0-entity export = data-loss-class (empty graph consumed by
+        # loomgraph) → exit non-zero so CI/tooling detect it (was: exit 0).
+        assert result.exit_code != 0
         # the warning surfaces the missing language and points at `languages:`
         assert "java" in result.output.lower()
         assert "languages" in result.output.lower()
@@ -1153,7 +1154,9 @@ class TestLanguageMismatchWarning:
             ["graph-export", "--root", str(tmp_path), "-o", "-", "--quiet"],
             catch_exceptions=False,
         )
-        assert result.exit_code == 0
+        # GH #147: --quiet must not bypass the data-loss exit code (exit code is
+        # a machine signal, not output); the hint text stays suppressed.
+        assert result.exit_code != 0
         assert "java" not in result.output.lower()
 
 
