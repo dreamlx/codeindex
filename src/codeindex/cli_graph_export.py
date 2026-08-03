@@ -11,7 +11,13 @@ import click
 
 from .cli_common import console
 from .config import Config
-from .graph_export import build_export, dump_ndjson, walk_and_parse
+from .graph_export import (
+    _calls_unresolved_ratio,
+    _unresolved_breakdown,
+    build_export,
+    dump_ndjson,
+    walk_and_parse,
+)
 
 
 @click.command(name="graph-export")
@@ -124,8 +130,26 @@ def graph_export(root: Path, output: str, quiet: bool):
         n_unres = sum(
             1 for e in model.edges if e.resolution_qualifier == "unresolved"
         )
+        # GH #148: breakdown the unresolved total so a user can tell
+        # exclude-able noise (external/test/stdlib — bare) from the AST
+        # ceiling (this.x/obj.run dynamic dispatch — member) at a glance.
+        bd = _unresolved_breakdown(model.edges)
+        # GH #148: high unresolved CALLS ratio hints the graph may include
+        # test files; prompt (don't gate — no_gate_from_dogfood). Scoped to
+        # CALLS: IMPORTS-unresolved is by-design (external packages) and
+        # would false-fire on a normal repo with many external imports.
+        ratio = _calls_unresolved_ratio(model.edges)
+        if ratio is not None and ratio > 0.70:
+            pct = round(ratio * 100)
+            click.echo(
+                f"WARNING: high unresolved ratio ({pct}%) — may include test "
+                "files; consider excluding them in .codeindex.yaml "
+                "(run: codeindex config explain exclude)",
+                err=True,
+            )
         console.print(
             f"[green]✓[/green] graph-export → {out_path} "
             f"[dim]({len(model.entities)} entities, {len(model.edges)} edges; "
-            f"{n_amb} ambiguous, {n_unres} unresolved)[/dim]"
+            f"{n_amb} ambiguous, {n_unres} unresolved "
+            f"[bare {bd['bare']}, member {bd['member']}])[/dim]"
         )
