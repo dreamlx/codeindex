@@ -165,6 +165,43 @@ def _module_of(path: Path, root: Path) -> str:
     return rel.with_suffix("").as_posix().replace("/", ".")
 
 
+def _qualified_id(module: str, name: str, *, is_java: bool = False) -> str:
+    """Build an entity/edge id from a module path + a (possibly class-qualified) name.
+
+    Collapses the **class-doubling/tripling** that happens when a Java file is
+    named after its public class (GH #154): the module path already ends in the
+    class name, and the parser's ``sym.name`` / CALLS ``caller`` carry it too —
+    so a naive ``f"{module}.{name}"`` triples it (``...Foo.Foo.bar``) for
+    members and doubles it (``...Foo.Foo``) for the class. Tripled member ids
+    never match the un-doubled callee ``dst_raw``, so ~all Java CALLS go
+    unresolved and loomgraph sees a ~60%-orphan graph (PetClinic).
+
+    Two forms collapsed (Java only — ``is_java`` gates the bare-name case):
+
+    - ``Class.member`` (Java sym.name / CALLS caller) — class is FIRST segment
+      → ``module.member``. (Form is Java-specific; TS/Python members don't
+      carry the class in sym.name, so this branch is a no-op for them.)
+    - bare ``Class`` == module's last segment (Java class) → ``module``. Gated
+      by ``is_java`` because TS has the same shape (``Foo`` in ``Foo.ts``) but
+      its REFERENCES resolution depends on the ``module.name`` form; collapsing
+      TS would break it. Java has no TS-style REFERENCES pass, so its class
+      double is safe to collapse.
+
+    MUST be applied to both entity ids AND edge ``src``: de-doubling only ids
+    breaks ``src == entity.id`` and orphans edges at the source (spike: orphan
+    60%→79% ids-only, 60%→41% both). INHERITS passes the child's simple name
+    (last segment of its FQN) so its src lands on the class id.
+    """
+    mod_last = module.rsplit(".", 1)[-1]
+    if name and "." in name:
+        first, rest = name.split(".", 1)
+        if first == mod_last:  # Class.member form (Java sym.name / CALLS caller)
+            return f"{module}.{rest}"
+    if is_java and name == mod_last:  # Java class simple double (TS excluded)
+        return module
+    return f"{module}.{name}"  # default (original behavior)
+
+
 def _source_id(path: Path, root: Path, line: int) -> str:
     return f"{path.resolve().relative_to(root.resolve()).as_posix()}:{line}"
 
@@ -611,6 +648,7 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
         for pr in node.parse_results:
             module = _module_of(pr.path, root)
             module_set.add(module)
+            is_java = pr.path.suffix == ".java"
             # Read source once per file (ParseResult has no source field, GH #124);
             # all symbols in this file share it for content_hash span slicing.
             try:
@@ -618,7 +656,7 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
             except OSError:
                 source = ""
             for sym in pr.symbols:
-                eid = f"{module}.{sym.name}"
+                eid = _qualified_id(module, sym.name, is_java=is_java)
                 entities.append(
                     Entity(
                         id=eid,
@@ -636,8 +674,11 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
     for node in buffer.directories():
         for pr in node.parse_results:
             module = _module_of(pr.path, root)
+            is_java = pr.path.suffix == ".java"
             for call in pr.calls:
-                src = module if call.caller == "<module>" else f"{module}.{call.caller}"
+                src = module if call.caller == "<module>" else _qualified_id(
+                    module, call.caller, is_java=is_java
+                )
                 qual, dst, cands = _resolve(call.callee, module, last_index)
                 edges.append(
                     Edge(
@@ -658,7 +699,11 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
                 edges.append(
                     Edge(
                         kind="INHERITS",
-                        src=f"{module}.{inh.child}",
+                        # INHERITS child is a FQN (pkg.Class); take its simple
+                        # name so src lands on the class entity id (GH #154).
+                        src=_qualified_id(
+                            module, inh.child.rsplit(".", 1)[-1], is_java=is_java
+                        ),
                         dst=dst,
                         resolution_qualifier=qual,
                         source_id=_source_id(pr.path, root, child_line.get(inh.child, 0)),

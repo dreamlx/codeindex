@@ -1356,6 +1356,109 @@ class TestUnresolvedBreakdown:
         assert "WARNING" not in result.output
 
 
+# --------------------------------------------------------------------------- #
+# Java entity-id / edge-src de-doubling (GH #154 Part 1)
+# --------------------------------------------------------------------------- #
+class TestJavaEntityIdDeDouble:
+    """GH #154: a Java file is named after its public class, so the module path
+    already ends in the class name. The parser's ``sym.name`` / ``caller`` /
+    inheritance ``child`` ALSO carry the class (``Foo.bar``), so a naive
+    ``f"{module}.{name}"`` DOUBLES it: ``...Foo.Foo.bar``. Doubled ids never
+    match the (un-doubled) callee ``dst_raw``, so ~all Java CALLS go unresolved
+    and loomgraph sees a 60%-orphan graph (PetClinic).
+
+    The fix collapses when the module's last segment == the name's first
+    segment. No-op for Python/TS (file name ≠ class name, condition never
+    matches). MUST de-double both entity ids AND edge ``src`` — de-doubling
+    only ids breaks ``src == entity.id`` and orphans edges at the source
+    (spike measured orphan 60%→79% for ids-only, 60%→41% for both).
+    """
+
+    @staticmethod
+    def _java_repo(tmp_path: Path) -> Path:
+        """One Java class Foo with two methods; baz() calls bar()."""
+        (tmp_path / ".codeindex.yaml").write_text(
+            "version: 1\nlanguages: [java]\ninclude: [src/]\n"
+        )
+        pkg = tmp_path / "src" / "com" / "example"
+        pkg.mkdir(parents=True)
+        (pkg / "Foo.java").write_text(
+            "package com.example;\n"
+            "public class Foo {\n"
+            "    public void bar() {}\n"
+            "    public void baz() { bar(); }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        return tmp_path
+
+    def test_entity_ids_not_doubled(self, tmp_path: Path) -> None:
+        root = self._java_repo(tmp_path)
+        config = Config.load(root / ".codeindex.yaml")
+        model = build_export(walk_and_parse(root, config), root)
+        ids = {e.id for e in model.entities}
+        # class + 2 methods, all single-class. Java collapses both the triple
+        # (Foo.Foo.bar → Foo.bar) and the class double (Foo.Foo → Foo) via the
+        # is_java gate. TS function double is NOT collapsed (no is_java).
+        assert "src.com.example.Foo" in ids, ids
+        assert "src.com.example.Foo.bar" in ids, ids
+        assert "src.com.example.Foo.baz" in ids, ids
+        assert not any("Foo.Foo" in i for i in ids), f"doubled id present: {ids}"
+
+    def test_calls_src_not_doubled(self, tmp_path: Path) -> None:
+        """edge.src must match the entity-id form (single class), else the
+        edge orphanes at the source even when the callee resolves."""
+        root = self._java_repo(tmp_path)
+        config = Config.load(root / ".codeindex.yaml")
+        model = build_export(walk_and_parse(root, config), root)
+        calls = [e for e in model.edges if e.kind == "CALLS"]
+        assert calls, "no CALLS edges emitted (fixture parse issue)"
+        # every CALLS src is single-class form, landing on a real entity id
+        ids = {e.id for e in model.entities}
+        assert not any(".Foo.Foo" in e.src for e in calls), f"doubled src: {[e.src for e in calls]}"
+        for e in calls:
+            assert e.src in ids, f"CALLS src {e.src!r} not an entity id (orphaned at source)"
+
+    def test_inherits_src_lands_on_class_entity(self, tmp_path: Path) -> None:
+        """INHERITS child is a FQN (``com.example.Sub``); its src must land on
+        the class entity id. The class id keeps the simple-name double
+        (``...Sub.Sub``) per _qualified_id — what matters is src == entity id,
+        not that the id is single."""
+        (tmp_path / ".codeindex.yaml").write_text(
+            "version: 1\nlanguages: [java]\ninclude: [src/]\n"
+        )
+        pkg = tmp_path / "src" / "com" / "example"
+        pkg.mkdir(parents=True)
+        (pkg / "Base.java").write_text("package com.example;\npublic class Base {}\n")
+        (pkg / "Sub.java").write_text(
+            "package com.example;\npublic class Sub extends Base {}\n"
+        )
+        config = Config.load(tmp_path / ".codeindex.yaml")
+        model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+        ids = {e.id for e in model.entities}
+        inh = [e for e in model.edges if e.kind == "INHERITS"]
+        assert inh, "no INHERITS edges emitted"
+        for e in inh:
+            assert e.src in ids, f"INHERITS src {e.src!r} not an entity id (orphaned at source); ids={ids}"
+
+    def test_ts_function_double_not_collapsed(self, tmp_path: Path) -> None:
+        """GH #154: the is_java gate means a TS function named after its file
+        KEEPS the module.name double (``Foo.ts`` → ``...Foo.Foo``). TS
+        REFERENCES resolution depends on this form; collapsing it (treating TS
+        like Java) would orphan every named-import reference edge."""
+        (tmp_path / ".codeindex.yaml").write_text(
+            "version: 1\nlanguages: [typescript]\n"
+        )
+        pkg = tmp_path / "src" / "components"
+        pkg.mkdir(parents=True)
+        (pkg / "Foo.ts").write_text("export function Foo(): number { return 1; }\n")
+        config = Config.load(tmp_path / ".codeindex.yaml")
+        model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+        ids = {e.id for e in model.entities}
+        # the double is preserved (TS, not Java) — REFERENCES depends on it
+        assert "src.components.Foo.Foo" in ids, ids
+
+
 class TestIncludeRespected:
     """walk_and_parse must honor ``config.include`` (GH loomgraph#107).
 
