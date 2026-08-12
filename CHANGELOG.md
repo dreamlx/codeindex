@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **graph-export de-doubles Java entity ids + edge srcs** (GH #154 Part 1). A
+  Java file is named after its public class, so the module path already ends in
+  the class name; the parser's `sym.name` / CALLS `caller` carry it too, so a
+  naive `f"{module}.{name}"` tripled method ids (`...Owner.Owner.addPet`) and
+  doubled class ids (`...Owner.Owner`). Triple/double ids never matched the
+  un-doubled callee `dst_raw`, so ~all Java CALLS went unresolved and loomgraph
+  saw a ~60%-orphan graph (Spring PetClinic). `_qualified_id` collapses the
+  redundant class segment, gated by `is_java` (`pr.path.suffix == ".java"`) so
+  TS/Python are untouched — TS function ids keep their `module.name` double
+  (REFERENCES resolution depends on it). Applied to both entity ids AND edge
+  `src` (CALLS + INHERITS), since de-doubling only ids breaks `src==entity.id`.
+  PetClinic gate: orphan **60%→41%**, relations 832→1279, god-functions 0→48,
+  coupling 0.0→0.49. The remaining ~5% resolved CALLS is `calls.py` callee
+  naming (fake fully-qualified) — tracked as #154 Part 2.
+
 ## [0.34.0] - 2026-08-03
 
 ### Fixed
