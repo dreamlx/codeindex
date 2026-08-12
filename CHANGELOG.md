@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.35.0] - 2026-08-12
+
 ### Fixed
 
 - **graph-export de-doubles Java entity ids + edge srcs** (GH #154 Part 1). A
@@ -21,8 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (REFERENCES resolution depends on it). Applied to both entity ids AND edge
   `src` (CALLS + INHERITS), since de-doubling only ids breaks `src==entity.id`.
   PetClinic gate: orphan **60%→41%**, relations 832→1279, god-functions 0→48,
-  coupling 0.0→0.49. The remaining ~5% resolved CALLS is `calls.py` callee
-  naming (fake fully-qualified) — tracked as #154 Part 2.
+  coupling 0.0→0.49. The remaining ~41% orphan is the AST ceiling for Java
+  instance calls (receiver types statically unknowable —
+  `PROVENANCE_COMPLETENESS`), not a codeindex bug; callee-naming
+  conservatization was spiked and rejected (no connectivity gain, GH #154).
 
 ## [0.34.0] - 2026-08-03
 
