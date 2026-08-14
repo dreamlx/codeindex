@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.35.1] - 2026-08-14
+
 ### Fixed
 
 - **graph-export partial-graph diagnostic no longer misfires on vendored/cache
