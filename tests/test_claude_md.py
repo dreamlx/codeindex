@@ -236,6 +236,61 @@ class TestCheckOutdated:
             assert check_outdated(tmp_path) == "0.22.0"
 
 
+class TestVersionSourceConsistency:
+    """GH #161: one version source everywhere.
+
+    _get_current_version previously did its own importlib-first lookup while
+    the hint print used module __version__ — under an editable install with
+    stale dist-info, a fresh CLAUDE.md triggered a self-contradictory
+    "v0.35.1 vs v0.35.1, run update" hint.
+    """
+
+    def test_get_current_version_matches_module_version(self):
+        from codeindex import __version__
+        from codeindex.claude_md import _get_current_version
+
+        assert _get_current_version() == __version__
+
+    def test_stale_dist_info_does_not_leak(self):
+        """Even with importlib metadata disagreeing (editable install with
+        stale dist-info), the check must follow the module resolver."""
+        import importlib.metadata as _m
+        from unittest.mock import patch as _patch
+
+        from codeindex import __version__
+        from codeindex.claude_md import _get_current_version
+
+        with _patch.object(_m, "version", return_value="0.0.1"):
+            assert _get_current_version() == __version__
+
+    def test_fresh_claude_md_not_flagged_despite_stale_dist_info(self, tmp_path):
+        """End-to-end property: CLAUDE.md at the current version must NOT be
+        flagged, whatever dist-info claims (the original #161 symptom)."""
+        import importlib.metadata as _m
+        from unittest.mock import patch as _patch
+
+        from codeindex import __version__
+
+        claude_md = tmp_path / "CLAUDE.md"
+        claude_md.write_text(f"<!-- codeindex:start v{__version__} -->\n<!-- codeindex:end -->\n")
+
+        with _patch.object(_m, "version", return_value="0.0.1"):
+            assert check_outdated(tmp_path) is None
+
+    def test_print_outdated_warning_goes_to_stderr(self, capsys):
+        """The startup hint must not pollute stdout (breaks --output json)."""
+        from unittest.mock import patch as _patch
+
+        from codeindex.cli_claude_md import print_outdated_warning
+
+        with _patch("codeindex.cli_claude_md.check_outdated", return_value="0.1.0"):
+            print_outdated_warning()
+
+        captured = capsys.readouterr()
+        assert "hint:" in captured.err
+        assert captured.out == ""
+
+
 class TestMarkerPattern:
     """Tests for marker regex pattern."""
 

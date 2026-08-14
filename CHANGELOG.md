@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **CLAUDE.md outdated-hint: one version source + stderr** (GH #161).
+  `check_outdated` compared the injected version against
+  `importlib.metadata` (stale under editable installs — dist-info is baked
+  at install time) while the hint print used module `__version__`, so a
+  freshly injected CLAUDE.md triggered a self-contradictory
+  "v0.35.1 vs v0.35.1, run update" hint on every CLI invocation. The check
+  now uses the module's existing `__version__` resolver (source pyproject
+  first, the same one `--version` uses), and the startup hint prints to
+  stderr so `--output json` consumers can `json.loads` stdout without
+  tripping over it (this once made 21 CLI JSON tests fail red on a stale
+  venv).
+
 - **post-commit hook no longer overwrites scan-all's hierarchical READMEs**
   (GH #160). The hook re-rendered each affected directory via a per-dir
   `codeindex scan` subprocess, which hardcodes `level="detailed"` and
