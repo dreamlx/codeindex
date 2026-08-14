@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **CLAUDE.md injection templates compressed, navigation contract hardened**
+  (GH #158 context). The injected section now states the cross-module
+  boundary as a contract: end-to-end flows spanning ≥2 modules live in the
+  host repo's architecture docs / ADRs, never in README_AI. The quick-ref
+  was cut to the non-obvious commands and escape hatches (full reference
+  delegated to `codeindex --help`), keeping the injection small. Host repos
+  pick this up via `codeindex claude-md update` (the startup hint
+  flags it).
+
 ### Fixed
 
 - **CLAUDE.md outdated-hint: one version source + stderr** (GH #161).
