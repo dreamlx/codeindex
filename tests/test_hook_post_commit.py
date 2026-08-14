@@ -47,11 +47,28 @@ class TestThinWrapperScript:
 
 
 class TestRunPostCommitHook:
-    """Python-side post-commit logic."""
+    """Python-side post-commit logic (tree-aware since GH #160)."""
+
+    @staticmethod
+    def _affected_json(dirs):
+        import json as _json
+        return _json.dumps({"level": "affected", "affected_dirs": dirs})
+
+    @staticmethod
+    def _fake_subprocess(affected_dirs, staged_changes=False):
+        """Dispatch subprocess.run: affected query answered, git ops succeed."""
+        def fake_run(cmd, *args, **kwargs):
+            if "affected" in cmd:
+                return MagicMock(returncode=0,
+                                 stdout=TestRunPostCommitHook._affected_json(affected_dirs))
+            if "diff" in cmd:  # git diff --cached --quiet: 1 = has changes
+                return MagicMock(returncode=1 if staged_changes else 0, stdout="")
+            return MagicMock(returncode=0, stdout="")
+        return fake_run
 
     @patch("codeindex.cli_hooks.subprocess.run")
     def test_skips_when_no_affected_dirs(self, mock_run):
-        """No affected dirs → no scan, no commit."""
+        """No affected dirs → no render, no commit."""
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout='{"level": "skip", "affected_dirs": []}',
@@ -61,48 +78,65 @@ class TestRunPostCommitHook:
 
     @patch("codeindex.cli_hooks.Path.cwd")
     @patch("codeindex.cli_hooks.subprocess.run")
-    def test_scans_affected_directories(self, mock_run, mock_cwd, tmp_path):
-        """Affected dirs → codeindex scan for each."""
-        # Create the README_AI.md so the check passes
-        auth_dir = tmp_path / "src" / "auth"
-        auth_dir.mkdir(parents=True)
-        (auth_dir / "README_AI.md").write_text("# Auth\n")
+    def test_hub_dir_renders_navigation_not_detailed(self, mock_run, mock_cwd, tmp_path):
+        """GH #160 regression: a dir with indexed children must keep its
+        navigation-level README — the old per-dir `codeindex scan` subprocess
+        hardcoded detailed and overwrote scan-all's hierarchy."""
+        (tmp_path / "src" / "auth" / "sub").mkdir(parents=True)
+        (tmp_path / "src" / "auth" / "__init__.py").write_text("def a():\n    pass\n")
+        (tmp_path / "src" / "auth" / "sub" / "mod.py").write_text("def b():\n    pass\n")
         mock_cwd.return_value = tmp_path
-
-        diff_mock = MagicMock(returncode=1, stdout="")  # has changes
-        mock_run.side_effect = [
-            MagicMock(
-                returncode=0,
-                stdout='{"level": "minor", "affected_dirs": ["src/auth"]}',
-            ),
-            MagicMock(returncode=0, stdout=""),  # scan
-            MagicMock(returncode=0, stdout=""),  # git add
-            diff_mock,                            # git diff --cached --quiet (1 = has changes)
-            MagicMock(returncode=0, stdout="abc123"),  # git rev-parse
-            MagicMock(returncode=0, stdout=""),  # git commit
-        ]
+        mock_run.side_effect = self._fake_subprocess(["src/auth"])
 
         run_post_commit_hook()
 
-        # Should have called codeindex scan for the affected dir
-        scan_calls = [
-            c for c in mock_run.call_args_list
-            if "scan" in str(c)
-        ]
-        assert len(scan_calls) >= 1
+        content = (tmp_path / "src" / "auth" / "README_AI.md").read_text()
+        assert "(navigation)" in content
 
+    @patch("codeindex.cli_hooks.Path.cwd")
     @patch("codeindex.cli_hooks.subprocess.run")
-    def test_no_ai_prompt_in_scan(self, mock_run):
-        """Scan should use `codeindex scan`, not custom AI prompts."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"level": "minor", "affected_dirs": ["src/mod"]}',
-        )
+    def test_new_dir_without_readme_gets_one(self, mock_run, mock_cwd, tmp_path):
+        """New dirs (no prior README) are rendered, not skipped — the old
+        `readme_path.exists()` guard left freshly added source dirs unindexed."""
+        pkg = tmp_path / "src" / "newpkg"
+        pkg.mkdir(parents=True)
+        (pkg / "mod.py").write_text("def f():\n    pass\n")
+        mock_cwd.return_value = tmp_path
+        mock_run.side_effect = self._fake_subprocess(["src/newpkg"])
 
         run_post_commit_hook()
 
-        # Check no call contains AI prompt keywords
+        assert (pkg / "README_AI.md").exists()
+
+    @patch("codeindex.cli_hooks.Path.cwd")
+    @patch("codeindex.cli_hooks.subprocess.run")
+    def test_zero_symbol_dir_stale_readme_removed(self, mock_run, mock_cwd, tmp_path):
+        """0-symbol skip (GH #158) is inherited from the shared seam."""
+        empty = tmp_path / "src" / "empty"
+        empty.mkdir(parents=True)
+        (empty / "__init__.py").write_text("")
+        (empty / "README_AI.md").write_text("# stale\n")
+        mock_cwd.return_value = tmp_path
+        mock_run.side_effect = self._fake_subprocess(["src/empty"])
+
+        run_post_commit_hook()
+
+        assert not (empty / "README_AI.md").exists()
+
+    @patch("codeindex.cli_hooks.Path.cwd")
+    @patch("codeindex.cli_hooks.subprocess.run")
+    def test_no_codeindex_scan_subprocess(self, mock_run, mock_cwd, tmp_path):
+        """Rendering is in-process now — no per-dir `codeindex scan` spawn."""
+        pkg = tmp_path / "src" / "pkg"
+        pkg.mkdir(parents=True)
+        (pkg / "mod.py").write_text("def f():\n    pass\n")
+        mock_cwd.return_value = tmp_path
+        mock_run.side_effect = self._fake_subprocess(["src/pkg"])
+
+        run_post_commit_hook()
+
         for call in mock_run.call_args_list:
-            cmd = str(call)
-            assert "PROMPT" not in cmd
-            assert "Code Diff" not in cmd
+            cmd = call.args[0]
+            # tmp_path itself contains "scan" (pytest dir naming) — match the
+            # invocation shape, not a substring.
+            assert not (cmd[0].endswith("codeindex") and len(cmd) > 1 and cmd[1] == "scan")

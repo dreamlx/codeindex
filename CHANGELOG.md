@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **post-commit hook no longer overwrites scan-all's hierarchical READMEs**
+  (GH #160). The hook re-rendered each affected directory via a per-dir
+  `codeindex scan` subprocess, which hardcodes `level="detailed"` and
+  `child_dirs=[]` — every commit touching a hub directory (e.g.
+  `src/codeindex/`) overwrote its 64-line navigation aggregate with a
+  350-line full-subtree symbol dump, and the next manual `scan-all` flipped
+  it back (README_AI.md oscillated between two shapes). The hook now builds
+  one `DirectoryTree` and renders affected dirs through the same
+  tree-aware seam as `scan-all` (`_process_directory_with_smartwriter`),
+  making hook output byte-consistent with it — correct levels, the 0-symbol
+  skip, and stale-README cleanup (GH #158) included. Side benefits: newly
+  added source dirs now get a README from the hook (the old
+  `readme_path.exists()` guard skipped them), and the per-dir subprocess
+  spawn + 120s timeout is gone.
+
 ### Added
 
 - **0-symbol directories no longer generate a README_AI.md** (GH #158

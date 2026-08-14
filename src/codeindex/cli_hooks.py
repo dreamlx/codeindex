@@ -457,6 +457,13 @@ def run_post_commit_hook() -> int:
     `codeindex hooks run post-commit`. All logic lives here so that
     `pipx upgrade ai-codeindex` automatically updates the behavior.
 
+    Affected directories are re-rendered through the same tree-aware seam
+    as ``scan-all`` (GH #160): one writer, one world-view. The previous
+    per-dir ``codeindex scan`` subprocess hardcoded ``level="detailed"``
+    and overwrote scan-all's overview/navigation READMEs, oscillating hub
+    directories between a 350-line symbol dump and a 64-line navigation
+    aggregate on every commit.
+
     Returns:
         Exit code (0 = success)
     """
@@ -479,24 +486,33 @@ def run_post_commit_hook() -> int:
     if level == "skip" or not affected_dirs:
         return 0
 
-    # Step 2: Run codeindex scan for each affected directory
+    # Step 2: Re-render affected directories through the tree-aware seam
+    # (same code path as scan-all, so hook output is byte-consistent with
+    # it — correct levels, 0-symbol skip, stale-README cleanup).
     repo_root = Path.cwd()
+    from .cli_scan import _process_directory_with_smartwriter
+    from .config import Config
+    from .directory_tree import DirectoryTree
+
+    try:
+        config = Config.load()
+        tree = DirectoryTree(repo_root, config)
+    except Exception:
+        return 0
+
     updated_readmes: list[str] = []
-
     for dir_path in affected_dirs:
-        readme_path = repo_root / dir_path / "README_AI.md"
-        if not readme_path.exists():
+        target = repo_root / dir_path
+        if not target.is_dir():
             continue
 
-        try:
-            scan_result = subprocess.run(
-                ["codeindex", "scan", dir_path, "--quiet"],
-                capture_output=True, text=True, timeout=120,
-            )
-            if scan_result.returncode == 0:
-                updated_readmes.append(str(readme_path))
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            continue
+        # The seam isolates per-dir failures (try/except → result tuple).
+        _, success, _, _ = _process_directory_with_smartwriter(
+            target, tree, config
+        )
+        readme_path = target / config.output_file
+        if success and readme_path.exists():
+            updated_readmes.append(str(readme_path))
 
     if not updated_readmes:
         return 0
