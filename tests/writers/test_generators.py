@@ -314,9 +314,19 @@ class TestDetailedGenerator:
         gen = self._make_generator()
         child = tmp_path / "sub"
         child.mkdir()
+        (child / "README_AI.md").write_text("# sub\n")
         content = gen.generate(tmp_path, [], [child])
-        assert "sub/" in content
-        assert "README_AI.md" in content
+        assert "[sub/](sub/README_AI.md)" in content
+
+    def test_subdirectory_without_readme_no_dead_link(self, tmp_path):
+        # GH #158: skipped/unindexed child dirs have no README_AI.md —
+        # emitting a link would be dead. Plain text reference instead.
+        gen = self._make_generator()
+        child = tmp_path / "sub"
+        child.mkdir()
+        content = gen.generate(tmp_path, [], [child])
+        assert "- sub/" in content
+        assert "README_AI.md" not in content
 
     def test_dependencies_section(self):
         gen = self._make_generator()

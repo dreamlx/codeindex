@@ -286,7 +286,7 @@ def determine_level(
     Args:
         dir_path: The directory being processed
         root_path: The project root
-        has_children: Whether this directory has subdirectories with README_AI.md
+        has_children: Whether this directory has indexed child directories
         config: Indexing configuration
     """
     try:

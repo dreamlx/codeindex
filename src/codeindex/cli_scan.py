@@ -770,6 +770,11 @@ def _enrich_directories_with_ai(
     for dir_path in enrich_dirs:
         readme_path = dir_path / config.output_file
 
+        # Phase 1 may have skipped this dir entirely (0 symbols, GH #158) —
+        # no README to inject into.
+        if not readme_path.exists():
+            continue
+
         # Build context from the dir's OWN files/symbols (primary) plus its
         # subdirectory names (supplementary). Both come from AST/tree sources,
         # never README markdown, so the anti-injection-chain property holds
@@ -907,6 +912,17 @@ def _process_directory_with_smartwriter(
         parse_results = []
         if result.files:
             parse_results = parse_files_parallel(result.files, config, quiet=True)
+
+        # 0-symbol dirs carry no navigation value — skip, and remove a stale
+        # README from an older run so it stops rotting (GH #158).
+        from .writers.utils import should_skip_readme
+
+        readme_path = dir_path / config.output_file
+        if should_skip_readme(parse_results, has_children=bool(child_dirs)):
+            had_stale = readme_path.exists()
+            readme_path.unlink(missing_ok=True)
+            msg = "skipped: 0 symbols" + (", removed stale README" if had_stale else "")
+            return dir_path, True, msg, 0
 
         # Use SmartWriter with docstring processor
         writer = SmartWriter(config.indexing, docstring_processor=docstring_processor)

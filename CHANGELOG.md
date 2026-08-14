@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **0-symbol directories no longer generate a README_AI.md** (GH #158
+  proposal 2). A directory that yields zero symbols, has no parse errors, and
+  has no indexed child directories carries no navigation signal beyond `ls`
+  noise (evidence: `templates/` with one empty `__init__.py` still got a
+  13-line README). Such directories are skipped with a visible
+  `✓ <dir> (skipped: 0 symbols)` status line, and a stale README from an
+  older run is removed (`skipped: 0 symbols, removed stale README`). Hubs
+  with indexed children keep their README (overview level scans
+  non-recursively and often holds 0 own symbols); parse-error dirs keep
+  theirs (the `_Parse error_` entry has diagnostic value). No config added —
+  the check is a constant boolean, not a tunable threshold. Downstream
+  audit: graph-export never reads README_AI; loomgraph only lists it as a
+  git-metrics exclude pattern.
+
+### Fixed
+
+- **Detailed-level subdirectory links no longer dead-link to unindexed
+  children** (found during the GH #158 audit). The detailed generator
+  emitted `[child/](child/README_AI.md)` unconditionally; a child without a
+  README (skipped or unindexed) now renders as plain `child/` text.
+- `determine_level` docstring claimed `has_children` means "subdirectories
+  with README_AI.md"; it actually reflects indexed child directories
+  (DirectoryTree nodes).
+
 ## [0.35.1] - 2026-08-14
 
 ### Fixed
