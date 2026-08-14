@@ -82,7 +82,14 @@ class DetailedGenerator:
                 "",
             ])
             for child in sorted(child_dirs):
-                lines.append(f"- [{child.name}/]({child.name}/README_AI.md)")
+                # Link only when the child actually has a README_AI.md —
+                # skipped (GH #158) or unindexed dirs would give dead links.
+                # ponytail: hardcoded name matches the pre-existing link text;
+                # plumb config.output_file through if generators ever honor it.
+                if (child / "README_AI.md").exists():
+                    lines.append(f"- [{child.name}/]({child.name}/README_AI.md)")
+                else:
+                    lines.append(f"- {child.name}/")
             lines.extend(["", ""])
 
         # Process docstrings with AI if processor available (Epic 9)

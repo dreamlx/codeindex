@@ -14,6 +14,26 @@ from ..framework_detect import RouteInfo
 from ..parser import ParseResult, Symbol
 
 
+def should_skip_readme(
+    parse_results: list[ParseResult], has_children: bool = False
+) -> bool:
+    """Whether a directory is too empty to deserve a README_AI (GH #158).
+
+    True iff no parse errors occurred, the directory yields zero symbols in
+    total, and it has no indexed child directories — such a README would
+    carry no navigation signal beyond `ls` noise (e.g. a lone empty
+    ``__init__.py``). Children mean the README aggregates them (overview /
+    navigation hubs scan non-recursively by design and often hold 0 own
+    symbols); parse errors are kept: the generated "_Parse error_" entry
+    has diagnostic value.
+    """
+    if has_children:
+        return False
+    if any(r.error for r in parse_results):
+        return False
+    return not any(r.symbols for r in parse_results)
+
+
 def collect_recursive_stats(
     child_dirs: list[Path], output_file: str = "README_AI.md"
 ) -> dict:
