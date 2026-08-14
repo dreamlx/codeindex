@@ -9,6 +9,7 @@ from . import __version__
 from .claude_md import check_outdated, extract_version, inject
 
 console = Console()
+stderr_console = Console(stderr=True)
 
 
 @click.group("claude-md")
@@ -90,7 +91,9 @@ def print_outdated_warning():
     """Print a one-line warning if CLAUDE.md is outdated. Called on CLI startup."""
     outdated_version = check_outdated()
     if outdated_version:
-        console.print(
+        # stderr: stdout must stay clean for machine-readable output
+        # (`--output json` consumers json.loads the whole stream, GH #161).
+        stderr_console.print(
             f"[dim yellow]hint: CLAUDE.md has codeindex v{outdated_version}, "
             f"current is v{__version__}. "
             f"Run `codeindex claude-md update` to refresh.[/dim yellow]"

@@ -11,7 +11,6 @@ Markers:
     <!-- codeindex:end -->
 """
 
-import importlib.metadata
 import logging
 import re
 from pathlib import Path
@@ -64,12 +63,18 @@ def detect_locale(content: str) -> str:
 
 
 def _get_current_version() -> str:
-    """Get current codeindex package version."""
-    try:
-        return importlib.metadata.version("ai-codeindex")
-    except importlib.metadata.PackageNotFoundError:
-        from . import __version__
-        return __version__
+    """Get current codeindex package version.
+
+    Uses the module's ``__version__`` resolver (source pyproject first,
+    installed metadata as fallback). GH #161: this previously did its own
+    importlib-first lookup, which goes stale under editable installs
+    (dist-info baked at install time) — a freshly injected CLAUDE.md then
+    triggered a self-contradictory "v0.35.1 vs v0.35.1, run update" hint
+    on every CLI invocation.
+    """
+    from . import __version__
+
+    return __version__
 
 
 def _load_template(version: str, lang: str = "en") -> str:
