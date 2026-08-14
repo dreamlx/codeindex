@@ -296,6 +296,9 @@ _DIAGNOSTIC_SKIP_DIRS = {
     ".eggs",
     "dist",
     "build",
+    # GH #156 D3: Android .gradle/<hash>/.../sources/*.java are AGP-generated
+    # accessor classes (pure build cache) — don't let them inflate the count.
+    ".gradle",
 }
 
 
@@ -333,6 +336,13 @@ def diagnose_language_mismatch(root: Path, config: Config) -> dict:
             # vendored.
             if any(part in _DIAGNOSTIC_SKIP_DIRS for part in path.parts):
                 continue
+            # GH #156 D1: honor config.exclude so a user can suppress vendored
+            # / reference dirs (e.g. C++ firmware headers under docs/_assets/)
+            # instead of having them drive false "Add X" suggestions. base_path
+            # is ``root`` (exclude patterns are project-relative), matching the
+            # real scanner's ``should_exclude`` call sites.
+            if should_exclude(path, config.exclude, root):
+                continue
             if path.is_file():
                 ext = path.suffix.lower()
                 if ext:
@@ -344,6 +354,15 @@ def diagnose_language_mismatch(root: Path, config: Config) -> dict:
     candidates: list[str] = []
     for lang, exts in LANGUAGE_EXTENSIONS.items():
         if lang in config.languages:
+            continue
+        # GH #156 D2: .h is shared by C/C++/ObjC and codeindex ships no C/C++.
+        # Require objc's unambiguous indicator (.m) so a C/C++ repo with only
+        # .h headers isn't told to add objc (the objc grammar can't parse C++
+        # → parse errors, zero entities). Don't mutate LANGUAGE_EXTENSIONS —
+        # it drives parse dispatch and is kept in lockstep with the parser.
+        if lang == "objc":
+            if ".m" in extension_counts:
+                candidates.append(lang)
             continue
         if any(ext in extension_counts for ext in exts):
             candidates.append(lang)

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **graph-export partial-graph diagnostic no longer misfires on vendored/cache
+  files** (GH #156). Three defects in `diagnose_language_mismatch`: (1) it now
+  honors `config.exclude` (was hardcoded skip-dirs only), so a user can
+  suppress a vendored reference dir instead of having it drive a false "Add X";
+  (2) `.h` alone no longer suggests `objc` — `.m` is required, since `.h` is
+  shared by C/C++/ObjC and codeindex has no C/C++ (a `.h`-only repo is almost
+  certainly C/C++, and objc yields parse errors + zero entities); (3) `.gradle`
+  build cache is now skipped (Android AGP-generated `.java` no longer inflate
+  the count). On a TS/JS repo with C++ firmware headers + an Android `.gradle`
+  cache, the warning collapses from ".h (43), .java (3) Add java/objc" to an
+  honest ".java (1) Add java". `LANGUAGE_EXTENSIONS` is unchanged (still drives
+  parse dispatch).
+
 ## [0.35.0] - 2026-08-12
 
 ### Fixed

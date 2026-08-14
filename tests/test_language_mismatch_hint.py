@@ -12,14 +12,22 @@ from pathlib import Path
 from click.testing import CliRunner
 
 from codeindex.config import Config
-from codeindex.scanner import language_mismatch_hint
+from codeindex.scanner import diagnose_language_mismatch, language_mismatch_hint
 
 
-def _config(proj: Path, languages: list[str], include=("src/",)) -> Config:
+def _config(
+    proj: Path,
+    languages: list[str],
+    include=("src/",),
+    exclude=(),
+) -> Config:
     lines = ["version: 1", "languages:"]
     lines.extend(f"  - {lang}" for lang in languages)
     lines.append("include:")
     lines.extend(f"  - {inc}" for inc in include)
+    if exclude:
+        lines.append("exclude:")
+        lines.extend(f"  - {exc}" for exc in exclude)
     (proj / ".codeindex.yaml").write_text("\n".join(lines) + "\n")
     return Config.load(proj / ".codeindex.yaml")
 
@@ -76,3 +84,70 @@ class TestScanAllSurfacesMismatch:
         # "No indexable directories found".
         assert "typescript" in result.output, result.output
         assert ".ts" in result.output, result.output
+
+
+class TestDiagnosticAccuracy:
+    """GH #156: ``diagnose_language_mismatch`` drove false "Add X" suggestions
+    on a TS/JS repo whose non-project files were vendored reference / build
+    cache / ambiguous-header — not real source. Three defects, each pinned
+    here at the ``diagnose_language_mismatch`` dict level (the single source
+    the hint renders from).
+    """
+
+    def test_diagnostic_respects_config_exclude(self, tmp_path):
+        """D1: the diagnostic walked include roots but never consulted
+        ``config.exclude``, so a user couldn't suppress a vendored reference
+        dir — 43 ``.h`` under an excluded ``docs/_assets/`` still inflated the
+        objc suggestion."""
+        vendored = tmp_path / "src" / "vendor" / "firmware"
+        vendored.mkdir(parents=True)
+        (vendored / "ref.h").write_text("int x;\n")
+        config = _config(tmp_path, languages=["python"], exclude=["src/vendor/**"])
+
+        diag = diagnose_language_mismatch(tmp_path, config)
+
+        assert ".h" not in diag["extensions_present"], diag["extensions_present"]
+        assert "objc" not in diag["candidate_languages"], diag["candidate_languages"]
+
+    def test_h_without_m_is_not_objc(self, tmp_path):
+        """D2: ``.h`` is shared by C/C++/ObjC and codeindex ships no C/C++.
+        A repo with ``.h`` but no ``.m`` is almost certainly C/C++ — suggesting
+        objc is non-actionable (the objc grammar can't parse C++ → parse errors,
+        zero entities). Require ``.m`` for objc candidacy."""
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "firmware.h").write_text("int x;\n")
+        config = _config(tmp_path, languages=["python"])
+
+        diag = diagnose_language_mismatch(tmp_path, config)
+
+        # .h IS present (reported honestly), but objc must NOT be a candidate
+        assert ".h" in diag["extensions_present"]
+        assert "objc" not in diag["candidate_languages"], diag["candidate_languages"]
+
+    def test_h_with_m_is_objc(self, tmp_path):
+        """D2 regression guard: ``.m`` is objc's unambiguous indicator. A repo
+        with ``.m`` (with or without ``.h``) still suggests objc."""
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "app.h").write_text("@interface A\n@end\n")
+        (src / "app.m").write_text("@implementation A\n@end\n")
+        config = _config(tmp_path, languages=["python"])
+
+        diag = diagnose_language_mismatch(tmp_path, config)
+
+        assert "objc" in diag["candidate_languages"], diag["candidate_languages"]
+
+    def test_gradle_cache_dir_skipped(self, tmp_path):
+        """D3: Android's ``.gradle/<hash>/.../sources/*.java`` are AGP-generated
+        accessor classes (pure build cache). They leaked into the ``.java``
+        count and inflated the "Add java" suggestion."""
+        gen = tmp_path / "src" / ".gradle" / "abc" / "sources"
+        gen.mkdir(parents=True)
+        (gen / "BuildConfig.java").write_text("class BuildConfig {}\n")
+        config = _config(tmp_path, languages=["python"])
+
+        diag = diagnose_language_mismatch(tmp_path, config)
+
+        assert ".java" not in diag["extensions_present"], diag["extensions_present"]
+        assert "java" not in diag["candidate_languages"], diag["candidate_languages"]
