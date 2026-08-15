@@ -125,6 +125,14 @@ git add pyproject.toml src/codeindex/__init__.py CHANGELOG.md
 git commit -m "chore: bump version to $VERSION"
 echo -e "${GREEN}✓ Changes committed${NC}"
 
+# 6.5 Refresh README_AI indexes (release-time, per #166 — not per-commit)
+echo ""
+echo -e "${YELLOW}6️⃣.5️⃣  Refreshing README_AI indexes...${NC}"
+codeindex scan-all
+codeindex claude-md update
+git add CLAUDE.md PROJECT_SYMBOLS.md '*README_AI.md'
+git diff --cached --quiet || git commit -m "docs: refresh README_AI for v$VERSION"
+
 # 7. Create tag
 echo ""
 echo -e "${YELLOW}7️⃣  Creating tag v$VERSION...${NC}"

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **README_AI refresh moved from per-commit to release-time** (GH #166).
+  `scripts/release.sh` gained step 6.5 between the version-bump commit and
+  the tag: `codeindex scan-all` + `claude-md update` committed as
+  `docs: refresh README_AI for vX.Y.Z`. The post-commit hook is no longer
+  installed in this repo (pre-commit / pre-push unchanged); product-level
+  hook deprecation is tracked separately in GH #167.
+- **`scripts/pre_release_check.sh` gained section 1b**: fails the release if
+  the CLAUDE.md codeindex section is not stamped with the version being
+  released, or if any `README_AI.md` is left uncommitted at tag time.
+
 ## [0.36.0] - 2026-08-15
 
 ### Changed
