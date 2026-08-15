@@ -270,38 +270,6 @@ codeindex scan-all
 loomgraph index .
 ```
 
-### Git Hooks (Optional)
-
-Automatically update documentation on commit:
-
-Create `.git/hooks/post-commit`:
-```bash
-#!/bin/bash
-# Auto-update codeindex documentation after commit
-
-# Only update if non-documentation files changed
-CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD)
-NON_DOC_FILES=$(echo "$CHANGED_FILES" | grep -v "README_AI.md" || true)
-
-if [ -n "$NON_DOC_FILES" ]; then
-    echo "🔄 Updating code documentation..."
-    codeindex scan-all --fallback
-
-    # Auto-commit if documentation changed
-    if ! git diff --quiet README_AI.md; then
-        git add README_AI.md
-        git commit -m "docs: auto-update README_AI.md
-
-Co-Authored-By: Claude Code <noreply@anthropic.com>"
-    fi
-fi
-```
-
-Make it executable:
-```bash
-chmod +x .git/hooks/post-commit
-```
-
 ---
 
 ## 📊 Project Statistics

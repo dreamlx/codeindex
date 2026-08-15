@@ -1,16 +1,23 @@
 # Git Hooks Integration Guide
 
-**Version**: v0.17.2
 **Feature**: Automated Git Hooks management
 
 ---
 
 ## 📋 Overview
 
-codeindex now provides built-in Git Hooks management to automate:
-- **Pre-commit**: Lint checks and debug code detection
-- **Post-commit**: Automatic README_AI.md updates
-- **Pre-push**: Lint and test validation before push
+codeindex provides built-in Git Hooks management to automate:
+- **Pre-commit**: Lint checks (ruff, includes debug-code rules)
+- **Pre-push**: Validation before push
+
+> **Post-commit hook removed (GH #167)**: README_AI.md auto-refresh on every
+> commit was retired — the per-commit frequency was wrong for a navigation
+> index, and the refresh machinery (loop guards, config gating) cost more than
+> it returned. README_AI refresh is now **release-time or manual**: run
+> `codeindex scan-all` whenever you want fresh indexes, or (in the codeindex
+> repo itself) let `scripts/release.sh` step 6.5 refresh before each tag.
+> **Migration**: `codeindex hooks uninstall post-commit` — the command still
+> accepts `post-commit` to clean up an existing install.
 
 No manual hook creation needed - install with one command!
 
@@ -29,7 +36,6 @@ Output:
 Git Hooks Status
 
   ○ pre-commit: not installed
-  ○ post-commit: not installed
   ○ pre-push: not installed
 ```
 
@@ -44,10 +50,9 @@ Output:
 Installing Git Hooks
 
   ✓ pre-commit: installed
-  ✓ post-commit: installed
   ✓ pre-push: installed
 
-✓ Successfully installed 3 hook(s)
+✓ Successfully installed 2 hook(s)
 ```
 
 ### Verify Installation
@@ -61,10 +66,9 @@ Output:
 Git Hooks Status
 
   ✓ pre-commit: installed
-  ✓ post-commit: installed
   ✓ pre-push: installed
 
-→ 3 codeindex hook(s) installed
+→ 2 codeindex hook(s) installed
 ```
 
 ---
@@ -116,8 +120,9 @@ Uninstall codeindex Git hooks.
 
 **Examples**:
 ```bash
-# Uninstall specific hook
-codeindex hooks uninstall pre-commit
+# Uninstall specific hook (also works for a leftover post-commit
+# installed by codeindex < 0.37 — see the migration note above)
+codeindex hooks uninstall post-commit
 
 # Uninstall all hooks
 codeindex hooks uninstall --all
@@ -144,15 +149,12 @@ codeindex hooks uninstall --all --keep-backup
    - Checks only staged Python files
    - Auto-detects ruff (venv or system)
    - Provides fix suggestions
-
-2. **L2: Debug Code Detection** - Forbid debug statements
-   - Detects: `print()`, `breakpoint()`, `pdb.set_trace()`
-   - Skips CLI files (legitimate print usage)
-   - Shows line numbers for violations
+   - Debug-code detection (print/breakpoint/pdb) is covered by ruff
+     rules T201/T100 in the lint check
 
 **Exit Codes**:
 - `0` - All checks passed
-- `1` - Lint errors or debug code found
+- `1` - Lint errors found
 
 **Example Output**:
 ```
@@ -163,48 +165,8 @@ codeindex hooks uninstall --all --keep-backup
 All checks passed!
 ✓ Lint check passed
 
-[L2] Checking for debug code...
-✓ No debug code found
-
 ✓ All pre-commit checks passed!
 ```
-
-### Post-commit Hook
-
-**Purpose**: Automatic structural documentation updates
-
-**Architecture** (v0.23.0+): Thin wrapper pattern
-- Shell script (~30 lines): loop guard + venv activation
-- Python logic via `codeindex hooks run post-commit`: all business logic
-- **Upgrade path**: `pipx upgrade ai-codeindex` automatically updates hook behavior (no need to reinstall hooks)
-
-**Features**:
-- Analyzes commit changes (`codeindex affected`)
-- Runs `codeindex scan` for affected directories (structural regeneration)
-- Creates follow-up commit with updates
-- Avoids infinite loops (skips doc-only commits)
-- No custom AI prompts — uses standard codeindex scan pipeline
-
-**Workflow**:
-```
-Code Change Commit
-    ↓
-Shell wrapper (loop guard + venv)
-    ↓
-codeindex hooks run post-commit  (Python)
-    ↓                            stderr → ~/.codeindex/hooks/post-commit.log
-    ↓
-codeindex affected --json → affected directories
-    ↓
-codeindex scan <dir> for each → structural README_AI.md update
-    ↓
-Auto-commit: "docs: auto-update README_AI.md for <hash>"
-```
-
-> **Note**: Post-commit hook only updates structural content. AI-generated
-> module descriptions (blockquotes) are not regenerated on every commit —
-> they describe module purpose which rarely changes. Run `codeindex scan-all`
-> (with `ai_command` configured) to refresh AI descriptions.
 
 ### Pre-push Hook
 
@@ -231,11 +193,11 @@ $ codeindex hooks install --all
 Installing Git Hooks
 
   ✓ pre-commit: installed
-  ✓ post-commit: installed
+  ✓ pre-push: installed
 
 Backups created:
   pre-commit → pre-commit.backup
-  post-commit → post-commit.backup
+  pre-push → pre-push.backup
 ```
 
 Backup location: `.git/hooks/<hook-name>.backup`
@@ -250,11 +212,11 @@ $ codeindex hooks uninstall --all
 Uninstalling Git Hooks
 
   ✓ pre-commit: uninstalled
-  ✓ post-commit: uninstalled
+  ✓ pre-push: uninstalled
 
 Backups restored:
   pre-commit ← pre-commit.backup
-  post-commit ← post-commit.backup
+  pre-push ← pre-push.backup
 ```
 
 ### Manual Backup Management
@@ -276,99 +238,9 @@ rm .git/hooks/*.backup
 
 ## ⚙️ Configuration
 
-### Post-Commit Hook Configuration
-
-**NEW in v0.7.0** (Story 6): Post-commit hooks are now fully configurable via `.codeindex.yaml`.
-
-Add to your `.codeindex.yaml`:
-
-```yaml
-hooks:
-  post_commit:
-    mode: auto             # auto | disabled | async | sync | prompt
-    max_dirs_sync: 2       # Auto mode threshold (≤2 = sync, >2 = async)
-    enabled: true          # Master switch
-    log_file: ~/.codeindex/hooks/post-commit.log
-```
-
-#### Mode Options
-
-| Mode | Behavior | Use Case |
-|------|----------|----------|
-| `auto` **(default)** | Smart detection: ≤2 dirs = sync, >2 = async | Balanced UX (non-blocking for large projects) |
-| `disabled` | Completely disabled | Temporary disable or CI environments |
-| `async` | Always run in background (non-blocking) | Large projects, fast commits |
-| `sync` | Always run synchronously (blocking) | Small projects, immediate feedback |
-| `prompt` | Only show reminder, don't auto-execute | Manual control, batch updates |
-
-#### Examples
-
-**Disable post-commit hook**:
-```yaml
-hooks:
-  post_commit:
-    mode: disabled
-    enabled: false
-```
-
-**Always async (non-blocking)**:
-```yaml
-hooks:
-  post_commit:
-    mode: async
-    log_file: ~/.my-logs/post-commit.log
-```
-
-**Always sync (blocking)**:
-```yaml
-hooks:
-  post_commit:
-    mode: sync
-```
-
-**Prompt only (manual updates)**:
-```yaml
-hooks:
-  post_commit:
-    mode: prompt
-```
-
-**Custom threshold for auto mode**:
-```yaml
-hooks:
-  post_commit:
-    mode: auto
-    max_dirs_sync: 5  # ≤5 dirs = sync, >5 = async
-```
-
-#### Async Mode Output
-
-When async mode is active, you'll see:
-
-```bash
-⚡ Running in async mode (non-blocking)
-   3 directories will be updated in background
-   Log: ~/.codeindex/hooks/post-commit.log
-
-   To check progress: tail -f ~/.codeindex/hooks/post-commit.log
-   Or wait for completion: while [ -f ~/.codeindex/hooks/post-commit.lock ]; do sleep 1; done
-
-✓ You can continue working. Updates will commit automatically.
-```
-
-#### Prompt Mode Output
-
-When prompt mode is active, you'll see:
-
-```bash
-⚠️ README_AI.md updates available
-   3 directories need updating
-   Run: codeindex scan <affected-dirs>
-```
-
 ### Pre-Commit Configuration
 
-Pre-commit hooks are not yet configurable via `.codeindex.yaml`.
+Hooks are not configurable via `.codeindex.yaml`.
 
 To disable lint check, manually edit `.git/hooks/pre-commit` and comment out the L1 section.
 
@@ -396,12 +268,18 @@ git commit -m "feat: add new feature"
    🔍 Running pre-commit checks...
    ✓ All checks passed!
 
-# 5. Post-commit runs (updates README_AI.md)
-   📝 Post-commit: Analyzing changes...
-   ✓ README_AI.md updated
-
-# 6. Push
+# 5. Push
 git push
+```
+
+### Refreshing README_AI
+
+README_AI.md no longer refreshes per-commit. Refresh when you want fresh
+navigation (before a release, after a big refactor, or whenever):
+
+```bash
+codeindex scan-all          # structural, seconds
+codeindex scan-all --ai     # + AI enrichment (cached per directory)
 ```
 
 ### CI/CD Integration
@@ -483,24 +361,6 @@ pip install ruff
 brew install ruff  # macOS
 ```
 
-### Post-commit Creates Infinite Loop
-
-**Problem**: Commits keep triggering more commits
-
-**Protection Built-in**: Post-commit hook automatically skips if commit only contains documentation files.
-
-**Manual Fix** (if needed):
-```bash
-# Temporarily disable post-commit
-mv .git/hooks/post-commit .git/hooks/post-commit.disabled
-
-# Make commits
-git commit -m "fix"
-
-# Re-enable
-mv .git/hooks/post-commit.disabled .git/hooks/post-commit
-```
-
 ---
 
 ## 🎓 Advanced Usage
@@ -522,37 +382,6 @@ fi
 ```
 
 **Note**: Manual edits will be lost if you reinstall with `--force`.
-
-### Hook Architecture and Upgrades
-
-**Thin wrapper pattern** (v0.23.0+):
-
-Post-commit hooks use a thin shell wrapper that delegates to Python:
-
-```
-.git/hooks/post-commit (shell, ~30 lines)
-    → loop guard (skip doc-only commits)
-    → activate venv
-    → codeindex hooks run post-commit  ← Python logic
-
-codeindex hooks run post-commit (Python, in cli_hooks.py)
-    → codeindex affected --json
-    → codeindex scan <dir> for each affected dir
-    → git add + git commit
-```
-
-**Upgrade behavior**:
-- `pipx upgrade ai-codeindex` → Python logic auto-updates, no hook reinstall needed
-- `codeindex hooks install --force` → only needed if shell wrapper itself changes (rare)
-- Hooks are marked with `# codeindex-managed hook` comment
-
-**To update hooks to latest version**:
-
-```bash
-# Usually not needed (Python logic auto-updates via pip)
-# Only if instructed by release notes:
-codeindex hooks install --all --force
-```
 
 ### Multiple Projects
 
@@ -584,10 +413,10 @@ A: codeindex hooks are independent. You can use both:
 - codeindex hooks: Runs after
 
 **Q: How do I share hooks with my team?**
-A: Each developer runs `codeindex hooks install --all` after cloning the repo. Alternatively, `codeindex init` offers to install hooks during interactive setup.
+A: Each developer runs `codeindex hooks install --all` after cloning the repo.
 
 **Q: Can I disable specific checks?**
-A: Pre-commit checks require manual hook editing. Post-commit hooks are fully configurable via `.codeindex.yaml` (see Configuration section above) with 5 modes: `auto`, `disabled`, `async`, `sync`, `prompt`.
+A: Hook checks require manual hook editing (see Configuration above).
 
 **Q: What happens if I switch branches?**
 A: Hooks persist across branches (stored in `.git/hooks/`, not tracked by Git).
@@ -596,17 +425,10 @@ A: Hooks persist across branches (stored in `.git/hooks/`, not tracked by Git).
 
 ## 🎉 Benefits
 
-**Before Git Hooks Integration**:
-- ❌ Manual lint checks before commit
-- ❌ Debug code slips into commits
-- ❌ README_AI.md becomes outdated
-- ❌ Inconsistent code quality
-
-**After Git Hooks Integration**:
 - ✅ Automatic lint checks (catch errors early)
 - ✅ Debug code forbidden (cleaner commits)
-- ✅ README_AI.md always up-to-date
 - ✅ Consistent code quality across team
+- ✅ README_AI refresh at meaningful moments, not per-commit noise
 
 ---
 
@@ -615,8 +437,3 @@ A: Hooks persist across branches (stored in `.git/hooks/`, not tracked by Git).
 - [Configuration Guide](configuration.md)
 - [Getting Started Guide](getting-started.md)
 - [Advanced Usage](advanced-usage.md)
-
----
-
-**Last Updated**: 2026-03-12
-**Status**: Production Ready (v0.23.0)

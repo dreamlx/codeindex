@@ -43,8 +43,6 @@ class WizardResult:
     detected_frameworks: List[str] = field(default_factory=list)
     parallel_workers: int = 8
     batch_size: int = 50
-    enable_hooks: bool = False
-    hooks_mode: str = "auto"
     create_codeindex_md: bool = False
     inject_claude_md: bool = True
     configure_ai: bool = False
@@ -53,7 +51,6 @@ class WizardResult:
     config_created: bool = False
     codeindex_md_created: bool = False
     claude_md_injected: bool = False
-    hooks_installed: bool = False
 
 
 # ============================================================================
@@ -583,17 +580,6 @@ def generate_config_yaml(result: WizardResult, project_dir: Path) -> str:
         "",
     ])
 
-    # Git Hooks configuration
-    yaml_lines.extend([
-        "# Git Hooks configuration",
-        "hooks:",
-        "  post_commit:",
-        f"    enabled: {str(result.enable_hooks).lower()}",
-    ])
-    if result.enable_hooks:
-        yaml_lines.append(f"    mode: {result.hooks_mode}")
-    yaml_lines.append("")
-
     yaml_lines.append("output_file: README_AI.md")
 
     return "\n".join(yaml_lines)
@@ -657,26 +643,14 @@ Configuration is in `.codeindex.yaml`. Key parameters:
 
 ---
 
-## 🔄 Auto-Update Hooks
-
-Keep README_AI.md in sync with code changes automatically:
+## 🔄 Keeping README_AI Fresh
 
 ```bash
-# Install post-commit hook
-codeindex hooks install post-commit
+# Re-run the scan whenever you want fresh navigation indexes
+codeindex scan-all
 
-# Check hook status
+# Check hook status (pre-commit lint / pre-push tests)
 codeindex hooks status
-```
-
-When installed, README_AI.md files auto-update on every commit.
-Configure behavior in `.codeindex.yaml`:
-
-```yaml
-hooks:
-  post_commit:
-    enabled: true
-    mode: auto  # auto | sync | async | prompt | disabled
 ```
 
 ---

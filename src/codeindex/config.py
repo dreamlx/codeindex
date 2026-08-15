@@ -163,14 +163,6 @@ indexing:
     root: overview        # 根目录：只有概述
     module: navigation    # 模块目录：导航 + 关键类
     leaf: detailed        # 叶子目录：完整信息
-
-# Git Hooks configuration (Story 6)
-hooks:
-  post_commit:
-    mode: auto            # auto | disabled | async | sync | prompt
-    max_dirs_sync: 2      # Auto mode: ≤2 dirs = sync, >2 = async
-    enabled: true         # Master switch
-    log_file: ~/.codeindex/hooks/post-commit.log
 """
 
 
@@ -440,61 +432,6 @@ class DocstringConfig:
 
 
 @dataclass
-class PostCommitConfig:
-    """Configuration for post-commit Git hook.
-
-    Modes:
-    - auto: Smart detection (≤2 dirs = sync, >2 = async) [default]
-    - disabled: Completely disabled
-    - async: Always run in background (non-blocking)
-    - sync: Always run synchronously (blocking)
-    - prompt: Only show reminder, don't auto-execute
-    """
-
-    mode: str = "auto"  # auto | disabled | async | sync | prompt
-    enabled: bool = True  # Master switch
-    max_dirs_sync: int = 2  # Threshold for auto mode
-    log_file: str = "~/.codeindex/hooks/post-commit.log"
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "PostCommitConfig":
-        """Create from config dict."""
-        if not data:
-            return cls()
-
-        mode = data.get("mode", "auto")
-        valid_modes = ("auto", "disabled", "async", "sync", "prompt")
-        if mode not in valid_modes:
-            raise ValueError(
-                f"Invalid post_commit mode: {mode}. Must be one of {valid_modes}"
-            )
-
-        return cls(
-            mode=mode,
-            enabled=data.get("enabled", True),
-            max_dirs_sync=data.get("max_dirs_sync", 2),
-            log_file=data.get("log_file", "~/.codeindex/hooks/post-commit.log"),
-        )
-
-
-@dataclass
-class HooksConfig:
-    """Configuration for Git hooks (Story 6)."""
-
-    post_commit: PostCommitConfig = field(default_factory=PostCommitConfig)
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "HooksConfig":
-        """Create from config dict."""
-        if not data:
-            return cls()
-
-        return cls(
-            post_commit=PostCommitConfig.from_dict(data.get("post_commit", {}))
-        )
-
-
-@dataclass
 class Config:
     """Configuration for codeindex."""
 
@@ -510,7 +447,6 @@ class Config:
     incremental: IncrementalConfig = field(default_factory=IncrementalConfig)
     indexing: IndexingConfig = field(default_factory=IndexingConfig)
     docstrings: DocstringConfig = field(default_factory=DocstringConfig)  # Epic 9
-    hooks: HooksConfig = field(default_factory=HooksConfig)  # Story 6
     parallel_workers: int = DEFAULT_PARALLEL_WORKERS
     batch_size: int = DEFAULT_BATCH_SIZE
 
@@ -544,7 +480,6 @@ class Config:
             docstrings=DocstringConfig.from_dict(
                 data.get("docstrings", {}), global_ai_command=ai_command
             ),
-            hooks=HooksConfig.from_dict(data.get("hooks", {})),
             parallel_workers=data.get("parallel_workers", DEFAULT_PARALLEL_WORKERS),
             batch_size=data.get("batch_size", DEFAULT_BATCH_SIZE),
         )

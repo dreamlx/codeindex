@@ -32,7 +32,6 @@ def wizard_context():
         "user_choices": {},
         "config_created": False,
         "codeindex_md_created": False,
-        "hooks_installed": False,
         "start_time": None,
         "end_time": None,
     }
@@ -209,12 +208,6 @@ def accept_default_includes(wizard_context):
     wizard_context["user_choices"]["accept_defaults"] = True
 
 
-@when("I disable Git Hooks")
-def disable_git_hooks(wizard_context):
-    """Disable Git Hooks installation."""
-    wizard_context["user_choices"]["enable_hooks"] = False
-
-
 @when(parsers.parse("I select {lang1} and {lang2} as languages"))
 def select_multiple_languages(wizard_context, lang1, lang2):
     """Select multiple languages."""
@@ -228,13 +221,6 @@ def select_multiple_languages(wizard_context, lang1, lang2):
 def accept_default_patterns(wizard_context):
     """Accept all default patterns."""
     wizard_context["user_choices"]["accept_patterns"] = True
-
-
-@when(parsers.parse("I enable Git Hooks with {mode} mode"))
-def enable_git_hooks(wizard_context, mode):
-    """Enable Git Hooks with specified mode."""
-    wizard_context["user_choices"]["enable_hooks"] = True
-    wizard_context["user_choices"]["hooks_mode"] = mode
 
 
 @when("I request CODEINDEX.md creation")
@@ -265,12 +251,6 @@ def select_ai_tool(wizard_context, tool):
 def skip_codeindex_md(wizard_context):
     """Skip CODEINDEX.md creation."""
     wizard_context["user_choices"]["create_codeindex_md"] = False
-
-
-@when("I skip Git Hooks installation")
-def skip_git_hooks(wizard_context):
-    """Skip Git Hooks installation."""
-    wizard_context["user_choices"]["enable_hooks"] = False
 
 
 @when("I make all default choices")
@@ -377,10 +357,6 @@ def config_created(wizard_context):
         choices = wizard_context["user_choices"]
         if "languages" in choices:
             result.detected_languages = choices["languages"]
-        if "enable_hooks" in choices:
-            result.enable_hooks = choices["enable_hooks"]
-        if "hooks_mode" in choices:
-            result.hooks_mode = choices["hooks_mode"]
         if "configure_ai" in choices:
             result.configure_ai = choices["configure_ai"]
         if "ai_command" in choices:
@@ -418,38 +394,6 @@ def config_contains_includes(wizard_context):
     assert len(config.include) > 0
 
 
-@then("hooks.post_commit.enabled should be false")
-def hooks_disabled(wizard_context):
-    """Verify hooks are disabled in config."""
-    from codeindex.init_wizard import generate_config_yaml
-
-    project_dir = wizard_context["project_dir"]
-    config_file = project_dir / ".codeindex.yaml"
-
-    # Generate config if not exists
-    if not config_file.exists():
-        result = wizard_context.get("wizard_result")
-        if result and wizard_context.get("user_choices"):
-            choices = wizard_context["user_choices"]
-            if "enable_hooks" in choices:
-                result.enable_hooks = choices["enable_hooks"]
-
-        if result:
-            yaml_content = generate_config_yaml(result, project_dir)
-            config_file.write_text(yaml_content)
-
-    config = Config.load(config_file)
-    assert config.hooks.post_commit.enabled is False
-
-
-@then("hooks.post_commit.mode should be auto")
-def hooks_mode_auto(wizard_context):
-    """Verify hooks mode is set to auto."""
-    project_dir = wizard_context["project_dir"]
-    config = Config.load(project_dir / ".codeindex.yaml")
-    assert config.hooks.post_commit.mode == "auto"
-
-
 @then(".codeindex.yaml should be created with both languages")
 def config_with_both_languages(wizard_context):
     """Verify config has both languages."""
@@ -464,10 +408,6 @@ def config_with_both_languages(wizard_context):
         choices = wizard_context["user_choices"]
         if "languages" in choices:
             result.detected_languages = choices["languages"]
-        if "enable_hooks" in choices:
-            result.enable_hooks = choices["enable_hooks"]
-        if "hooks_mode" in choices:
-            result.hooks_mode = choices["hooks_mode"]
         if "create_codeindex_md" in choices:
             result.create_codeindex_md = choices["create_codeindex_md"]
 
@@ -598,37 +538,6 @@ def codeindex_md_not_created(wizard_context):
     project_dir = wizard_context["project_dir"]
     codeindex_file = project_dir / "CODEINDEX.md"
     assert not codeindex_file.exists()
-
-
-@then("Git Hooks should be installed")
-def git_hooks_installed(wizard_context):
-    """Verify Git Hooks were installed."""
-    # This will check for .git/hooks/post-commit existence
-    project_dir = wizard_context["project_dir"]
-    hooks_dir = project_dir / ".git" / "hooks"
-    if hooks_dir.exists():
-        post_commit = hooks_dir / "post-commit"
-        assert post_commit.exists()
-    wizard_context["hooks_installed"] = True
-
-
-@then(parsers.parse("post-commit hook should be configured with mode {mode}"))
-def post_commit_mode(wizard_context, mode):
-    """Verify post-commit hook mode."""
-    project_dir = wizard_context["project_dir"]
-    config = Config.load(project_dir / ".codeindex.yaml")
-    assert config.hooks.post_commit.mode == mode
-
-
-@then("Git Hooks should not be installed")
-def git_hooks_not_installed(wizard_context):
-    """Verify Git Hooks were not installed."""
-    project_dir = wizard_context["project_dir"]
-    hooks_dir = project_dir / ".git" / "hooks"
-    if hooks_dir.exists():
-        post_commit = hooks_dir / "post-commit"
-        # Either doesn't exist or is not codeindex hook
-        assert not post_commit.exists() or "codeindex" not in post_commit.read_text()
 
 
 @then("the wizard should complete")

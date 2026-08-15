@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed (BREAKING)
+
+- **post-commit hook removed from the product** (GH #167). Refresh policy
+  belongs to the orchestrator/consumer, not the generator: `loomgraph index`
+  already re-exports on every run for the graph path, and README_AI refresh
+  is release-time or manual (`codeindex scan-all`). Removed with it:
+  `hooks install post-commit`, the hidden `hooks run`, `hooks rerun`, the
+  `hooks.post_commit` config section (modes auto/disabled/async/sync/prompt),
+  and the GH #87 install-time enabled-warning. **Migration**: if you had the
+  hook installed, run `codeindex hooks uninstall post-commit` (still
+  accepted for cleanup); refresh indexes with `codeindex scan-all` whenever
+  you want them fresh. The codeindex repo itself refreshes at release time
+  (`scripts/release.sh` step 6.5, GH #166).
+
 ### Changed
 
 - **README_AI refresh moved from per-commit to release-time** (GH #166).

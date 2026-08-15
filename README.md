@@ -42,7 +42,6 @@ Full data incl. the failure cases: **[2026-05 benchmark](docs/benchmark/2026-05-
 - **Two-phase documentation pipeline** (v0.23.0) — Phase 1: structural README_AI.md via SmartWriter; Phase 2: AI generates one-line functional descriptions per module. AI agents can browse README_AI.md hierarchy and find the right module **without grep**.
 - **Smart indexing** — Tiered documentation (overview → navigation → detailed) optimized for AI agents, ≤10KB per file (navigation index, not a tech doc — see [ADR-005](docs/architecture/adr/005-navigation-disclaimer-and-readme-size-cap.md))
 - **Auto-AI enrichment** — When an AI backend is configured (`ai:` section per [ADR-008](docs/architecture/adr/008-direct-http-api-ai-default.md), or `ai_command` CLI escape hatch), `scan-all` automatically enables AI module descriptions. Use `--no-ai` to opt out
-- **Auto-update hooks** — Optional post-commit hook (`codeindex hooks install`) regenerates README_AI.md for changed directories. Thin wrapper pattern: `pipx upgrade ai-codeindex` auto-updates hook logic
 
 ### Parsing & Analysis
 
@@ -58,7 +57,7 @@ Full data incl. the failure cases: **[2026-05 benchmark](docs/benchmark/2026-05-
 
 - **Adaptive symbol extraction** — Dynamic 5–150 symbols per file based on size
 - **CLAUDE.md injection** — `codeindex init` injects a codeindex section into your **project's** `CLAUDE.md` (never `~/.claude`)
-- **Claude Code plugin** — `codeindex:arch` / `:index` / `:hooks` / `:update-guide` skills via [dreamlx/codeindex-claude](https://github.com/dreamlx/codeindex-claude)
+- **Claude Code plugin** — `codeindex:arch` / `:index` / `:update-guide` skills via [dreamlx/codeindex-claude](https://github.com/dreamlx/codeindex-claude)
 - **Template-based test generation** — YAML + Jinja2 for rapid language support (88–91% time savings)
 - **Parallel scanning** — Concurrent directory processing with configurable workers
 
@@ -124,7 +123,6 @@ codeindex, LoomGraph has nothing to index. See [LoomGraph Integration Guide](doc
 # Personal developer workflow
 codeindex init                    # Setup CLAUDE.md integration
 codeindex scan-all                # Structural + AI descriptions (auto)
-codeindex hooks install post-commit  # Auto-update on commit
 # Claude Code reads README_AI.md → understands module purpose → uses Serena for details
 ```
 
@@ -141,7 +139,7 @@ pipx install ai-codeindex
 ```
 
 > **Claude Code users** — also install the companion plugin for skills
-> (`codeindex:arch` / `:index` / `:hooks` / `:update-guide`):
+> (`codeindex:arch` / `:index` / `:update-guide`):
 > ```
 > /plugin marketplace add dreamlx/codeindex-claude
 > /plugin install codeindex@codeindex-claude
@@ -255,7 +253,6 @@ codeindex affected --since HEAD~5
 | `codeindex parse <file>` | Parse single file to JSON | [LoomGraph Integration](docs/guides/loomgraph-integration.md) |
 | `codeindex tech-debt ./src` | Code quality analysis (debt + test smells) | Enhanced in v0.22.0 |
 | `codeindex debt-scan ./src` | Alias for tech-debt | Backward compatibility |
-| `codeindex hooks install` | Git hooks for auto-update | [Git Hooks Guide](docs/guides/git-hooks-integration.md) |
 | `codeindex doctor` | Health/sync check (CLI, parsers, CLAUDE.md, plugin) | Read-only diagnostic |
 | `codeindex config explain <param>` | Parameter help | [Configuration Guide](docs/guides/configuration.md) |
 
@@ -274,7 +271,6 @@ codeindex affected --since HEAD~5
 |-------|--------------|
 | `codeindex:arch` | Answer architecture / "where is X" questions from `README_AI.md` |
 | `codeindex:index` | Walk you through `codeindex init` → `scan-all` |
-| `codeindex:hooks` | Set up the auto-update post-commit hook |
 | `codeindex:update-guide` | Refresh the codeindex section in your project's `CLAUDE.md` |
 
 `codeindex init` also injects a codeindex section into your project's `CLAUDE.md`

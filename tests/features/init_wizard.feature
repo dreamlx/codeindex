@@ -57,20 +57,16 @@ Feature: Interactive Setup Wizard
     When I run the interactive wizard
     And I select Python as language
     And I accept default include patterns
-    And I disable Git Hooks
     Then a .codeindex.yaml should be created
     And it should contain language: python
     And it should contain suggested include patterns
-    And hooks.post_commit.enabled should be false
 
   Scenario: Create .codeindex.yaml with all features enabled
     When I run the interactive wizard
     And I select Python and PHP as languages
     And I accept default patterns
-    And I enable Git Hooks with auto mode
     And I request CODEINDEX.md creation
     Then .codeindex.yaml should be created with both languages
-    And hooks.post_commit.mode should be auto
     And CODEINDEX.md should be created
 
   # ============================================================================
@@ -122,22 +118,6 @@ Feature: Interactive Setup Wizard
     When I run the interactive wizard
     And I skip CODEINDEX.md creation
     Then CODEINDEX.md should not be created
-
-  # ============================================================================
-  # Scenario Group 7: Git Hooks Installation
-  # ============================================================================
-
-  Scenario: Install Git Hooks with auto mode
-    When I run the interactive wizard
-    And I enable Git Hooks with auto mode
-    Then Git Hooks should be installed
-    And post-commit hook should be configured with mode auto
-
-  Scenario: Skip Git Hooks installation
-    When I run the interactive wizard
-    And I skip Git Hooks installation
-    Then Git Hooks should not be installed
-    And hooks.post_commit.enabled should be false
 
   # ============================================================================
   # Scenario Group 8: Wizard Success Metrics

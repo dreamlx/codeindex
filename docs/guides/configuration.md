@@ -445,9 +445,8 @@ Optional improvements available:
    - AI-powered multi-language documentation normalization
    - Add `docstrings` section
 
-4. **Git Hooks Configuration** (v0.7.0)
-   - Configurable post-commit behavior (5 modes)
-   - Add `hooks:` section or use CLI: `codeindex hooks install --all`
+4. **Git Hooks Configuration** (v0.7.0; post-commit modes removed in GH #167)
+   - Install via CLI: `codeindex hooks install --all`
 
 5. **Config Explain** (v0.14.0)
    - Interactive help for any config parameter
@@ -501,7 +500,7 @@ tech_debt:
 ```bash
 # Explain any config parameter (v0.14.0+)
 codeindex config explain parallel_workers
-codeindex config explain hooks.post_commit.mode
+codeindex config explain output_file
 
 # Future: auto-upgrade
 codeindex config upgrade    # Planned

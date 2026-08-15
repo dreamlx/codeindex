@@ -54,13 +54,6 @@ Feature: Enhanced Help System
     And the output should contain "Default: 50"
     And the output should contain "Trade-off"
 
-  Scenario: Explain hooks.post_commit.mode parameter
-    When I run "codeindex config explain hooks.post_commit.mode"
-    Then the output should contain "auto"
-    And the output should contain "disabled"
-    And the output should contain "async"
-    And the output should contain "sync"
-
   Scenario: Explain non-existent parameter
     When I run "codeindex config explain nonexistent"
     Then the output should contain "Unknown parameter"

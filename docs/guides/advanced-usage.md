@@ -404,12 +404,11 @@ codeindex parse myfile.py | jq .
 Automatically regenerate indexes on commit using codeindex's built-in hooks:
 
 ```bash
-# Install all hooks (pre-commit + post-commit)
+# Install all hooks (pre-commit + pre-push)
 codeindex hooks install --all
 
 # Or install individually
 codeindex hooks install pre-commit
-codeindex hooks install post-commit
 
 # Check hook status
 codeindex hooks status

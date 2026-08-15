@@ -91,31 +91,6 @@ CONFIG_PARAMS: Dict[str, Dict[str, str]] = {
   - "**/node_modules/**"
   - "**/.git/**\"""",
     },
-    "hooks.post_commit.enabled": {
-        "name": "hooks.post_commit.enabled",
-        "type": "bool",
-        "default": "false",
-        "description": "Enable/disable Git post-commit hook",
-        "example": """hooks:
-  post_commit:
-    enabled: true""",
-    },
-    "hooks.post_commit.mode": {
-        "name": "hooks.post_commit.mode",
-        "type": "string",
-        "default": "auto",
-        "options": "auto, disabled, async, sync, prompt",
-        "description": "Git Hooks execution mode",
-        "mode_descriptions": """
-  • auto: Smart mode based on change size
-  • disabled: Skip all updates
-  • async: Background updates (non-blocking)
-  • sync: Wait for updates to complete
-  • prompt: Ask user before running""",
-        "example": """hooks:
-  post_commit:
-    mode: auto""",
-    },
     "output_file": {
         "name": "output_file",
         "type": "string",
@@ -146,10 +121,6 @@ def show_full_config_help() -> None:
     _show_param_section("languages")
     _show_param_section("include")
     _show_param_section("exclude")
-
-    console.print("\n[bold]Git Hooks[/bold] 🔗\n")
-    _show_param_section("hooks.post_commit.enabled")
-    _show_param_section("hooks.post_commit.mode")
 
     console.print("\n[bold]Output[/bold] 📝\n")
     _show_param_section("output_file")
@@ -246,10 +217,6 @@ def explain_parameter(
     if "trade_offs" in param:
         console.print(f"\n[bold]Trade-off:[/bold]{param['trade_offs']}")
 
-    # Show mode descriptions (for hooks.post_commit.mode)
-    if "mode_descriptions" in param:
-        console.print(f"\n[bold]Modes:[/bold]{param['mode_descriptions']}")
-
     # Show examples
     if "example" in param:
         console.print(f"\n[bold]Example:[/bold]\n```yaml\n{param['example']}\n```")
@@ -281,7 +248,7 @@ def get_current_config_value(param_name: str, config_path: Optional[str] = None)
         else:
             config = Config.load()
 
-        # Navigate nested attributes (e.g., hooks.post_commit.mode)
+        # Navigate nested attributes (e.g. adaptive_symbols.enabled)
         parts = param_name.split(".")
         value = config
 
