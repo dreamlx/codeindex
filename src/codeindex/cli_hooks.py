@@ -636,7 +636,10 @@ def status():
         for name in manager.RETIRED_HOOKS:
             hook_path = manager.hooks_dir / name
             if hook_path.exists():
-                content = hook_path.read_text()
+                try:
+                    content = hook_path.read_text()
+                except OSError:
+                    continue  # unreadable — status is informational, don't crash
                 if manager.CODEINDEX_MARKER in content:
                     console.print(
                         f"[yellow]⚠[/yellow] {name}: leftover from a removed "

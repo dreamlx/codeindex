@@ -353,3 +353,18 @@ class TestRetiredHookLeftover:
 
         assert result.exit_code == 0
         assert not (repo / ".git" / "hooks" / "post-commit").exists()
+
+    def test_status_survives_unreadable_leftover(self, tmp_path):
+        """codex review, #167 follow-up: an unreadable leftover must not
+        crash status (it is informational output)."""
+        repo = self._make_repo(tmp_path)
+        self._write_leftover(repo)
+
+        from unittest.mock import patch as mock_patch
+
+        with mock_patch(
+            "pathlib.Path.read_text", side_effect=PermissionError("denied")
+        ):
+            result = self._run_cli(repo, ["status"])
+
+        assert result.exit_code == 0

@@ -163,6 +163,12 @@ def get_parser_install_guidance(languages: list[str]) -> dict:
 
     return result
 
+
+# Directories never worth walking: dependencies / caches / venvs. Shared by
+# detect_languages and _has_js_test_files so one list cannot drift (GH #165).
+_WALK_SKIP_DIRS = {"node_modules", ".git", "__pycache__", ".venv", "venv", ".tox", ".eggs"}
+
+
 def detect_languages(project_dir: Path, max_scan_files: int = 1000) -> List[str]:
     """Auto-detect programming languages in the project.
 
@@ -177,7 +183,7 @@ def detect_languages(project_dir: Path, max_scan_files: int = 1000) -> List[str]
     scanned_files = 0
 
     # Common directories to skip
-    skip_dirs = {"node_modules", ".git", "__pycache__", ".venv", "venv", ".tox", ".eggs"}
+    skip_dirs = _WALK_SKIP_DIRS
 
     for root, dirs, files in os.walk(project_dir):
         # Remove skip directories from walk
@@ -270,10 +276,14 @@ def infer_include_patterns(project_dir: Path) -> List[str]:
 
 
 def _has_js_test_files(project_dir: Path) -> bool:
-    """True if the project contains JS/TS co-located test files or a __tests__ dir."""
+    """True if the project contains JS/TS co-located test files or a __tests__ dir.
+
+    Uncapped walk (early-exit on first hit) is fine here: ``codeindex init``
+    is a one-shot interactive command and a later scan walks the tree anyway.
+    """
     suffixes = (".spec.ts", ".spec.tsx", ".spec.js", ".test.ts", ".test.tsx", ".test.js")
     for root, dirs, files in os.walk(project_dir):
-        dirs[:] = [d for d in dirs if d not in ("node_modules", ".git", "__pycache__")]
+        dirs[:] = [d for d in dirs if d not in _WALK_SKIP_DIRS]
         if "__tests__" in dirs:
             return True
         if any(f.endswith(suffixes) for f in files):

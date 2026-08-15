@@ -10,7 +10,6 @@
 
 **codeindex** is a code indexing tool that generates AI-friendly documentation. It provides **Git Hooks management** for automating:
 - Pre-commit: Code quality checks (lint + debug code detection)
-- Post-commit: Automatic README_AI.md updates
 
 **Your task**: Update the user's project CLAUDE.md or AGENTS.md so future AI sessions understand how Git Hooks work.
 
@@ -75,37 +74,12 @@ ruff check --fix src/
 git commit --no-verify -m "urgent fix"
 ```
 
-#### Post-commit Hook
-
-Runs **after every commit** to keep documentation updated:
-
-1. Analyzes commit changes automatically
-2. Updates `README_AI.md` for affected directories
-3. Creates follow-up commit: `docs: auto-update README_AI.md for <hash>`
-4. Prevents infinite loops (skips if only doc files changed)
-
-**Expected behavior**:
-```bash
-# You commit
-git commit -m "feat: add new feature"
-# Pre-commit checks...
-# ✓ All checks passed!
-
-# Post-commit runs automatically
-# 📝 Post-commit: Analyzing changes...
-# → Updating src/README_AI.md
-# ✓ Auto-commit created
-```
-
-**This is normal!** The auto-commit is expected behavior.
-
 ### For AI Code: Important Behaviors
 
 **When committing code**:
 1. **Hooks run automatically** - No action needed
 2. **If lint errors**: Fix errors before retrying commit
-3. **Post-commit auto-commits**: Expected, don't be alarmed
-4. **Bypass hooks**: Only use `--no-verify` in emergencies
+3. **Bypass hooks**: Only use `--no-verify` in emergencies
 
 **Typical commit flow**:
 ```bash
@@ -113,8 +87,6 @@ git add src/myfile.py
 git commit -m "feat: add feature"
 # → Pre-commit runs (lint + debug check)
 # → If passed: commit succeeds
-# → Post-commit runs (doc update)
-# → May create auto-commit
 ```
 
 **Handling failures**:
@@ -224,19 +196,6 @@ Hooks are installed to `.git/hooks/`:
 - `0` - Pass, commit proceeds
 - `1` - Fail, commit blocked
 
-### Post-commit: Auto Documentation
-
-**Runs**: After commit succeeds
-**Process**:
-1. Analyze commit: `codeindex affected --json`
-2. Get affected directories
-3. Update README_AI.md for each
-4. Create follow-up commit
-
-**Loop Prevention**:
-- Checks if commit only touched doc files
-- Skips if only `README_AI.md` or `PROJECT_INDEX.md` changed
-
 ---
 
 ## 💡 Common Scenarios
@@ -254,11 +213,7 @@ git commit -m "feat: add feature"
 # ✓ Lint passed
 # ✓ No debug code
 
-# Post-commit runs
-# → Updates src/README_AI.md
-# → Creates auto-commit
-
-# Result: 2 commits (original + auto-doc)
+# Result: commit succeeds, docs stay clean
 ```
 
 ### Scenario 2: Lint Errors
@@ -300,20 +255,6 @@ git add src/
 # Retry
 git commit -m "feat: add feature"
 # ✓ Success
-```
-
-### Scenario 4: Doc-Only Commit
-
-```bash
-# Only update docs
-vim docs/guide.md
-git commit -m "docs: update guide"
-
-# Pre-commit runs (no Python files, skipped)
-# Post-commit runs
-# ✓ Changes below threshold, skipping update
-
-# Result: 1 commit (no auto-doc needed)
 ```
 
 ---
