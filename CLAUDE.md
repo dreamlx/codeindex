@@ -203,8 +203,10 @@ Reference: `src/codeindex/extractors/thinkphp.py`
 ### Git Hooks
 
 - pre-commit: lint + debug checks
-- post-commit: auto README updates
 - pre-push: test validation
+- post-commit: **not installed in this repo** (#166) — README_AI refresh is
+  release-time, not per-commit; `scripts/release.sh` step 6.5 runs
+  `scan-all` + `claude-md update` between version bump commit and tag
 
 Management: `codeindex hooks install/uninstall/status`
 Guide: `docs/guides/git-hooks-integration.md`

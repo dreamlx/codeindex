@@ -67,6 +67,25 @@ else
     pass "git tag v$VERSION does not yet exist (good)"
 fi
 
+# ── 1b. README_AI release-time refresh (#166) ─────────────────────
+section "1b. README_AI refresh freshness"
+
+# The CLAUDE.md codeindex section is stamped with the tool version at refresh
+# time (claude-md update), so it must already carry this version — external
+# truth that a refresh happened after the version bump, before the tag.
+if grep -q "(v$VERSION) for AI-friendly" CLAUDE.md; then
+    pass "CLAUDE.md codeindex section stamped v$VERSION"
+else
+    fail "CLAUDE.md codeindex section not stamped v$VERSION — run 'codeindex scan-all && codeindex claude-md update' and commit before tagging"
+fi
+
+DIRTY_README=$(git status --porcelain -- '*README_AI.md' | wc -l | tr -d ' ')
+if [[ "$DIRTY_README" == "0" ]]; then
+    pass "no dirty README_AI.md files"
+else
+    fail "$DIRTY_README uncommitted README_AI.md file(s) — commit the refresh before tagging"
+fi
+
 # ── 2. Working tree state ─────────────────────────────────────────
 section "2. Working tree state"
 
