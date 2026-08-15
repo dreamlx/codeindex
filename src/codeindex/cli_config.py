@@ -79,7 +79,7 @@ def _print_post_init_message():
     console.print("  2. [cyan]codeindex scan-all[/cyan]        → Generate documentation indexes")
     console.print("  3. [cyan]codeindex status[/cyan]           → Check coverage")
     console.print("\n[dim]Optional:[/dim]")
-    console.print("  • [cyan]codeindex hooks install[/cyan]  → Auto-update README_AI.md on commit")
+    console.print("  • [cyan]codeindex hooks install[/cyan]  → Lint hooks (pre-commit / pre-push)")
     console.print(
         "  • [dim]Claude Code:[/dim] [cyan]/plugin install codeindex@codeindex-claude[/cyan]"
     )

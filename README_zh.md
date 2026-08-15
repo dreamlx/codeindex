@@ -42,7 +42,6 @@ codeindex 是一个**开源 CLI**，通过**两阶段流水线**把任意代码�
 - **两阶段文档流水线**（v0.23.0）——阶段 1：通过 SmartWriter 生成结构化 README_AI.md；阶段 2：AI 为每个模块生成一行式功能描述。AI agent 可以浏览 README_AI.md 层级结构并找到正确的模块，**无需 grep**。
 - **智能索引**——分层文档（概览 → 导航 → 详细），为 AI agent 优化，每个文件 ≤10KB（导航索引，而非技术文档——见 [ADR-005](docs/architecture/adr/005-navigation-disclaimer-and-readme-size-cap.md)）
 - **自动 AI 增强**——当配置了 `ai_command` 时，`scan-all` 会自动启用 AI 模块描述。使用 `--no-ai` 退出
-- **自动更新 hook**——可选的 post-commit hook（`codeindex hooks install`）为变更的目录重新生成 README_AI.md。薄包装模式：`pipx upgrade ai-codeindex` 自动更新 hook 逻辑
 
 ### 解析与分析
 
@@ -123,7 +122,6 @@ codeindex 是无状态的解析层；LoomGraph 是自包含的知识图谱（SQL
 # 个人开发者工作流
 codeindex init                    # 配置 CLAUDE.md 集成
 codeindex scan-all                # 结构化 + AI 描述（自动）
-codeindex hooks install post-commit  # 提交时自动更新
 # Claude Code 读取 README_AI.md → 理解模块用途 → 用 Serena 查细节
 ```
 
@@ -270,7 +268,6 @@ codeindex affected --since HEAD~5
 |-------|--------------|
 | `codeindex:arch` | 从 `README_AI.md` 回答架构 / "X 在哪里" 类问题 |
 | `codeindex:index` | 引导你完成 `codeindex init` → `scan-all` |
-| `codeindex:hooks` | 配置自动更新的 post-commit hook |
 | `codeindex:update-guide` | 刷新你项目 `CLAUDE.md` 中的 codeindex 章节 |
 
 `codeindex init` 还会把 codeindex 章节注入到你项目的 `CLAUDE.md`，

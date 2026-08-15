@@ -48,6 +48,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Post-commit removal swept the remaining active docs** (codex review of
+  #167): `codeindex init`'s final output no longer promises "Auto-update
+  README_AI.md on commit"; `README_zh.md` (feature bullet, workflow block,
+  plugin-skill table row — the English README was already clean),
+  `examples/ai-integration-guide.md` (10+ mentions incl. a whole
+  Post-commit section and doc-only scenario), and
+  `docs/development/team-workflow-guide.md` ("Three hooks" → two) no
+  longer advertise the removed workflow.
+- **`hooks status` survives an unreadable leftover hook** (codex review):
+  the leftover check's `read_text` now catches `OSError` instead of
+  crashing the informational status output.
+- **JS-test detection prunes venvs and shares the walk skip-set** (codex
+  review of #165): `_has_js_test_files` no longer walks `.venv`/`venv`/
+  `.tox`/`.eggs`, and the skip list is one shared constant with
+  `detect_languages` so the two walkers cannot drift.
 - **Leftover post-commit hooks surfaced** (GH #167 follow-up). A
   `.git/hooks/post-commit` installed by codeindex < 0.37 survives the
   upgrade silently — the dead wrapper's errors go to

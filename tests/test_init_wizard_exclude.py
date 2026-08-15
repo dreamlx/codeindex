@@ -51,3 +51,16 @@ def test_explain_exclude_lists_test_patterns() -> None:
 
     assert "**/*.spec.ts" in text
     assert "**/__tests__/**" in text
+
+
+def test_venv_spec_files_do_not_trigger_suggestion(tmp_path: Path) -> None:
+    """A spec file inside a venv is not the user's test — pruned like
+    detect_languages prunes venvs (codex review, GH #165 follow-up)."""
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "main.py").write_text("x = 1\n")
+    (tmp_path / ".venv").mkdir()
+    (tmp_path / ".venv" / "some-lib.spec.ts").write_text("describe('dep');\n")
+
+    excludes = infer_exclude_patterns(tmp_path)
+
+    assert not any(p in excludes for p in JS_TS_TEST_PATTERNS)

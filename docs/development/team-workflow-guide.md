@@ -152,7 +152,7 @@ They run in CI but are excluded from the fast loop to keep feedback tight.
 
 ## 5. Git Hooks: Automated QA on Every Commit
 
-Three hooks run automatically. You cannot commit or push without passing them.
+Two hooks run automatically. You cannot commit or push without passing them.
 
 ### pre-commit (runs on `git commit`)
 Checks **staged Python files only** — fast, targeted.
