@@ -1,7 +1,6 @@
 # CLAUDE.md
 
 **For**: Claude Code working with this repository
-**Version**: v0.25.0 (in progress)
 
 > **Distribution** (ADR-006): codeindex ships as two artifacts — the
 > `ai-codeindex` CLI (PyPI, `pipx install ai-codeindex`) and the
@@ -30,17 +29,6 @@
 2. Serena `find_symbol()` → Precise symbol location
 3. `/src/codeindex/README_AI.md` → Core module details
 4. Serena `find_referencing_symbols()` → Call relationships
-
-### Key Files
-
-| File | Purpose |
-|------|---------|
-| `README_AI.md` | AI-generated directory docs |
-| `PROJECT_SYMBOLS.md` | Global symbol index |
-| `.codeindex.yaml` | Scan configuration |
-| `CHANGELOG.md` | Version history |
-| `docs/planning/*.md` | Epic/Story design decisions |
-| `docs/architecture/design-philosophy.md` | Core design principles |
 
 ### Serena MCP Quick Reference
 
@@ -156,35 +144,7 @@ Data flow: `codeindex graph-export` → NDJSON → `loomgraph import-export` →
 > `codeindex scan → LoomGraph embed → LightRAG API → PostgreSQL` flow no longer
 > applies. The graph-export NDJSON contract is the sole seam between the two repos.
 
-### Core Pipeline
-
-```
-Directory → Scanner → [files] → Parser (tree-sitter) → [ParseResult]
-  → SmartWriter → Writer → Invoker (AI CLI) → README_AI.md
-```
-
-### Key Data Types
-
-- `ScanResult`: path, files, subdirs
-- `ParseResult`: path, symbols, imports, module_docstring, error
-- `Symbol`: name, kind, signature, docstring, line_start, line_end
-- `Import`: module, names, is_from
-- `Config`: Loaded from `.codeindex.yaml`
-
 ### Configuration
-
-```yaml
-version: 1
-ai_command: 'claude -p "{prompt}" --allowedTools "Read"'
-include: [src/]
-exclude: ["**/__pycache__/**"]
-languages: [python, php, java, typescript, javascript, swift, objc]
-output_file: README_AI.md
-
-symbols:
-  adaptive_symbols:
-    enabled: true
-```
 
 Full config: `examples/.codeindex.yaml` | Help: `codeindex config explain <param>`
 
