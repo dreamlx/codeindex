@@ -16,8 +16,10 @@ codeindex provides built-in Git Hooks management to automate:
 > it returned. README_AI refresh is now **release-time or manual**: run
 > `codeindex scan-all` whenever you want fresh indexes, or (in the codeindex
 > repo itself) let `scripts/release.sh` step 6.5 refresh before each tag.
-> **Migration**: `codeindex hooks uninstall post-commit` — the command still
-> accepts `post-commit` to clean up an existing install.
+> **Migration**: a leftover hook from an older install is silent (its errors
+> go to `~/.codeindex/hooks/post-commit.log`) but costs one Python startup
+> per commit — `codeindex hooks status` flags it, and
+> `codeindex hooks uninstall post-commit` (or `uninstall --all`) removes it.
 
 No manual hook creation needed - install with one command!
 
