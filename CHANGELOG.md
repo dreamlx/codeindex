@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-08-15
+
 ### Changed
 
 - **CLAUDE.md injection templates compressed, navigation contract hardened**
