@@ -230,10 +230,10 @@ Guide: `docs/guides/git-hooks-integration.md`
 5. **Commit to develop/master directly** → Use feature branches.
 6. **Forget venv** → Always `source .venv/bin/activate` first.
 
-<!-- codeindex:start v0.36.0 -->
+<!-- codeindex:start v0.37.0 -->
 ## codeindex
 
-This project uses [codeindex](https://github.com/dreamlx/codeindex) (v0.36.0) for AI-friendly code documentation.
+This project uses [codeindex](https://github.com/dreamlx/codeindex) (v0.37.0) for AI-friendly code documentation.
 
 ### Navigation contract
 
