@@ -72,7 +72,10 @@ def _copy_fixture(tmp_path: Path) -> Path:
     # into the root dir's enrich prompt as "Parent: ...") is deterministic —
     # pytest's tmp_path basename (test-name + counter) is not stable across runs.
     proj = tmp_path / "wsroot" / "project"
-    shutil.copytree(FIXTURE, proj)
+    # Ignore on-disk README_AI.md pollution from repo-root scan-all (#135):
+    # a stale `<!-- enrichment: ok -->` marker would be preserved by the
+    # structural rewrite (GH #38) and drift the goldens on local runs.
+    shutil.copytree(FIXTURE, proj, ignore=shutil.ignore_patterns("README_AI.md"))
     return proj
 
 
