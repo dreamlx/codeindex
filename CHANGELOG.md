@@ -48,6 +48,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Characterization tests immune to local fixture pollution** (GH #135
+  residual). `test_graphbuffer_baseline` copies the fixture including any
+  on-disk `README_AI.md` left by a repo-root `scan-all` (gitignored by
+  #136, so only invisible locally); the structural rewrite's
+  enrichment-preserve logic (GH #38) then kept the stale
+  `<!-- enrichment: ok -->` marker and drifted the goldens — CI green,
+  local red, forever. The fixture copy now ignores `README_AI.md`.
 - **CLAUDE.md outdated-hint: one version source + stderr** (GH #161).
   `check_outdated` compared the injected version against
   `importlib.metadata` (stale under editable installs — dist-info is baked
