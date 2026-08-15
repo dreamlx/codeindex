@@ -33,6 +33,11 @@ class HookManager:
 
     CODEINDEX_MARKER = "# codeindex-managed hook"
     SUPPORTED_HOOKS = ["pre-commit", "pre-push"]
+    # GH #167: hooks removed from the product. Still uninstallable (cleanup
+    # of installs from older codeindex), and surfaced as leftovers by
+    # `hooks status` so they don't sit silent (dead wrapper = one Python
+    # startup per commit, errors buried in ~/.codeindex/hooks/).
+    RETIRED_HOOKS = ["post-commit"]
 
     def __init__(self, repo_path: Optional[Path] = None):
         """
@@ -529,6 +534,13 @@ def uninstall(hook_name: Optional[str], uninstall_all: bool, keep_backup: bool):
                 for name, status in statuses.items()
                 if status == HookStatus.INSTALLED
             ]
+            # Retired leftovers are ours too — clean them with the rest
+            hooks_to_uninstall += [
+                name
+                for name in manager.RETIRED_HOOKS
+                if name not in hooks_to_uninstall
+                and manager.get_hook_status(name) == HookStatus.INSTALLED
+            ]
         elif hook_name:
             hooks_to_uninstall = [hook_name]
         else:
@@ -618,6 +630,20 @@ def status():
                     console.print(f"     [dim]└─ backup: {backup_path.name}[/dim]")
 
         console.print()
+
+        # Retired-hook leftovers (GH #167): dead wrappers from older
+        # installs — silent on every commit, so surface them here.
+        for name in manager.RETIRED_HOOKS:
+            hook_path = manager.hooks_dir / name
+            if hook_path.exists():
+                content = hook_path.read_text()
+                if manager.CODEINDEX_MARKER in content:
+                    console.print(
+                        f"[yellow]⚠[/yellow] {name}: leftover from a removed "
+                        "codeindex feature — does nothing but still runs on "
+                        f"every commit. Remove with "
+                        f"[bold]codeindex hooks uninstall {name}[/bold]"
+                    )
 
         # Summary
         installed = sum(1 for s in statuses.values() if s == HookStatus.INSTALLED)

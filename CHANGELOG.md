@@ -48,6 +48,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Leftover post-commit hooks surfaced** (GH #167 follow-up). A
+  `.git/hooks/post-commit` installed by codeindex < 0.37 survives the
+  upgrade silently — the dead wrapper's errors go to
+  `~/.codeindex/hooks/post-commit.log` while every commit still pays one
+  Python startup. `codeindex hooks status` now flags it with the exact
+  cleanup command, and `hooks uninstall --all` removes it alongside the
+  supported hooks.
 - **JS/TS test-file excludes suggested by wizard + config help** (GH #165).
   Unexcluded co-located test files (`*.spec.ts` / `*.test.ts` / `__tests__`)
   were the upstream root cause of graph-export edge pollution (lh-enterprise:

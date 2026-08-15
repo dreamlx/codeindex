@@ -288,3 +288,68 @@ class TestCLIIntegration:
         """Should provide hooks status CLI command."""
         # This will be implemented with Click
         pass
+
+
+class TestRetiredHookLeftover:
+    """GH #167: post-commit removed from the product — detect the leftover
+    installed by codeindex < 0.37 so it doesn't sit silent (dead wrapper,
+    ~hundreds of ms startup tax per commit, errors buried in the log)."""
+
+    def _make_repo(self, tmp_path: Path) -> Path:
+        repo = tmp_path / "repo"
+        (repo / ".git" / "hooks").mkdir(parents=True)
+        return repo
+
+    def _write_leftover(self, repo: Path) -> None:
+        hook = repo / ".git" / "hooks" / "post-commit"
+        hook.write_text("#!/usr/bin/env bash\n# codeindex-managed hook\nexit 0\n")
+
+    def _run_cli(self, repo: Path, args: list) -> "object":
+        from click.testing import CliRunner
+
+        from codeindex.cli_hooks import hooks
+
+        original = Path.cwd()
+        try:
+            os.chdir(repo)
+            return CliRunner().invoke(hooks, args)
+        finally:
+            os.chdir(original)
+
+    def test_status_warns_on_leftover(self, tmp_path):
+        repo = self._make_repo(tmp_path)
+        self._write_leftover(repo)
+
+        result = self._run_cli(repo, ["status"])
+
+        assert result.exit_code == 0
+        assert "post-commit" in result.output
+        assert "uninstall post-commit" in result.output
+
+    def test_status_silent_on_custom_post_commit(self, tmp_path):
+        repo = self._make_repo(tmp_path)
+        (repo / ".git" / "hooks" / "post-commit").write_text(
+            "#!/bin/sh\necho own hook\n"
+        )
+
+        result = self._run_cli(repo, ["status"])
+
+        assert result.exit_code == 0
+        assert "leftover" not in result.output
+
+    def test_status_silent_without_leftover(self, tmp_path):
+        repo = self._make_repo(tmp_path)
+
+        result = self._run_cli(repo, ["status"])
+
+        assert result.exit_code == 0
+        assert "post-commit" not in result.output
+
+    def test_uninstall_all_removes_leftover(self, tmp_path):
+        repo = self._make_repo(tmp_path)
+        self._write_leftover(repo)
+
+        result = self._run_cli(repo, ["uninstall", "--all"])
+
+        assert result.exit_code == 0
+        assert not (repo / ".git" / "hooks" / "post-commit").exists()
