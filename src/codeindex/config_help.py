@@ -86,10 +86,20 @@ CONFIG_PARAMS: Dict[str, Dict[str, str]] = {
         "type": "list[string]",
         "default": "(standard exclusions)",
         "description": "Directory patterns to exclude from scanning",
+        "recommendations": """
+  • Always: __pycache__, node_modules, .git
+  • JS/TS projects: exclude co-located test files — they are mock-heavy
+    and pollute graph-export edges (GH #165):
+      - "**/*.spec.ts" / "**/*.spec.tsx" / "**/*.spec.js"
+      - "**/*.test.ts" / "**/*.test.tsx" / "**/*.test.js"
+      - "**/__tests__/**\"""",
         "example": """exclude:
   - "**/__pycache__/**"
   - "**/node_modules/**"
-  - "**/.git/**\"""",
+  - "**/.git/**"
+  - "**/*.spec.ts"
+  - "**/*.test.ts"
+  - "**/__tests__/**\"""",
     },
     "output_file": {
         "name": "output_file",

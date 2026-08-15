@@ -48,6 +48,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **JS/TS test-file excludes suggested by wizard + config help** (GH #165).
+  Unexcluded co-located test files (`*.spec.ts` / `*.test.ts` / `__tests__`)
+  were the upstream root cause of graph-export edge pollution (lh-enterprise:
+  77% of edges from test files, mocks all unresolved). `codeindex init`'s
+  wizard now suggests the test exclude patterns when such files exist (same
+  conditional style as `vendor/`/`target/`), and `config explain exclude`
+  finally lists them — graph-export's high-unresolved warning already pointed
+  there. Fixed at the config seam (single source of truth for both `scan-all`
+  and `graph-export`); a separate `--exclude-tests` flag was rejected as it
+  would let the two see different trees.
 - **Characterization tests immune to local fixture pollution** (GH #135
   residual). `test_graphbuffer_baseline` copies the fixture including any
   on-disk `README_AI.md` left by a repo-root `scan-all` (gitignored by
