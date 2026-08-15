@@ -269,6 +269,18 @@ def infer_include_patterns(project_dir: Path) -> List[str]:
     return sorted(includes)
 
 
+def _has_js_test_files(project_dir: Path) -> bool:
+    """True if the project contains JS/TS co-located test files or a __tests__ dir."""
+    suffixes = (".spec.ts", ".spec.tsx", ".spec.js", ".test.ts", ".test.tsx", ".test.js")
+    for root, dirs, files in os.walk(project_dir):
+        dirs[:] = [d for d in dirs if d not in ("node_modules", ".git", "__pycache__")]
+        if "__tests__" in dirs:
+            return True
+        if any(f.endswith(suffixes) for f in files):
+            return True
+    return False
+
+
 def infer_exclude_patterns(project_dir: Path) -> List[str]:
     """Infer exclude patterns based on common artifacts.
 
@@ -308,6 +320,22 @@ def infer_exclude_patterns(project_dir: Path) -> List[str]:
     for dir_name, pattern in conditional_excludes.items():
         if (project_dir / dir_name).exists():
             excludes.append(pattern)
+
+    # GH #165: JS/TS co-located test files are mock-heavy and near-zero nav
+    # value; unexcluded they polluted graph-export with 77% test edges.
+    # Suggested only when present — same conditional style as above.
+    if _has_js_test_files(project_dir):
+        excludes.extend(
+            [
+                "**/*.spec.ts",
+                "**/*.spec.tsx",
+                "**/*.spec.js",
+                "**/*.test.ts",
+                "**/*.test.tsx",
+                "**/*.test.js",
+                "**/__tests__/**",
+            ]
+        )
 
     return sorted(set(excludes))
 
