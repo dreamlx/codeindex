@@ -8,11 +8,10 @@
 
 ### 命令与 escape hatch
 
-完整参考：`codeindex --help`。非显而易见的两个：
+完整参考：`codeindex --help`。非显而易见的一个：
 
 ```bash
 codeindex scan-all --ai --retry-all   # 强制重新 enrich 每个目录，忽略缓存
-codeindex hooks rerun post-commit     # 对 HEAD 强制重跑 hook（绕过 loop guard）
 ```
 
 瞬时 AI 失败（`⚠ <dir>: AI error`）→ 重跑 `codeindex scan-all --ai`，成功目录走缓存只重试失败的；持续失败 → 改 `.codeindex.yaml` 的 `ai_command` 换模型。

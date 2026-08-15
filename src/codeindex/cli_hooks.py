@@ -9,10 +9,7 @@ This module provides:
 - Detect and merge with existing hooks
 """
 
-import json
-import logging
 import shutil
-import subprocess
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -21,8 +18,6 @@ from typing import Optional
 import click
 
 from .cli_common import console
-
-logger = logging.getLogger(__name__)
 
 
 class HookStatus(Enum):
@@ -37,7 +32,7 @@ class HookManager:
     """Manage Git hooks for codeindex."""
 
     CODEINDEX_MARKER = "# codeindex-managed hook"
-    SUPPORTED_HOOKS = ["pre-commit", "post-commit", "pre-push"]
+    SUPPORTED_HOOKS = ["pre-commit", "pre-push"]
 
     def __init__(self, repo_path: Optional[Path] = None):
         """
@@ -200,8 +195,6 @@ def generate_hook_script(
 
     if hook_name == "pre-commit":
         return _generate_pre_commit_script(config)
-    elif hook_name == "post-commit":
-        return _generate_post_commit_script(config)
     elif hook_name == "pre-push":
         return _generate_pre_push_script(config)
     else:
@@ -298,55 +291,6 @@ exit 0
 """
 
     return script
-
-
-def _generate_post_commit_script(config: dict) -> str:  # noqa: E501
-    """Generate post-commit hook script."""
-    auto_update = config.get("auto_update", True)
-
-    if not auto_update:
-        return """#!/usr/bin/env bash
-# codeindex-managed hook
-# Post-commit hook (disabled)
-exit 0
-"""
-
-    return """#!/usr/bin/env bash
-# codeindex-managed hook
-# Post-commit hook for codeindex
-# Thin wrapper — all logic in Python (auto-updated via pip)
-
-# Avoid infinite loop: skip if last commit only contains README_AI.md.
-# -m is required so merge commits enumerate per-parent changes — without it
-# `git diff-tree -r HEAD` returns empty on every merge commit and the hook
-# silently skips every PR merge in a GitFlow project (GH #84).
-LAST_COMMIT_FILES=$(git diff-tree --no-commit-id --name-only -r -m HEAD)
-NON_DOC_FILES=$(echo "$LAST_COMMIT_FILES" | \\
-    grep -v "README_AI.md" | grep -v "PROJECT_INDEX.md" || true)
-if [ -z "$NON_DOC_FILES" ]; then
-    exit 0
-fi
-
-# Set up working directory
-REPO_ROOT=$(git rev-parse --show-toplevel)
-cd "$REPO_ROOT"
-
-# Try to activate virtual environment
-if [ -f "$REPO_ROOT/.venv/bin/activate" ]; then
-    source "$REPO_ROOT/.venv/bin/activate"
-elif [ -f "$REPO_ROOT/venv/bin/activate" ]; then
-    source "$REPO_ROOT/venv/bin/activate"
-fi
-
-# Ensure log directory exists
-LOG_DIR="$HOME/.codeindex/hooks"
-mkdir -p "$LOG_DIR"
-LOG_FILE="$LOG_DIR/post-commit.log"
-
-# Delegate to Python (upgradeable via pip)
-# Errors go to log file instead of being silently discarded
-codeindex hooks run post-commit 2>>"$LOG_FILE" || true
-"""
 
 
 def _generate_pre_push_script(config: dict) -> str:
@@ -450,103 +394,6 @@ def uninstall_hook(hook_name: str, repo_path: Optional[Path] = None) -> bool:
     return manager.uninstall_hook(hook_name, restore_backup=True)
 
 
-def run_post_commit_hook() -> int:
-    """Execute post-commit hook logic in Python.
-
-    This is called by the thin wrapper shell script via
-    `codeindex hooks run post-commit`. All logic lives here so that
-    `pipx upgrade ai-codeindex` automatically updates the behavior.
-
-    Affected directories are re-rendered through the same tree-aware seam
-    as ``scan-all`` (GH #160): one writer, one world-view. The previous
-    per-dir ``codeindex scan`` subprocess hardcoded ``level="detailed"``
-    and overwrote scan-all's overview/navigation READMEs, oscillating hub
-    directories between a 350-line symbol dump and a 64-line navigation
-    aggregate on every commit.
-
-    Returns:
-        Exit code (0 = success)
-    """
-    # Step 1: Get affected directories
-    try:
-        result = subprocess.run(
-            ["codeindex", "affected", "--json"],
-            capture_output=True, text=True, timeout=30,
-        )
-        if result.returncode != 0:
-            return 0  # Silently skip on error
-
-        analysis = json.loads(result.stdout)
-    except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
-        return 0
-
-    level = analysis.get("level", "skip")
-    affected_dirs = analysis.get("affected_dirs", [])
-
-    if level == "skip" or not affected_dirs:
-        return 0
-
-    # Step 2: Re-render affected directories through the tree-aware seam
-    # (same code path as scan-all, so hook output is byte-consistent with
-    # it — correct levels, 0-symbol skip, stale-README cleanup).
-    repo_root = Path.cwd()
-    from .cli_scan import _process_directory_with_smartwriter
-    from .config import Config
-    from .directory_tree import DirectoryTree
-
-    try:
-        config = Config.load()
-        tree = DirectoryTree(repo_root, config)
-    except Exception:
-        return 0
-
-    updated_readmes: list[str] = []
-    for dir_path in affected_dirs:
-        target = repo_root / dir_path
-        if not target.is_dir():
-            continue
-
-        # The seam isolates per-dir failures (try/except → result tuple).
-        _, success, _, _ = _process_directory_with_smartwriter(
-            target, tree, config
-        )
-        readme_path = target / config.output_file
-        if success and readme_path.exists():
-            updated_readmes.append(str(readme_path))
-
-    if not updated_readmes:
-        return 0
-
-    # Step 3: Stage and commit updated README_AI.md files
-    try:
-        for readme in updated_readmes:
-            subprocess.run(["git", "add", readme], capture_output=True, timeout=10)
-
-        # Check if there are actual staged changes
-        diff_result = subprocess.run(
-            ["git", "diff", "--cached", "--quiet"],
-            capture_output=True, timeout=10,
-        )
-        if diff_result.returncode == 0:
-            return 0  # No actual changes
-
-        commit_hash = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            capture_output=True, text=True, timeout=10,
-        ).stdout.strip()
-
-        subprocess.run(
-            ["git", "commit", "--no-verify", "-m",
-             f"docs: auto-update README_AI.md for {commit_hash}\n\n"
-             f"Updated by post-commit hook.\nUpdate level: {level}"],
-            capture_output=True, timeout=30,
-        )
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        pass
-
-    return 0
-
-
 # ============================================================================
 # CLI Commands
 # ============================================================================
@@ -556,48 +403,6 @@ def run_post_commit_hook() -> int:
 def hooks():
     """Manage Git hooks for codeindex."""
     pass
-
-
-def _maybe_warn_post_commit_disabled(project_dir: Path) -> None:
-    """Print a reminder if ``hooks.post_commit.enabled`` is false in
-    ``.codeindex.yaml``.
-
-    ``codeindex init`` ships the yaml with ``enabled: false`` by default,
-    so the installed ``.git/hooks/post-commit`` wrapper no-ops at runtime
-    even though the install command printed ✓. User commits, READMEs don't
-    update, "it doesn't work" — see GH #87.
-
-    We don't flip the flag automatically (contract change, see #75 for the
-    boundary). The reminder makes the contract visible at install time so
-    the user can decide.
-    """
-    yaml_path = project_dir / ".codeindex.yaml"
-    if not yaml_path.exists():
-        return
-
-    try:
-        import yaml
-
-        with open(yaml_path) as f:
-            data = yaml.safe_load(f) or {}
-    except Exception:
-        # Yaml unreadable or parse error — silent skip; the install itself
-        # succeeded, we don't want this advisory to mask the real result.
-        return
-
-    enabled = data.get("hooks", {}).get("post_commit", {}).get("enabled", False)
-    if enabled:
-        return
-
-    console.print(
-        "[yellow]⚠[/yellow]  [bold]post_commit.enabled is false in "
-        ".codeindex.yaml[/bold] — the installed hook wrapper checks this "
-        "flag at runtime and will no-op until you flip it.\n"
-        "   Edit [cyan].codeindex.yaml[/cyan]:\n"
-        "     hooks:\n"
-        "       post_commit:\n"
-        "         [bold]enabled: true[/bold]\n"
-    )
 
 
 @hooks.command()
@@ -685,13 +490,6 @@ def install(hook_name: Optional[str], install_all: bool, force: bool):
             console.print(
                 f"[dim]→ Skipped {skipped_count} already installed hook(s)[/dim]\n"
             )
-
-        # GH #87: surface the runtime-disabled trap. If post-commit was just
-        # installed (or was already installed), the wrapper still no-ops when
-        # .codeindex.yaml has post_commit.enabled=false (the init default).
-        # Without this reminder, install prints ✓ but commits trigger nothing.
-        if "post-commit" in hooks_to_install:
-            _maybe_warn_post_commit_disabled(Path.cwd())
 
     except ValueError as e:
         console.print(f"[red]✗[/red] Error: {e}", style="red")
@@ -782,54 +580,6 @@ def uninstall(hook_name: Optional[str], uninstall_all: bool, keep_backup: bool):
     except ValueError as e:
         console.print(f"[red]✗[/red] Error: {e}", style="red")
         raise click.Abort()
-
-
-@hooks.command("run", hidden=True)  # internal: called by shell hook scripts, not users (GH #34)
-@click.argument("hook_name")
-def run_hook(hook_name: str):
-    """Run hook logic (called by thin wrapper scripts).
-
-    This is not intended for direct user invocation.
-    The shell hook script delegates to this command so that
-    hook logic can be updated via pipx upgrade ai-codeindex.
-
-    Example: codeindex hooks run post-commit
-    """
-    if hook_name == "post-commit":
-        exit_code = run_post_commit_hook()
-        raise SystemExit(exit_code)
-    else:
-        console.print(f"[yellow]No run handler for hook: {hook_name}[/yellow]")
-        raise SystemExit(0)
-
-
-@hooks.command("rerun")
-@click.argument("hook_name")
-def rerun_hook(hook_name: str):
-    """Force-rerun a hook against HEAD (user escape hatch, GH #89).
-
-    The installed shell hook wrapper has guards (doc-only commit loop guard;
-    config gates) that can cause a commit's README_AI.md update to be skipped.
-    ``rerun`` calls the Python hook logic directly — bypassing the shell
-    wrapper — so the update fires regardless of those guards.
-
-    Use when the post-commit hook didn't fire on a commit:
-
-    \b
-    - doc-only commit skipped by the loop guard
-    - retroactive populate after flipping ``hooks.post_commit.enabled`` to true
-    - a historical stale README (e.g. predating the #84 merge-commit fix)
-
-    For a full re-scan (every directory) use ``codeindex scan-all``.
-
-    Example: codeindex hooks rerun post-commit
-    """
-    if hook_name == "post-commit":
-        exit_code = run_post_commit_hook()
-        raise SystemExit(exit_code)
-    else:
-        console.print(f"[yellow]No run handler for hook: {hook_name}[/yellow]")
-        raise SystemExit(0)
 
 
 @hooks.command()

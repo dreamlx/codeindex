@@ -177,7 +177,7 @@ After adding the section:
 
    Future AI sessions in this project will now understand:
    - Git Hooks are installed
-   - How pre-commit and post-commit work
+   - How pre-commit works
    - Expected behaviors and troubleshooting
    ```
 
@@ -200,8 +200,6 @@ codeindex Git Hooks
 ├── pre-commit
 │   ├── L1: Lint Check (ruff)
 │   └── L2: Debug Code Detection
-├── post-commit
-│   └── Auto-update README_AI.md
 └── Management
     ├── install/uninstall commands
     ├── Automatic backups
@@ -212,7 +210,6 @@ codeindex Git Hooks
 
 Hooks are installed to `.git/hooks/`:
 - `.git/hooks/pre-commit` - Runs before commit
-- `.git/hooks/post-commit` - Runs after commit
 - Marker: `# codeindex-managed hook` (identifies codeindex hooks)
 
 ### Pre-commit: Quality Gate
@@ -326,8 +323,8 @@ git commit -m "docs: update guide"
 After reading this guide, you should:
 
 - [ ] Understand what codeindex Git Hooks do
-- [ ] Know how pre-commit and post-commit work
-- [ ] Understand expected behaviors (auto-commits are normal)
+- [ ] Know how pre-commit works
+- [ ] Understand expected behaviors
 - [ ] Know how to handle hook failures
 - [ ] Have updated user's CLAUDE.md/AGENTS.md with the section above
 

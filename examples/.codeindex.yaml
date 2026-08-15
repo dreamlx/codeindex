@@ -149,24 +149,6 @@ hooks:
       - lint                 # Run ruff lint
       - debug               # Check for debug statements
 
-  # Post-commit hook - Auto-update README_AI.md
-  post_commit:
-    # Mode: auto | disabled | async | sync | prompt
-    #   auto:     Smart detection (≤2 dirs = sync, >2 = async)
-    #   disabled: Completely disabled
-    #   async:    Always non-blocking (background updates)
-    #   sync:     Always blocking (immediate updates)
-    #   prompt:   Reminder only, no auto-execution
-    mode: auto
-
-    # Auto mode threshold: ≤N directories = sync, >N = async
-    max_dirs_sync: 2
-
-    enabled: true            # Master switch
-
-    # Log file location
-    log_file: ~/.codeindex/hooks/post-commit.log
-
   # Pre-push hook - Final quality gate
   pre_push:
     enabled: false           # Disabled by default (placeholder for future)

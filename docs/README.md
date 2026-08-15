@@ -19,7 +19,7 @@ codeindex 文档导航。codeindex 是 [LoomGraph](https://github.com/dreamlx/Lo
 - **[graph-export](guides/graph-export.md)** — NDJSON graph export 用法与 schema
 - **[LoomGraph Integration](guides/loomgraph-integration.md)** — 两仓数据流
 - **[Claude Code Integration](guides/claude-code-integration.md)** — plugin/skills 集成
-- **[Git Hooks](guides/git-hooks-integration.md)** — pre/post-commit hooks
+- **[Git Hooks](guides/git-hooks-integration.md)** — pre-commit / pre-push hooks
 - **[JSON Output](guides/json-output-integration.md)** — JSON 输出消费
 - **[Contributing](guides/contributing.md)** — TDD workflow、代码风格
 

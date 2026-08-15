@@ -194,7 +194,6 @@ def init(force: bool, yes: bool, quiet: bool, help_config: bool, lang: str, dry_
             detected_frameworks=detected_frameworks,
             parallel_workers=parallel_workers,
             batch_size=batch_size,
-            enable_hooks=False,  # Hooks are opt-in via `codeindex hooks install`
             create_codeindex_md=False,  # Dropped from init (B1/ADR-006); CLAUDE.md is the guide
             # ADR-008: leave ai_command unset so generate_config_yaml emits the
             # direct-API `ai:` section (DeepSeek default). The prior claude-CLI

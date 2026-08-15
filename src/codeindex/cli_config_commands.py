@@ -27,7 +27,7 @@ def explain(parameter: str):
     Examples:
         codeindex config explain parallel_workers
         codeindex config explain batch_size
-        codeindex config explain hooks.post_commit.mode
+        codeindex config explain output_file
     """
     # Try to get current value from config
     current_value = None

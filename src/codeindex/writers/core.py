@@ -148,7 +148,7 @@ class SmartWriter:
 
             # Preserve AI enrichment across structural rewrites (GH #38).
             # `scan-all --ai` injects an "ok" marker + `> description` blockquote;
-            # a later structural-only write (post-commit hook, or Phase 1 of the
+            # a later structural-only write (structural rescan, or Phase 1 of the
             # next --ai run) must not wipe them, or the idempotent cache goes cold
             # and the next --ai re-pays the full N AI calls. Capture before
             # overwrite, re-inject after.

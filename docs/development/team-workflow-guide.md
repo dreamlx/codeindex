@@ -160,12 +160,6 @@ Checks **staged Python files only** — fast, targeted.
 1. **ruff lint** — style, imports, unused vars, debug code (T100/T201 rules catch `print()` and `breakpoint()`)
 2. Reports exact line numbers. Fix then re-stage.
 
-### post-commit (runs after `git commit`)
-Runs in background, non-blocking.
-
-1. **codeindex scan** — regenerates README_AI.md for changed directories
-2. Logs to `~/.codeindex/hooks/post-commit.log` (check here if indexes seem stale)
-
 ### pre-push (runs on `git push`)
 Last gate before code leaves your machine.
 

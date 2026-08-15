@@ -8,11 +8,10 @@ This project uses [codeindex](https://github.com/dreamlx/codeindex) (v{version})
 
 ### Commands & escape hatches
 
-Full reference: `codeindex --help`. The non-obvious ones:
+Full reference: `codeindex --help`. The non-obvious one:
 
 ```bash
 codeindex scan-all --ai --retry-all   # force re-enrich every dir, ignore cache
-codeindex hooks rerun post-commit     # force-rerun hook vs HEAD (bypasses loop guard)
 ```
 
 Transient AI failures (`⚠ <dir>: AI error`) → re-run `codeindex scan-all --ai`; successes restore from cache, only failures retry. Persistent → swap model in `ai_command` (`.codeindex.yaml`).
