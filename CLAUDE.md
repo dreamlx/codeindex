@@ -216,3 +216,9 @@ Each `README_AI.md` header carries: the navigation contract comment, a `Generate
 After upgrading codeindex, run `codeindex claude-md update` to refresh this section.
 
 <!-- codeindex:end -->
+
+## 整理 manifest
+<!-- 本项目连续工作后会留下的特有残留;/tidy 会把这些加进 inventory -->
+- 空 stash:`git stash` 对无变化也建 stash(diff stat 0);`git stash list` 条数 ≠ 有用 stash 数。逐条 `git diff stash@{n}^ stash@{n} --stat` 验非空,空的直接删
+- stale WIP stash(改的文件已删/已重构):squash repo 里 stash 基线 commit 常已不在 master,看 ancestry 不准;改用 `git diff --name-only stash@{n}^ stash@{n}` 列文件逐个 `[ -e ]`,多数已不存在 = 已落地/被重构覆盖 → 删
+- squash-merge repo 的 stale feature 分支:`git branch --merged master` 全 NOT-merged(本仓 squash 不留 merge 记录);判删靠 tip commit msg 匹配 master log + `gh pr view <N> --json state` MERGED 交叉验。tip 是 `docs: auto-update README_AI.md for <sha>` 噪音 commit 的 = 功能换 PR 号落地后的遗弃分支,删
