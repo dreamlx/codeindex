@@ -267,7 +267,7 @@ def test_smart_writer_size_limit():
 
         assert result.success
         assert result.truncated
-        assert result.size_bytes <= 1024 + 200  # Allow some margin for truncation notice
+        assert result.size_bytes <= 1024
 
 
 def test_determine_level():

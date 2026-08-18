@@ -299,19 +299,32 @@ def truncate_content(content: str, max_size: int) -> tuple[str, bool]:
     if len(content_bytes) <= max_size:
         return content, False
 
-    # Find a good truncation point
-    truncated = content_bytes[:max_size - 200].decode('utf-8', errors='ignore')
-
-    # Try to truncate at a section boundary
-    last_section = truncated.rfind("\n## ")
-    if last_section > len(truncated) // 2:
-        truncated = truncated[:last_section]
-
-    # Add truncation notice
-    truncated += (
+    notice = (
         "\n\n---\n"
         "_Content truncated due to size limit. "
-        "See individual module README files for details._\n"
+        "Read the relevant source files for details._\n"
     )
+    if len(notice.encode('utf-8')) > max_size:
+        notice = "_Truncated._\n"
+        if len(notice.encode('utf-8')) > max_size:
+            return notice[:max_size], True
+    budget = max(0, max_size - len(notice.encode('utf-8')))
+    truncated = content_bytes[:budget].decode('utf-8', errors='ignore')
+
+    # README generators use ## for document sections and ### for files. Prefer
+    # the last complete heading boundary so detailed output never ends midway
+    # through a file's symbol list.
+    last_section = max(
+        truncated.rfind(f"\n{'#' * level} ")
+        for level in range(2, 7)
+    )
+    if last_section >= 0:
+        truncated = truncated[:last_section]
+    else:
+        last_line = truncated.rfind("\n")
+        if last_line > 0:
+            truncated = truncated[:last_line]
+
+    truncated = truncated.rstrip() + notice
 
     return truncated, True
