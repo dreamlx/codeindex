@@ -325,9 +325,30 @@ class TestTruncateContent:
         result, truncated = truncate_content(sections, 60)
         assert truncated
         assert "truncated" in result.lower()
+        assert len(result.encode("utf-8")) <= 60
 
     def test_truncation_adds_notice(self):
         content = "x" * 2000
         result, truncated = truncate_content(content, 500)
         assert truncated
         assert "Content truncated" in result
+
+    def test_detailed_file_section_is_never_cut_mid_list_item(self):
+        """Detailed output uses ``### file`` headings, not only ``##``."""
+        content = (
+            "# cli\n\n"
+            "## Files\n\n"
+            "### alpha.py\n"
+            "- `def alpha() -> None`\n\n"
+            "### beta.py\n"
+            "- `def beta_with_a_very_long_signature(" + "arg, " * 80 + ") -> None`\n"
+        )
+
+        result, truncated = truncate_content(content, 300)
+
+        assert truncated
+        assert "### alpha.py" in result
+        assert "### beta.py" not in result
+        assert result.count("`") % 2 == 0
+        assert "Read the relevant source files" in result
+        assert len(result.encode("utf-8")) <= 300

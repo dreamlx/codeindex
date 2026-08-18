@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Detailed `README_AI.md` truncation preserves complete file sections** (GH
+  #178). The 10KB navigation budget now reserves its notice first, then cuts
+  at the last complete Markdown heading (`##` through `######`) instead of
+  raw bytes inside a `### file` symbol list. The fallback notice now directs
+  agents to the relevant source files rather than assuming per-module README
+  files exist. Tiny configured budgets remain bounded too.
+
 ## [0.37.0] - 2026-08-15
 
 ### Removed (BREAKING)
