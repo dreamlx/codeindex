@@ -1045,8 +1045,24 @@ class TestLanguageMismatchWarning:
         src.mkdir(exist_ok=True)
         (src / name).write_text(content, encoding="utf-8")
 
+    @staticmethod
+    def _write_python_config(proj: Path) -> None:
+        """Force python-only languages so the test is isolated from the host
+        repo's gitignored ``.codeindex.yaml``. ``CliRunner().invoke`` does
+        not change cwd, so ``Config.load(None)`` would otherwise read
+        ``Path.cwd()/.codeindex.yaml`` — on the codeindex dev machine that's a
+        5-language dogfood config, so java/typescript are already "configured"
+        and the mismatch hint returns None. Writing an explicit python-only
+        config under the ``--root`` (read by cli_graph_export.py:44) forces
+        the real footgun regardless of where the test runs (GH #177 release
+        flow fix)."""
+        (proj / ".codeindex.yaml").write_text(
+            "version: 1\nlanguages: [python]\n", encoding="utf-8"
+        )
+
     def test_warns_when_language_not_configured(self, tmp_path) -> None:
         self._write_src(tmp_path, "Foo.java", "class Foo {}\n")
+        self._write_python_config(tmp_path)
         # no .codeindex.yaml → defaults to languages=[python]
         from click.testing import CliRunner
 
@@ -1077,6 +1093,7 @@ class TestLanguageMismatchWarning:
         """
         self._write_src(tmp_path, "foo.py", "def f():\n    return 1\n")
         self._write_src(tmp_path, "app.ts", "export const x = 1\n")
+        self._write_python_config(tmp_path)
         from click.testing import CliRunner
 
         from codeindex.cli import main
@@ -1104,6 +1121,7 @@ class TestLanguageMismatchWarning:
         # noise: non-code files that are never a `languages:` target
         self._write_src(tmp_path, "README.md", "# readme\n")
         self._write_src(tmp_path, "conf.yaml", "key: value\n")
+        self._write_python_config(tmp_path)
         from click.testing import CliRunner
 
         from codeindex.cli import main
@@ -1131,6 +1149,7 @@ class TestLanguageMismatchWarning:
 
     def test_no_warning_when_languages_match(self, tmp_path) -> None:
         self._write_src(tmp_path, "foo.py", "def f():\n    return 1\n")
+        self._write_python_config(tmp_path)
         from click.testing import CliRunner
 
         from codeindex.cli import main
@@ -1145,6 +1164,7 @@ class TestLanguageMismatchWarning:
 
     def test_quiet_suppresses_warning(self, tmp_path) -> None:
         self._write_src(tmp_path, "Foo.java", "class Foo {}\n")
+        self._write_python_config(tmp_path)
         from click.testing import CliRunner
 
         from codeindex.cli import main
