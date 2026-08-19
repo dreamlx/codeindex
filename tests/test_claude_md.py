@@ -11,6 +11,7 @@ from codeindex.claude_md import (
     build_section,
     check_outdated,
     extract_version,
+    find_removed_command_docs,
     inject,
 )
 
@@ -236,6 +237,62 @@ class TestCheckOutdated:
             assert check_outdated(tmp_path) == "0.22.0"
 
 
+class TestRemovedCommandDocs:
+    """GH #177: after the v0.37.0 BREAKING removal of the post-commit hook
+    (#167), CLAUDE.md sections injected by older templates still document
+    deleted commands (``hooks rerun``, ``hooks install post-commit``, the
+    hidden ``hooks run``, the ``hooks.post_commit`` config). An AI agent
+    following the stale section runs the deleted commands and hits
+    "No such command". The startup hint must detect these stale docs and
+    escalate (not just a generic "run update")."""
+
+    def test_detects_rerun_in_old_section(self, tmp_path):
+        """The v0.33.3-era template carried `hooks rerun post-commit`; a
+        CLAUDE.md with that section must flag the deleted command."""
+        claude_md = tmp_path / "CLAUDE.md"
+        claude_md.write_text(
+            "<!-- codeindex:start v0.33.3 -->\n"
+            "## codeindex\n"
+            "codeindex hooks rerun post-commit\n"
+            "<!-- codeindex:end -->\n"
+        )
+        hits = find_removed_command_docs(tmp_path)
+        assert "hooks rerun" in hits, hits
+
+    def test_detects_install_post_commit_and_config(self, tmp_path):
+        """``hooks install post-commit`` and the ``hooks.post_commit`` config
+        section were also removed (#167)."""
+        claude_md = tmp_path / "CLAUDE.md"
+        claude_md.write_text(
+            "<!-- codeindex:start v0.33.0 -->\n"
+            "To enable: `codeindex hooks install post-commit`\n"
+            "Configure in `hooks.post_commit` section.\n"
+            "<!-- codeindex:end -->\n"
+        )
+        hits = find_removed_command_docs(tmp_path)
+        assert "hooks install post-commit" in hits, hits
+        assert "post_commit" in hits, hits
+
+    def test_current_template_has_no_removed_commands(self, tmp_path):
+        """The current template (v0.37) must not document any removed command
+        — regression guard that the shipped section stays clean so a fresh
+        `claude-md update` doesn't reintroduce the stale docs."""
+        claude_md = tmp_path / "CLAUDE.md"
+        claude_md.write_text(build_section("0.37.0"))
+        assert find_removed_command_docs(tmp_path) == [], "current template flags removed commands"
+
+    def test_no_claude_md_returns_empty(self, tmp_path):
+        """No CLAUDE.md → nothing to scan → empty list (don't error)."""
+        assert find_removed_command_docs(tmp_path) == []
+
+    def test_no_markers_returns_empty(self, tmp_path):
+        """A CLAUDE.md without codeindex markers has no codeindex section to
+        scan — the stale-docs check only covers the injected section, not
+        user prose (avoids false positives on host-authored content)."""
+        (tmp_path / "CLAUDE.md").write_text("# My notes\nI use hooks rerun manually\n")
+        assert find_removed_command_docs(tmp_path) == []
+
+
 class TestVersionSourceConsistency:
     """GH #161: one version source everywhere.
 
@@ -289,6 +346,35 @@ class TestVersionSourceConsistency:
         captured = capsys.readouterr()
         assert "hint:" in captured.err
         assert captured.out == ""
+
+    def test_removed_docs_warning_escalates_to_stderr(self, capsys):
+        """GH #177: when the codeindex section documents deleted commands,
+        the startup hint must escalate to a specific warning (name the
+        removed mechanisms + the new refresh policy), not a generic
+        "run update". Still stderr (stdout stays clean for --output json)."""
+        from unittest.mock import patch as _patch
+
+        from codeindex.cli_claude_md import print_outdated_warning
+
+        with _patch("codeindex.cli_claude_md.check_outdated", return_value=None), \
+             _patch(
+                 "codeindex.cli_claude_md.find_removed_command_docs",
+                 return_value=["hooks rerun", "post_commit"],
+             ):
+            print_outdated_warning()
+
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        # Rich wraps at the terminal width, so normalize whitespace before
+        # asserting (the wrapping can split "hooks rerun" across lines).
+        err = " ".join(captured.err.split())
+        # escalates — names the removed mechanism, not generic
+        assert "removed" in err.lower()
+        assert "hooks rerun" in err
+        # points at the fix
+        assert "claude-md update" in err
+        # states the new refresh policy (so the reader knows what changed)
+        assert "scan-all" in err.lower()
 
 
 class TestMarkerPattern:

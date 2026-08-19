@@ -6,7 +6,7 @@ import click
 from rich.console import Console
 
 from . import __version__
-from .claude_md import check_outdated, extract_version, inject
+from .claude_md import check_outdated, extract_version, find_removed_command_docs, inject
 
 console = Console()
 stderr_console = Console(stderr=True)
@@ -88,7 +88,8 @@ def status(project_dir: Path):
 
 
 def print_outdated_warning():
-    """Print a one-line warning if CLAUDE.md is outdated. Called on CLI startup."""
+    """Print one-line hints if CLAUDE.md is outdated or documents removed
+    commands. Called on CLI startup."""
     outdated_version = check_outdated()
     if outdated_version:
         # stderr: stdout must stay clean for machine-readable output
@@ -97,4 +98,20 @@ def print_outdated_warning():
             f"[dim yellow]hint: CLAUDE.md has codeindex v{outdated_version}, "
             f"current is v{__version__}. "
             f"Run `codeindex claude-md update` to refresh.[/dim yellow]"
+        )
+
+    # GH #177: a stale section may also document commands removed by the
+    # v0.37.0 BREAKING (#167). This fires even without version drift (e.g. a
+    # user refreshed the version but the old section text lingered), so it's
+    # checked independently. Escalates to a specific warning naming the
+    # removed mechanisms + the new refresh policy, not a generic "run update".
+    removed = find_removed_command_docs()
+    if removed:
+        stderr_console.print(
+            "[dim yellow]hint: CLAUDE.md section documents removed post-commit "
+            f"hook mechanisms ({', '.join(removed)}) deleted in v0.37.0 (#167). "
+            "README_AI refresh is now release-time/manual "
+            "(`codeindex scan-all`), not per-commit. "
+            "Run `codeindex claude-md update` to remove the stale commands."
+            "[/dim yellow]"
         )
