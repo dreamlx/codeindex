@@ -548,6 +548,17 @@ def _build_and_print_tree(root: Path, config: Config, quiet: bool) -> DirectoryT
         console.print(f"  [dim]├── {stats['with_children']} with children (navigation)[/dim]")
         console.print(f"  [dim]├── {stats['leaf_directories']} leaf directories (detailed)[/dim]")
         console.print(f"  [dim]└── Max depth: {stats['max_depth']}[/dim]")
+        # GH #175: with_files>0 means a stray .py (under an include root) made
+        # scan-all walk the normal path, so the with_files==0 mismatch hint never
+        # fired — but the repo may still be mostly an unconfigured language (TS
+        # under src/ + one stray .py in src/legacy/). The whole-tree fingerprint
+        # catches that. Advisory only: scan-all's partial output (only some
+        # READMEs) is visible, not data-loss-class like graph-export's.
+        from .scanner import language_fingerprint_hint
+
+        fp = language_fingerprint_hint(root, config)
+        if fp:
+            console.print(f"[yellow]{fp}[/yellow]")
 
     return tree
 

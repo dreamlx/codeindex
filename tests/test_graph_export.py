@@ -1511,3 +1511,128 @@ class TestIncludeRespected:
         assert any("product_fn" in n for n in names), names
         assert any("spike_fn" in n for n in names), names  # docs NOT excluded w/o include key
 
+
+# --------------------------------------------------------------------------- #
+# repo-wide language fingerprint (GH #175)
+# --------------------------------------------------------------------------- #
+class TestLanguageFingerprint:
+    """GH #175: the diagnose_language_mismatch hint walks ``config.include``
+    (default ``[src/, lib/, tests/, examples/]``), but graph-export with no
+    explicit ``include`` scans the **whole tree**. A repo whose real source
+    lives outside those default include roots (a RN app with TS under ``app/``,
+    or a root-level project with TS at the root) is a diagnostic blind spot:
+    ``language_mismatch_hint`` returns None, so the 0-entity gate's carve-out
+    ("truly empty → exit 0") fires on a repo that is *not* empty, and a
+    few-entity export (stray ``.py`` under ``ios/Pods/``) emits no partial-graph
+    warning because ``diagnose_language_mismatch`` never saw the uncaptured TS.
+
+    The fingerprint walks the whole tree (not ``config.include``) so it catches
+    what the diagnose blind spot misses. Mirrors loomgraph's
+    ``_language_fingerprint_warning`` (loomgraph#161) — same threshold, same
+    skip dirs, same advisory (non-blocking) shape for the >0-entity case.
+    """
+
+    @staticmethod
+    def _write_ts(repo: Path, n: int) -> None:
+        """Seed ``n`` .tsx files so the count clears the ≥10 threshold."""
+        d = repo / "app"
+        d.mkdir(exist_ok=True)
+        for i in range(n):
+            (d / f"c{i}.tsx").write_text(
+                f"export const C{i} = () => {i};\n", encoding="utf-8"
+            )
+
+    def test_root_level_ts_repo_zero_entities_fail_loud(self, tmp_path) -> None:
+        """Pure-TS repo at the root (no ``src/``, no ``.codeindex.yaml``):
+        0 indexable files → 0 entities. ``language_mismatch_hint`` is None
+        (default include roots don't exist), so the old carve-out exited 0
+        silently. The fingerprint sees the TS, so 0 entities + a real language
+        present = data-loss (empty graph consumed by loomgraph) → exit non-zero,
+        mirroring the #147 0-entity fail-loud for the diagnose blind spot.
+
+        Note: ``CliRunner().invoke`` does NOT change cwd, so ``Config.load``
+        would read the codeindex repo's own ``.codeindex.yaml`` (which has
+        ``languages: [python, java, php, typescript, javascript]``) and the
+        TS would be *captured*, not missed. Writing an explicit python-only
+        ``.codeindex.yaml`` in the temp repo forces the real footgun
+        (python-only default on a TS repo) regardless of where the test runs.
+        """
+        self._write_ts(tmp_path, 12)
+        (tmp_path / ".codeindex.yaml").write_text(
+            "version: 1\nlanguages: [python]\n", encoding="utf-8"
+        )
+        from click.testing import CliRunner
+
+        from codeindex.cli import main
+
+        result = CliRunner().invoke(
+            main,
+            ["graph-export", "--root", str(tmp_path), "-o", "-"],
+            catch_exceptions=False,
+        )
+        assert result.exit_code != 0, result.output
+        assert "typescript" in result.output.lower(), result.output
+        assert "fingerprint" in result.output.lower(), result.output
+
+    def test_rn_shape_stray_py_under_pods_warns_advisory(self, tmp_path) -> None:
+        """HEXFORCE-RN shape: TS under ``app/`` (outside default include),
+        stray ``.py`` under ``ios/Pods/``. graph-export scans the whole tree
+        → captures the stray ``.py`` entities (>0), so this is NOT the 0-entity
+        gate. But ``diagnose_language_mismatch`` walks ``config.include``
+        (blind to ``app/``) → candidate_languages empty → the #131 partial-graph
+        warning never fires. The fingerprint walks the whole tree and catches
+        the uncaptured TS — advisory only (exit 0): the graph is partial, not
+        empty, so the user gets a warning but CI isn't broken.
+
+        Explicit python-only ``.codeindex.yaml`` (see the sibling test's note
+        on CliRunner/cwd) forces the real footgun.
+        """
+        self._write_ts(tmp_path, 12)
+        pods = tmp_path / "ios" / "Pods" / "Boost"
+        pods.mkdir(parents=True)
+        (pods / "build.py").write_text("def build(): return 1\n", encoding="utf-8")
+        (pods / "fix.py").write_text("def fix(): return 1\n", encoding="utf-8")
+        (tmp_path / ".codeindex.yaml").write_text(
+            "version: 1\nlanguages: [python]\n", encoding="utf-8"
+        )
+        from click.testing import CliRunner
+
+        from codeindex.cli import main
+
+        result = CliRunner().invoke(
+            main,
+            ["graph-export", "--root", str(tmp_path), "-o", "-"],
+            catch_exceptions=False,
+        )
+        # >0 entities → advisory, not data-loss → exit 0 (graph is partial,
+        # not empty)
+        assert result.exit_code == 0, result.output
+        assert "typescript" in result.output.lower(), result.output
+        assert "fingerprint" in result.output.lower(), result.output
+
+    def test_no_fingerprint_when_languages_cover_source(self, tmp_path) -> None:
+        """Negative: a pure-python repo with a python-only ``.codeindex.yaml``
+        has its dominant language (python) == the effective languages → no
+        fingerprint warning. Guards against false-positives on python repos
+        (the common case)."""
+        src = tmp_path / "src"
+        src.mkdir()
+        for i in range(12):
+            (src / f"m{i}.py").write_text(
+                f"def f{i}(): return {i}\n", encoding="utf-8"
+            )
+        (tmp_path / ".codeindex.yaml").write_text(
+            "version: 1\nlanguages: [python]\n", encoding="utf-8"
+        )
+        from click.testing import CliRunner
+
+        from codeindex.cli import main
+
+        result = CliRunner().invoke(
+            main,
+            ["graph-export", "--root", str(tmp_path), "-o", "-"],
+            catch_exceptions=False,
+        )
+        assert result.exit_code == 0, result.output
+        assert "fingerprint" not in result.output.lower(), result.output
+

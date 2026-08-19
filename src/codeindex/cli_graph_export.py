@@ -62,9 +62,17 @@ def graph_export(root: Path, output: str, quiet: bool):
     # scan-all deliberately stays at the 0-files guard: its partial output
     # (only some READMEs) is *visible*, whereas graph-export's is silent.
     if not model.entities:
-        from .scanner import language_mismatch_hint
+        from .scanner import language_fingerprint_hint, language_mismatch_hint
 
         hint = language_mismatch_hint(root, config)
+        if not hint:
+            # GH #175: ``language_mismatch_hint`` walks ``config.include`` (default
+            # [src/, lib/, tests/, examples/]) — blind to a repo whose real
+            # source is elsewhere (RN ``app/``, root-level). 0 entities + a real
+            # unconfigured language present is still data-loss (empty graph
+            # consumed by loomgraph), so fall back to the whole-tree fingerprint
+            # before honoring the "truly empty → exit 0" carve-out.
+            hint = language_fingerprint_hint(root, config)
         if hint:
             if not quiet:
                 click.echo(f"WARNING: {hint}", err=True)
@@ -111,6 +119,18 @@ def graph_export(root: Path, output: str, quiet: bool):
                 "capture them (run: codeindex config explain languages)",
                 err=True,
             )
+        else:
+            # GH #175: diagnose blind spot — ``diagnose_language_mismatch``
+            # found no candidates because it only walked ``config.include``
+            # (default [src/, …]) and the real source lives outside those
+            # roots. The >0 entities here are stray ``.py`` from Pods/vendor
+            # — a partial graph, not empty, so advisory (exit 0), unlike the
+            # 0-entity data-loss branch above.
+            from .scanner import language_fingerprint_hint
+
+            fp = language_fingerprint_hint(root, config)
+            if fp:
+                click.echo(f"WARNING: {fp}", err=True)
 
     text = dump_ndjson(model)
 

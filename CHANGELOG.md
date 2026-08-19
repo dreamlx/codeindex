@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Repo-wide language fingerprint hint** (GH #175). When a repo has no
+  `.codeindex.yaml` (so `languages` defaults to `[python]`) but its real
+  source is a non-Python language living outside the default `include` roots
+  (`src/`, `lib/`, `tests/`, `examples/`) — e.g. a React Native app with TS
+  under `app/` and stray `.py` under `ios/Pods/` — `graph-export` scanned the
+  whole tree and captured only the stray `.py`, emitting `success` with 0%
+  coverage of the target language and no signal. The existing
+  `diagnose_language_mismatch` hint walks `config.include`, so it was blind to
+  this blind spot (it returned `None`, and the 0-entity "truly empty" carve-out
+  silently exited 0). A new whole-tree `language_fingerprint_hint` closes the
+  gap: a supported-but-unconfigured language with ≥10 source files and more
+  than the configured languages cover combined surfaces a `language fingerprint:`
+  warning. `graph-export` treats it as data-loss on a 0-entity export
+  (exit 1, mirroring #147) and advisory on a >0-entity partial export
+  (exit 0, mirroring #131); `scan-all` surfaces it advisory on the
+  `with_files > 0` path. Mirrors loomgraph's `_language_fingerprint_warning`
+  (loomgraph#161) — same threshold, skip dirs, and prefix, so both tools now
+  emit the same guidance. Advisory only: no exit-code change for partial
+  output, no auto-config mutation.
+
 ### Fixed
 
 - **Detailed `README_AI.md` truncation preserves complete file sections** (GH
