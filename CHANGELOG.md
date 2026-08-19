@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Startup hint for CLAUDE.md documenting removed commands** (GH #177).
+  After the v0.37.0 BREAKING that removed the post-commit hook (#167),
+  CLAUDE.md sections injected by older templates still documented the
+  deleted `hooks rerun`, `hooks install post-commit`, the hidden
+  `hooks run`, and the `hooks.post_commit` config — so an AI agent
+  following the stale section ran commands that no longer exist. The
+  CLI startup hint now scans the codeindex section of CLAUDE.md for
+  these removed-command strings and escalates from a generic
+  "run update" to a specific warning naming the deleted mechanisms and
+  the new release-time/manual (`codeindex scan-all`) refresh policy.
+  The check is scoped to the injected section (not host prose) to avoid
+  false positives. Version-drift hint (#161) and removed-docs hint fire
+  independently; both go to stderr (stdout stays clean for `--output json`).
+
 - **Repo-wide language fingerprint hint** (GH #175). When a repo has no
   `.codeindex.yaml` (so `languages` defaults to `[python]`) but its real
   source is a non-Python language living outside the default `include` roots

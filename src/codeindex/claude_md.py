@@ -205,3 +205,63 @@ def check_outdated(project_dir: Optional[Path] = None) -> Optional[str]:
         return injected_version
 
     return None
+
+
+# GH #177: commands/mechanisms removed by the v0.37.0 BREAKING (#167) — the
+# post-commit hook and its escape hatches. The v0.33.3-era injected CLAUDE.md
+# section documented these, so an AI agent following a stale section runs the
+# deleted commands. Each tuple is (substring, human-readable label); the
+# substring is matched inside the codeindex section only (not host prose),
+# matching #167's changelog exactly. `hooks rerun` never collides with
+# `--retry-all`; `hooks install post-commit` doesn't match the still-valid
+# `hooks install/uninstall/status` shorthand (that has no `post-commit`).
+_REMOVED_COMMAND_PATTERNS = [
+    ("hooks rerun", "the `hooks rerun` escape hatch"),
+    ("hooks run", "the hidden `hooks run` command"),
+    ("hooks install post-commit", "`hooks install post-commit`"),
+    ("post_commit", "the `hooks.post_commit` config section"),
+]
+
+
+def find_removed_command_docs(project_dir: Optional[Path] = None) -> list[str]:
+    """Scan the codeindex section of CLAUDE.md for deleted commands (GH #177).
+
+    The v0.37.0 BREAKING (#167) removed the post-commit hook, but CLAUDE.md
+    sections injected by older templates still document ``hooks rerun``,
+    ``hooks install post-commit``, the hidden ``hooks run``, and the
+    ``hooks.post_commit`` config. An AI agent following the stale section runs
+    commands that no longer exist. The startup hint uses this to escalate
+    from a generic "run update" to a specific "these deleted mechanisms are
+    still documented" warning.
+
+    Only the codeindex-injected section (between markers) is scanned — host
+    prose outside the section is the author's own content, not stale docs we
+    injected, so it's excluded to avoid false positives.
+
+    Args:
+        project_dir: Project root directory. Defaults to CWD.
+
+    Returns:
+        Sorted list of the matched substrings (e.g. ``["hooks rerun",
+        "post_commit"]``). Empty when CLAUDE.md is absent, has no codeindex
+        markers, or the section is clean.
+    """
+    if project_dir is None:
+        project_dir = Path.cwd()
+
+    claude_md = project_dir / "CLAUDE.md"
+    if not claude_md.exists():
+        return []
+
+    try:
+        content = claude_md.read_text()
+    except (OSError, FileNotFoundError):
+        return []
+
+    match = MARKER_PATTERN.search(content)
+    if not match:
+        return []  # no codeindex section — host prose only, not stale docs
+
+    section = match.group(0)
+    hits = [pat for pat, _label in _REMOVED_COMMAND_PATTERNS if pat in section]
+    return sorted(set(hits))
