@@ -301,6 +301,18 @@ _DIAGNOSTIC_SKIP_DIRS = {
     ".gradle",
 }
 
+# Fingerprint walk skips these on top of the diagnostic set. Pods/vendor are
+# where the stray ``.py`` files that mask a non-Python repo come from (RN
+# ``ios/Pods/<Pod>/build.py``, vendored C extensions), so excluding them keeps
+# the fingerprint honest about the repo's *own* language. Mirrors loomgraph's
+# ``_FINGERPRINT_SKIP_DIRS`` (loomgraph#161) — kept in lockstep so both tools
+# agree on what "the repo's main language" means.
+_FINGERPRINT_SKIP_DIRS = _DIAGNOSTIC_SKIP_DIRS | {"Pods", "vendor"}
+# Below this many files a language isn't "the repo's main language missed by
+# config" — just stray tool scripts. Keeps small repos + the codeindex self-dogfood
+# (fixtures in tests/) warning-free. Mirrors loomgraph's threshold.
+_FINGERPRINT_MIN_FILES = 10
+
 
 def diagnose_language_mismatch(root: Path, config: Config) -> dict:
     """When ``find_all_directories`` returns empty, figure out why.
@@ -412,3 +424,57 @@ def language_mismatch_hint(root: Path, config: Config) -> str | None:
         "matches their extensions.\n"
         f"  Top extensions: {top}"
     )
+
+
+def language_fingerprint_hint(root: Path, config: Config) -> str | None:
+    """Detect a repo whose main language isn't in ``config.languages`` (GH #175).
+
+    ``diagnose_language_mismatch`` (above) walks ``config.include`` — by default
+    ``[src/, lib/, tests/, examples/]`` — so it's blind to a repo whose real
+    source lives elsewhere (a RN app with TS under ``app/``, or a root-level
+    project). graph-export with no explicit ``include`` scans the *whole* tree,
+    so it sees (and silently under-captures) that source while the diagnose
+    hint returns None. This walks the whole tree too, closing that blind spot.
+
+    Advisory only: the caller decides exit code. graph-export treats a hit on a
+    0-entity export as data-loss (empty graph → fail-loud, mirroring #147) and
+    a hit on a >0-entity export as a partial-graph warning (exit 0).
+
+    Mirrors loomgraph's ``_language_fingerprint_warning`` (loomgraph#161) —
+    same threshold, same skip dirs, same prefix ``"language fingerprint:"`` —
+    so the two tools emit the same guidance.
+
+    Returns:
+        A ``"language fingerprint: …"`` string when a supported language not in
+        ``config.languages`` has ≥ ``_FINGERPRINT_MIN_FILES`` source files AND
+        more than the configured languages cover combined (so a 2-file stray
+        ``.py`` can't mask a TS repo, but a mixed repo isn't warned when its
+        configured languages already cover the bulk). ``None`` otherwise.
+    """
+    ext_to_lang = {ext: lang for lang, exts in LANGUAGE_EXTENSIONS.items() for ext in exts}
+    configured = set(config.languages)
+
+    counts: Counter[str] = Counter()
+    for path in root.rglob("*"):
+        if any(part in _FINGERPRINT_SKIP_DIRS for part in path.parts):
+            continue
+        if should_exclude(path, config.exclude, root):
+            continue
+        if path.is_file():
+            lang = ext_to_lang.get(path.suffix.lower())
+            if lang:
+                counts[lang] += 1
+
+    if not counts:
+        return None
+
+    covered = sum(counts.get(lang, 0) for lang in configured)
+    for lang, n in counts.most_common():
+        if lang in configured or n < _FINGERPRINT_MIN_FILES or n <= covered:
+            continue
+        return (
+            f"language fingerprint: detected {n} {lang} source files, none "
+            f"indexed — add '{lang}' to `languages` in .codeindex.yaml "
+            f"(effective languages: {', '.join(sorted(configured))})"
+        )
+    return None

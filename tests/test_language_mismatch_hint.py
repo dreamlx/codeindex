@@ -86,6 +86,40 @@ class TestScanAllSurfacesMismatch:
         assert ".ts" in result.output, result.output
 
 
+class TestScanAllFingerprintWhenWithFilesGT0:
+    """GH #175: scan-all's mismatch hint only fires at ``with_files == 0``
+    (``_build_and_print_tree``). When a stray ``.py`` under an include root
+    makes ``with_files > 0`` (e.g. ``src/legacy/old.py`` alongside ``src/*.ts``),
+    scan-all walks the normal path and emits *no* mismatch check — so a repo
+    that's mostly TS but happens to have one stray ``.py`` indexes only the
+    ``.py`` and stays silent about the TS. The whole-tree fingerprint closes
+    that gap (advisory only — scan-all's partial output is visible, not
+    data-loss-class like graph-export's)."""
+
+    def test_stray_py_under_src_with_ts_majority_warns(self, tmp_path):
+        from codeindex.cli import main
+
+        runner = CliRunner()
+        with runner.isolated_filesystem(temp_dir=tmp_path) as proj:
+            proj = Path(proj)
+            (proj / "src" / "legacy").mkdir(parents=True)
+            (proj / "src" / "legacy" / "old.py").write_text("def old(): return 1\n")
+            # majority TS under src/ — the stray .py makes with_files>0, so
+            # the with_files==0 mismatch hint never fires, but the fingerprint
+            # should catch the uncaptured TS.
+            for i in range(12):
+                (proj / "src" / f"c{i}.tsx").write_text(
+                    f"export const C{i} = () => {i};\n"
+                )
+            _config(proj, languages=["python"])
+
+            result = runner.invoke(main, ["scan-all", "--root", str(proj)])
+
+        assert result.exit_code == 0, result.output
+        assert "typescript" in result.output, result.output
+        assert "fingerprint" in result.output.lower(), result.output
+
+
 class TestDiagnosticAccuracy:
     """GH #156: ``diagnose_language_mismatch`` drove false "Add X" suggestions
     on a TS/JS repo whose non-project files were vendored reference / build
