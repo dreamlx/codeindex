@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-08-19
+
 ### Added
 
 - **Startup hint for CLAUDE.md documenting removed commands** (GH #177).
@@ -51,6 +53,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   raw bytes inside a `### file` symbol list. The fallback notice now directs
   agents to the relevant source files rather than assuming per-module README
   files exist. Tiny configured budgets remain bounded too.
+
+- **`TestLanguageMismatchWarning` isolated from the host's `.codeindex.yaml`**
+  (release-flow). The 5 tests used `CliRunner().invoke` without
+  `isolated_filesystem`, so `Config.load(None)` read `Path.cwd()/.codeindex.yaml`
+  — on a dev machine with a 5-language dogfood config (gitignored), the tests
+  went red locally while staying green on CI (which has no such file). Each
+  test now writes an explicit python-only `.codeindex.yaml` under the `--root`
+  so it exercises the real footgun regardless of where it runs.
+
+- **`pre_release_check.sh` no longer false-fails on pre-bump state.** The
+  read-only gate runs before `bump_version.sh` / refresh, so pyproject, the
+  built wheel, the clean-venv `--version`, and the CLAUDE.md stamp all still
+  hold the old version — checking them against the target version was a
+  guaranteed false positive that printed `✗ DO NOT TAG`. Those four checks
+  are now `warn` (informational, pre-bump expected); the real version-match
+  verification lives in `release.sh` post-bump (build + TestPyPI/PyPI install).
+  Genuinely fatal checks (build crash, missing CHANGELOG section, tag
+  already exists, dirty README_AI) still fail hard.
 
 ## [0.37.0] - 2026-08-15
 

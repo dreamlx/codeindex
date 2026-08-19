@@ -38,11 +38,17 @@ echo "Repo: $REPO_ROOT"
 # ── 1. Version-string consistency ─────────────────────────────────
 section "1. Version-string consistency"
 
+# This gate runs PRE-bump (it's read-only — the bump happens in release.sh
+# step 3). So pyproject is *expected* to still hold the old version; the
+# target version lands after bump_version.sh. A match here would actually be
+# wrong (either already bumped, or a stale pre-bump). Warn, don't fail —
+# the real version-consistency check is release.sh's post-bump build (step 8-9)
+# and the TestPyPI/PyPI install (step 10-11), both post-bump.
 PYPROJECT_VER=$(grep -E '^version = ' pyproject.toml | head -1 | sed -E 's/version = "([^"]+)"/\1/')
 if [[ "$PYPROJECT_VER" == "$VERSION" ]]; then
-    pass "pyproject.toml version = $VERSION"
+    warn "pyproject.toml already at $VERSION (expected pre-bump); bump_version.sh will be a no-op"
 else
-    fail "pyproject.toml version is $PYPROJECT_VER, expected $VERSION"
+    pass "pyproject.toml is $PYPROJECT_VER (pre-bump); bump_version.sh will set $VERSION"
 fi
 
 if grep -qE "^## \[$VERSION\]" CHANGELOG.md; then
@@ -71,12 +77,16 @@ fi
 section "1b. README_AI refresh freshness"
 
 # The CLAUDE.md codeindex section is stamped with the tool version at refresh
-# time (claude-md update), so it must already carry this version — external
-# truth that a refresh happened after the version bump, before the tag.
+# time (claude-md update), so after a refresh it carries the target version —
+# external truth that a refresh happened after the version bump, before the tag.
+# But this gate is read-only and runs PRE-bump+PRE-refresh (the stamp lands in
+# release.sh step 6.5), so the section still holds the OLD stamp — a mismatch
+# is expected here, not a failure. The real stamp verification is that the
+# dirty-README check below passes AND release.sh step 6.5 ran claude-md update.
 if grep -q "(v$VERSION) for AI-friendly" CLAUDE.md; then
     pass "CLAUDE.md codeindex section stamped v$VERSION"
 else
-    fail "CLAUDE.md codeindex section not stamped v$VERSION — run 'codeindex scan-all && codeindex claude-md update' and commit before tagging"
+    warn "CLAUDE.md still stamped with pre-release version (refresh happens in release.sh step 6.5)"
 fi
 
 DIRTY_README=$(git status --porcelain -- '*README_AI.md' | wc -l | tr -d ' ')
@@ -149,10 +159,20 @@ section "5. Build wheel"
 
 rm -rf dist/ build/
 if python3 -m build >/tmp/pre_release_build.log 2>&1; then
-    if [[ -f "dist/ai_codeindex-${VERSION}-py3-none-any.whl" ]]; then
-        pass "wheel built: dist/ai_codeindex-${VERSION}-py3-none-any.whl"
+    # Pre-bump: the wheel carries the OLD pyproject version, not $VERSION
+    # (bump happens in release.sh step 3, after this read-only gate). So we
+    # only check that A wheel was built — the version-matched wheel is
+    # verified post-bump by release.sh step 9 (twine check) + the TestPyPI/
+    # PyPI install smoke (step 10-11). Flagging a pre-bump version mismatch
+    # here is a guaranteed false positive.
+    WHEEL=$(ls dist/*.whl 2>/dev/null | head -1)
+    if [[ -n "$WHEEL" ]]; then
+        pass "build succeeded (wheel: $(basename "$WHEEL"))"
+        if [[ "$WHEEL" != *"ai_codeindex-${VERSION}-py3-none-any.whl" ]]; then
+            warn "wheel is pre-bump version; release.sh bumps then rebuilds to ${VERSION}"
+        fi
     else
-        fail "wheel built but expected ai_codeindex-${VERSION}-py3-none-any.whl not found"
+        fail "build succeeded but no wheel in dist/"
         ls -1 dist/ 2>/dev/null | sed 's/^/    /'
     fi
 else
@@ -163,18 +183,25 @@ fi
 # ── 6. Clean-venv install smoke test ──────────────────────────────
 section "6. Clean-venv install + codeindex --version"
 
+# Pre-bump: the wheel carries the old version, so `--version` will report the
+# old version, not $VERSION — that's expected here. The post-bump version
+# match is verified by release.sh step 10-11 (TestPyPI/PyPI install). This
+# step still has value: it proves the wheel installs cleanly and the CLI
+# runs in a fresh venv (catches missing deps / import errors). We check the
+# install + --help, and only warn on the version mismatch.
 SANDBOX=/tmp/codeindex_release_sandbox_$$
 rm -rf "$SANDBOX"
 python3 -m venv "$SANDBOX" >/dev/null 2>&1
-if [[ -f "dist/ai_codeindex-${VERSION}-py3-none-any.whl" ]]; then
-    if "$SANDBOX/bin/pip" install "dist/ai_codeindex-${VERSION}-py3-none-any.whl" >/tmp/pre_release_install.log 2>&1; then
+WHEEL=$(ls dist/*.whl 2>/dev/null | head -1)
+if [[ -n "$WHEEL" ]]; then
+    if "$SANDBOX/bin/pip" install "$WHEEL" >/tmp/pre_release_install.log 2>&1; then
         REPORTED_VER=$("$SANDBOX/bin/codeindex" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "??")
         if [[ "$REPORTED_VER" == "$VERSION" ]]; then
             pass "clean-venv codeindex --version = $VERSION"
         else
-            fail "clean-venv codeindex --version = $REPORTED_VER, expected $VERSION"
+            warn "clean-venv codeindex --version = $REPORTED_VER (pre-bump; release.sh bumps to $VERSION)"
         fi
-        # minimal command smoke
+        # minimal command smoke — the real value of this step post-bump-fix
         if "$SANDBOX/bin/codeindex" --help >/dev/null 2>&1; then
             pass "codeindex --help works in clean venv"
         else
