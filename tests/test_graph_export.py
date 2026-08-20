@@ -560,6 +560,79 @@ def test_python_factory_return_no_such_method(tmp_path) -> None:
     assert method[0].dst is None
 
 
+def test_python_factory_return_descends_to_subclass_impl(tmp_path) -> None:
+    """GH #185 extension (base-class descent): the factory's return type names
+    an abstract base (``-> Store(ABC)``) whose ``@abstractmethod`` has no
+    method entity (parser skips abstract methods), while the concrete impl
+    lives on a single in-workspace subclass. The receiver ``store.method()``
+    must resolve to the subclass impl, not stay unresolved.
+
+    This is the common Python DI shape (``create_session() -> Session(ABC)``,
+    ``create_graph_store() -> GraphStore(ABC)``) and the most frequent factory
+    pattern in real codebases. Without descent, every factory-routed call to an
+    ABC method reads as an orphan — ``loomgraph graph insert_custom_kg`` shows
+    0 callers despite 3 factory-wide call sites (GH loomgraph #230)."""
+    (tmp_path / ".codeindex.yaml").write_text("version: 1\nlanguages: [python]\n")
+    (tmp_path / "svc.py").write_text(
+        "from abc import ABC, abstractmethod\n"
+        "class Store(ABC):\n"
+        "    @abstractmethod\n"
+        "    def write(self) -> None: ...\n"
+        "class SqliteStore(Store):\n"
+        "    def write(self) -> None: ...\n"
+        "async def create_store() -> Store:\n"
+        "    return SqliteStore()\n"
+        "async def run() -> None:\n"
+        "    store = await create_store()\n"
+        "    store.write()\n"
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    method = [
+        e for e in model.edges
+        if e.kind == "CALLS" and e.src == "svc.run"
+        and e.dst_raw == "store.write"
+    ]
+    assert len(method) == 1
+    assert method[0].resolution_qualifier == "resolved"
+    # descends to the subclass impl, not the abstract base (which has no entity)
+    assert method[0].dst == "svc.SqliteStore.write"
+
+
+def test_python_factory_return_descends_ambiguous_multiple_subclasses(tmp_path) -> None:
+    """GH #185 boundary: when two subclasses both override the method, descent
+    is genuinely ambiguous (dynamic dispatch) — must NOT guess, stay
+    unresolved. Mirrors the AMBIGUOUS contract of bare callees."""
+    (tmp_path / ".codeindex.yaml").write_text("version: 1\nlanguages: [python]\n")
+    (tmp_path / "svc.py").write_text(
+        "from abc import ABC, abstractmethod\n"
+        "class Store(ABC):\n"
+        "    @abstractmethod\n"
+        "    def write(self) -> None: ...\n"
+        "class SqliteStore(Store):\n"
+        "    def write(self) -> None: ...\n"
+        "class PgStore(Store):\n"
+        "    def write(self) -> None: ...\n"
+        "async def create_store() -> Store:\n"
+        "    return SqliteStore()\n"
+        "async def run() -> None:\n"
+        "    store = await create_store()\n"
+        "    store.write()\n"
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    method = [
+        e for e in model.edges
+        if e.kind == "CALLS" and e.src == "svc.run"
+        and e.dst_raw == "store.write"
+    ]
+    assert len(method) == 1
+    assert method[0].resolution_qualifier == "unresolved"
+    assert method[0].dst is None
+
+
 def test_python_src_layout_import_resolves(tmp_path) -> None:
     """GH #133: Python src-layout. The file-path-derived module id carries a
     ``src.`` prefix the import statement lacks: file ``src/myproj/svc.py`` →
