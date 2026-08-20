@@ -38,6 +38,12 @@ htmlcov/
 # legit tracked navigation assets and must stay committable.
 tests/fixtures/char_graphbuffer/**/README_AI.md
 
+# GH #183: sibling to #135 — test_hierarchical_test is a pytest-rebuilt fixture
+# (test_hierarchy_simple.py rmtree-rebuilds it at collect time; a8f1732 deleted
+# the committed READMEs to stop that dirty-tree path). But scan-all regenerates
+# them, so they need the same ignore. The cli_parse/graph_export carve-out still holds.
+tests/legacy/test_hierarchical_test/**/README_AI.md
+
 # Serena MCP rewrites this on every project activation — keeps memories tracked.
 .serena/project.yml
 .serena/project.local.yml

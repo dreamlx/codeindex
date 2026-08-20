@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`.gitignore` covers the `test_hierarchical_test` fixture READMEs** (GH
+  #183). `a8f1732` deleted the four committed `README_AI.md` files under
+  `tests/legacy/test_hierarchical_test/` to stop the pytest rmtree-rebuild
+  dirty-tree path, but did not update `.gitignore` — so `scan-all` (root
+  config includes `tests/`) regenerated them, leaving the tree dirty again.
+  This is the sibling gap of GH #135 (which ignored
+  `tests/fixtures/char_graphbuffer/**/README_AI.md` for the same reason);
+  the hierarchical fixture lives under `tests/legacy/` so #135's rule
+  missed it. Added `tests/legacy/test_hierarchical_test/**/README_AI.md` to
+  `.gitignore`, with a regression test pinning both rules and the
+  `cli_parse/` + `graph_export/` carve-out (those stay committable).
+
 ## [0.38.0] - 2026-08-19
 
 ### Added
