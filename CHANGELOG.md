@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Python: resolve method CALLS through a factory whose return type is an
+  abstract base** (GH #185 extension). `store.m()` previously unresolved
+  even with GH #185's factory binding now resolves when the factory's
+  return annotation names an ABC (`-> Store(ABC)`) whose `@abstractmethod`
+  has no method entity (the parser skips abstract methods) and the concrete
+  impl lives on a single in-workspace subclass. A base-class → subclass map
+  is built from INHERITS relations (in-workspace parents only); exactly one
+  subclass carrying the method resolves to its impl, two or more stays
+  unresolved (genuine ambiguous dynamic dispatch — never guesses). This is
+  the common Python DI shape (`create_session() -> Session(ABC)`,
+  `create_graph_store() -> GraphStore(ABC)`) and fixes the orphan-read on
+  factory-routed ABC methods surfaced by loomgraph self-dogfood (#230).
+  Boundary unchanged: unannotated/external/union/Optional/forward-ref
+  factories, non-direct assignments, function-parameter receivers, and
+  tuple-unpacking receivers stay unresolved (cross-scope type propagation
+  is a deeper, separate gap). No false edges synthesized; edge schema and
+  `resolution_qualifier` contract unchanged.
+
 ## [0.39.0] - 2026-08-21
 
 ### Added

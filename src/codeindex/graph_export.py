@@ -270,6 +270,7 @@ def _resolve_via_factory_return(
     var_bindings: dict[tuple[str, str], dict[str, str]],
     entity_return_type: dict[str, str],
     last_index: dict[str, list[str]],
+    child_index: dict[str, list[str]] | None = None,
 ) -> tuple[str, str | None, list[str]]:
     """Resolve a dotted callee ``var.method`` through a factory return type.
 
@@ -283,6 +284,13 @@ def _resolve_via_factory_return(
     precondition that fails returns ``("unresolved", None, [])`` — this NEVER
     synthesizes a false edge (unannotated / external / union / Optional /
     forward-ref / ambiguous / missing-method all fall through).
+
+    GH #185 extension (base-class descent): when the return type names an
+    abstract base whose ``@abstractmethod`` has no method entity (the parser
+    skips abstract methods), the impl lives on a subclass. ``child_index``
+    maps a base-class eid to its in-workspace subclass eids (built from
+    INHERITS edges); a single subclass carrying ``method`` resolves to it,
+    multiple subclasses are ambiguous (dynamic dispatch — do not guess).
     """
     if not callee or "." not in callee:
         return "unresolved", None, []
@@ -304,9 +312,24 @@ def _resolve_via_factory_return(
     classes = last_index.get(return_type, [])
     if len(classes) != 1:
         return "unresolved", None, []
-    target = f"{classes[0]}.{method}"
+    base = classes[0]
+    target = f"{base}.{method}"
     if target in last_index.get(method, []):
         return "resolved", target, []
+    # GH #185 extension: base-class descent. The return type names a class
+    # whose ``method`` has no entity here (commonly an ABC @abstractmethod,
+    # which the parser skips). Descend to subclasses; exactly one subclass
+    # carrying the method resolves to its impl, two or more is ambiguous
+    # dynamic dispatch (the AMBIGUOUS contract — never guess).
+    if child_index:
+        children = child_index.get(base, [])
+        hits = [
+            f"{c}.{method}"
+            for c in children
+            if f"{c}.{method}" in last_index.get(method, [])
+        ]
+        if len(hits) == 1:
+            return "resolved", hits[0], []
     return "unresolved", None, []
 
 
@@ -687,6 +710,12 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
     # GH #185: entity id -> bare return-type annotation (e.g. "Store"), for
     # propagating a factory's return type to a locally assigned receiver.
     entity_return_type: dict[str, str] = {}
+    # GH #185 extension: base-class eid -> [subclass eids], for descent when
+    # the factory return type names an ABC whose @abstractmethod has no entity.
+    # Built from INHERITS relations: only in-workspace parents resolve, so a
+    # base from an external lib (BaseSettings, RuntimeError) never seeds an
+    # entry — no false descent.
+    child_index: dict[str, list[str]] = defaultdict(list)
     # all scanned module ids, for IMPORTS resolution (GH #117)
     module_set: set[str] = set()
     # TS path-alias map from tsconfig.json (GH #139); empty when no tsconfig.
@@ -738,6 +767,24 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
                         (module, call.caller), {}
                     )[call.assigned_to] = dst
 
+    # Pass 1.7: base-class -> subclass eids, for factory base-class descent.
+    # A factory returning an ABC (``-> Store(ABC)``) names a base whose
+    # @abstractmethod has no entity; the impl lives on a subclass. Resolve
+    # each inheritance's parent now (it has no dependency on child_index) and
+    # pin the child eid under the resolved parent — only in-workspace parents
+    # seed an entry. Independent of Pass 2 so inheritance order doesn't matter.
+    for node in buffer.directories():
+        for pr in node.parse_results:
+            module = _module_of(pr.path, root)
+            is_java = pr.path.suffix == ".java"
+            for inh in pr.inheritances:
+                pqual, pdst, _ = _resolve(inh.parent, module, last_index)
+                if pqual == "resolved" and pdst:
+                    child_eid = _qualified_id(
+                        module, inh.child.rsplit(".", 1)[-1], is_java=is_java
+                    )
+                    child_index[pdst].append(child_eid)
+
     # Pass 2: edges (CALLS + INHERITS), resolved against the global index
     edges: list[Edge] = []
     for node in buffer.directories():
@@ -759,6 +806,7 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
                         var_bindings,
                         entity_return_type,
                         last_index,
+                        child_index,
                     )
                 edges.append(
                     Edge(
