@@ -234,6 +234,52 @@ def run():
         assert get_service_call is not None
         assert get_service_call.caller == "run"
 
+    def test_factory_return_type_and_assigned_to_captured(self, tmp_path):
+        """GH #185 parser-level contract: a function with ``-> Store`` stores
+        ``return_type == "Store"`` on the Symbol; a direct ``store = await
+        create_store()`` assignment records ``assigned_to == "store"`` on the
+        factory Call. These two fields are the substrate graph-export uses to
+        resolve ``store.create_entity()``. Pin them so a future parser refactor
+        can't silently drop them."""
+        code = """
+class Store:
+    async def create_entity(self) -> None: ...
+
+async def create_store() -> Store:
+    return Store()
+
+async def run() -> None:
+    store = await create_store()
+    await store.create_entity()
+"""
+        py_file = tmp_path / "test.py"
+        py_file.write_text(code)
+
+        result = parse_file(py_file)
+
+        # return_type on the factory function Symbol
+        factory = next((s for s in result.symbols if s.name == "create_store"), None)
+        assert factory is not None
+        assert factory.return_type == "Store"
+        # the class has no return annotation (classes never do)
+        store_sym = next((s for s in result.symbols if s.name == "Store"), None)
+        assert store_sym is not None
+        assert store_sym.return_type == ""
+
+        # assigned_to on the factory call (the direct assignment form)
+        factory_call = next(
+            (c for c in result.calls if c.callee == "create_store"), None
+        )
+        assert factory_call is not None
+        assert factory_call.caller == "run"
+        assert factory_call.assigned_to == "store"
+        # the method call itself is NOT an assignment target → stays empty
+        method_call = next(
+            (c for c in result.calls if c.callee == "store.create_entity"), None
+        )
+        assert method_call is not None
+        assert method_call.assigned_to == ""
+
     def test_method_call_with_self(self, tmp_path):
         """Test method call with self (within class)."""
         code = """

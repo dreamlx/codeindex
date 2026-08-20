@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Python: resolve method CALLS through annotated factory return types**
+  (GH #185). A dotted callee `store.m()` that was previously unresolved
+  (dynamic dispatch, GH #127) now resolves when `store` was assigned in
+  the same scope from a direct call to an annotated factory
+  (`async def create_store() -> Store`). The receiver type is propagated
+  from the factory's return annotation; an in-workspace class with the
+  method yields a resolved CALLS edge, retaining the normal factory call
+  edge. Bounded: unannotated/external/union/Optional/forward-ref factories
+  and non-direct assignments stay unresolved — no false edges synthesized.
+  Edge schema and `resolution_qualifier` contract unchanged.
+
 ### Fixed
 
 - **`.gitignore` covers the `test_hierarchical_test` fixture READMEs** (GH

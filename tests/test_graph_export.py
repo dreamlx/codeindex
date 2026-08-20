@@ -388,6 +388,178 @@ def test_python_constructor_inherits_class_still_resolves(tmp_path) -> None:
     assert calls[0].dst_raw == "Widget.__init__"
 
 
+def test_python_factory_return_resolves_method_call(tmp_path) -> None:
+    """GH #185: ``store = await create_store()`` where ``create_store() ->
+    Store`` is an annotated factory. The later ``store.create_entity()`` was
+    previously unresolved (dotted callee = dynamic dispatch, GH #127): the
+    receiver ``store`` is a local var whose type is statically unknowable in
+    general. But here the type IS knowable — it is the factory's return
+    annotation, and the factory call is a direct, same-scope assignment.
+    Propagate the return type to the var, resolve the method against the
+    in-workspace class. The normal factory call edge is retained."""
+    (tmp_path / ".codeindex.yaml").write_text("version: 1\nlanguages: [python]\n")
+    (tmp_path / "svc.py").write_text(
+        "class Store:\n"
+        "    async def create_entity(self) -> None: ...\n"
+        "async def create_store() -> Store:\n"
+        "    return Store()\n"
+        "async def run() -> None:\n"
+        "    store = await create_store()\n"
+        "    await store.create_entity()\n"
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    calls = [e for e in model.edges if e.kind == "CALLS" and e.src == "svc.run"]
+    # factory edge retained: run -> svc.create_store
+    factory = [e for e in calls if e.dst == "svc.create_store"]
+    assert len(factory) == 1
+    assert factory[0].resolution_qualifier == "resolved"
+    assert factory[0].dst_raw == "create_store"
+    # NEW: resolved method call through factory return type
+    method = [e for e in calls if e.dst == "svc.Store.create_entity"]
+    assert len(method) == 1
+    assert method[0].resolution_qualifier == "resolved"
+    assert method[0].dst_raw == "store.create_entity"
+
+
+def test_python_factory_return_sync(tmp_path) -> None:
+    """GH #185 sync variant: ``store = create_store()`` (no await). Same
+    resolution as the async factory."""
+    (tmp_path / ".codeindex.yaml").write_text("version: 1\nlanguages: [python]\n")
+    (tmp_path / "svc.py").write_text(
+        "class Store:\n"
+        "    def create_entity(self) -> None: ...\n"
+        "def create_store() -> Store:\n"
+        "    return Store()\n"
+        "def run() -> None:\n"
+        "    store = create_store()\n"
+        "    store.create_entity()\n"
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    method = [
+        e for e in model.edges
+        if e.kind == "CALLS" and e.src == "svc.run"
+        and e.dst == "svc.Store.create_entity"
+    ]
+    assert len(method) == 1
+    assert method[0].resolution_qualifier == "resolved"
+    assert method[0].dst_raw == "store.create_entity"
+
+
+def test_python_factory_return_unannotated(tmp_path) -> None:
+    """GH #185 boundary: factory with NO return annotation. The receiver type
+    is genuinely unknowable; must stay unresolved (no synthesized edge)."""
+    (tmp_path / ".codeindex.yaml").write_text("version: 1\nlanguages: [python]\n")
+    (tmp_path / "svc.py").write_text(
+        "class Store:\n"
+        "    def create_entity(self) -> None: ...\n"
+        "def create_store():  # no return annotation\n"
+        "    return Store()\n"
+        "def run() -> None:\n"
+        "    store = create_store()\n"
+        "    store.create_entity()\n"
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    method = [
+        e for e in model.edges
+        if e.kind == "CALLS" and e.src == "svc.run"
+        and e.dst_raw == "store.create_entity"
+    ]
+    assert len(method) == 1
+    assert method[0].resolution_qualifier == "unresolved"
+    assert method[0].dst is None
+
+
+def test_python_factory_return_union_or_optional(tmp_path) -> None:
+    """GH #185 boundary: ``-> Store | None`` and ``-> Optional[Store]`` are
+    union/parameterized returns. A union member is not a single in-workspace
+    class — resolving it would manufacture a possibly-wrong edge. Must stay
+    unresolved."""
+    (tmp_path / ".codeindex.yaml").write_text("version: 1\nlanguages: [python]\n")
+    (tmp_path / "svc.py").write_text(
+        "from typing import Optional\n"
+        "class Store:\n"
+        "    def create_entity(self) -> None: ...\n"
+        "def create_store_union() -> Store | None:\n"
+        "    return Store()\n"
+        "def create_store_opt() -> Optional[Store]:\n"
+        "    return Store()\n"
+        "def run() -> None:\n"
+        "    a = create_store_union()\n"
+        "    a.create_entity()\n"
+        "    b = create_store_opt()\n"
+        "    b.create_entity()\n"
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    for raw in ("a.create_entity", "b.create_entity"):
+        method = [
+            e for e in model.edges
+            if e.kind == "CALLS" and e.src == "svc.run" and e.dst_raw == raw
+        ]
+        assert len(method) == 1
+        assert method[0].resolution_qualifier == "unresolved"
+        assert method[0].dst is None
+
+
+def test_python_factory_return_external_class(tmp_path) -> None:
+    """GH #185 boundary: factory returns an external class (``os.PathLike``)
+    not in the scan tree. No entity to resolve to → unresolved."""
+    (tmp_path / ".codeindex.yaml").write_text("version: 1\nlanguages: [python]\n")
+    (tmp_path / "svc.py").write_text(
+        "import os\n"
+        "def make_path() -> os.PathLike:\n"
+        "    return os.PathLike()\n"
+        "def run() -> None:\n"
+        "    p = make_path()\n"
+        "    p.is_absolute()\n"
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    method = [
+        e for e in model.edges
+        if e.kind == "CALLS" and e.src == "svc.run"
+        and e.dst_raw == "p.is_absolute"
+    ]
+    assert len(method) == 1
+    assert method[0].resolution_qualifier == "unresolved"
+    assert method[0].dst is None
+
+
+def test_python_factory_return_no_such_method(tmp_path) -> None:
+    """GH #185 boundary: factory returns an in-workspace class, but the called
+    method does not exist on it. Must NOT synthesize a ghost edge to a phantom
+    method — stay unresolved."""
+    (tmp_path / ".codeindex.yaml").write_text("version: 1\nlanguages: [python]\n")
+    (tmp_path / "svc.py").write_text(
+        "class Store:\n"
+        "    def create_entity(self) -> None: ...\n"
+        "def create_store() -> Store:\n"
+        "    return Store()\n"
+        "def run() -> None:\n"
+        "    store = create_store()\n"
+        "    store.missing()  # not on Store\n"
+    )
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    method = [
+        e for e in model.edges
+        if e.kind == "CALLS" and e.src == "svc.run"
+        and e.dst_raw == "store.missing"
+    ]
+    assert len(method) == 1
+    assert method[0].resolution_qualifier == "unresolved"
+    assert method[0].dst is None
+
+
 def test_python_src_layout_import_resolves(tmp_path) -> None:
     """GH #133: Python src-layout. The file-path-derived module id carries a
     ``src.`` prefix the import statement lacks: file ``src/myproj/svc.py`` →

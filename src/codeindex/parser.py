@@ -64,6 +64,13 @@ class Call:
     line_number: int
     call_type: CallType
     arguments_count: Optional[int] = None
+    # GH #185: when this call is the RHS of a direct local assignment
+    # (``store = create_store()`` or ``store = await create_store()``), the
+    # LHS variable name. Empty for calls not in an assignment context (bare
+    # statements, tuple unpacking, attribute assignment, decorator args).
+    # Captured only for Python; graph-export uses it to propagate a factory's
+    # return type to subsequent ``var.method()`` calls in the same scope.
+    assigned_to: str = ""
 
     @property
     def is_dynamic(self) -> bool:
@@ -83,6 +90,7 @@ class Call:
             "line_number": self.line_number,
             "call_type": self.call_type.value,
             "arguments_count": self.arguments_count,
+            "assigned_to": self.assigned_to,
         }
 
     @staticmethod
@@ -94,6 +102,7 @@ class Call:
             line_number=data["line_number"],
             call_type=CallType(data["call_type"]),
             arguments_count=data.get("arguments_count"),
+            assigned_to=data.get("assigned_to", ""),
         )
 
 
@@ -108,6 +117,13 @@ class Symbol:
     line_start: int = 0
     line_end: int = 0
     annotations: list["Annotation"] = field(default_factory=list)  # Story 7.1.2.1
+    # GH #185: bare return-type annotation text (e.g. "Store") for Python
+    # functions/methods. Empty for classes and for non-Python symbols. The
+    # parser already walks the tree-sitter ``type`` node for the ``signature``
+    # string (parsers/python/symbols.py); this is the same text captured
+    # separately so graph-export can propagate it to a local var assigned from
+    # the factory call. Not a schema field — projection-only, additive.
+    return_type: str = ""
 
     def to_dict(self) -> dict:
         """Convert Symbol to JSON-serializable dict."""
@@ -119,6 +135,7 @@ class Symbol:
             "line_start": self.line_start,
             "line_end": self.line_end,
             "annotations": [a.to_dict() for a in self.annotations],
+            "return_type": self.return_type,
         }
 
 
