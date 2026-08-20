@@ -116,6 +116,7 @@ def _parse_function(
     """
     name = ""
     signature_parts = []
+    return_type = ""  # GH #185: bare return annotation text, e.g. "Store"
 
     for child in node.children:
         if child.type == "identifier":  # function name is 'identifier', not 'name'
@@ -123,7 +124,8 @@ def _parse_function(
         elif child.type == "parameters":
             signature_parts.append(get_node_text(child, source_bytes))
         elif child.type == "type":
-            signature_parts.append(f" -> {get_node_text(child, source_bytes)}")
+            return_type = get_node_text(child, source_bytes)
+            signature_parts.append(f" -> {return_type}")
 
     kind = "method" if class_name else "function"
     full_name = f"{class_name}.{name}" if class_name else name
@@ -137,6 +139,7 @@ def _parse_function(
         docstring=docstring,
         line_start=node.start_point[0] + 1,
         line_end=node.end_point[0] + 1,
+        return_type=return_type,
     )
 
 

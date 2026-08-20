@@ -264,6 +264,52 @@ def _resolve(
     return "unresolved", None, []
 
 
+def _resolve_via_factory_return(
+    callee: str | None,
+    scope: tuple[str, str],
+    var_bindings: dict[tuple[str, str], dict[str, str]],
+    entity_return_type: dict[str, str],
+    last_index: dict[str, list[str]],
+) -> tuple[str, str | None, list[str]]:
+    """Resolve a dotted callee ``var.method`` through a factory return type.
+
+    GH #185: when ``var`` was assigned in the same scope from a direct call to
+    an annotated factory (``store = await create_store()`` where
+    ``create_store() -> Store``), propagate the factory's return type to the
+    receiver and resolve ``method`` against the in-workspace class.
+
+    ``scope`` is ``(module, caller)`` — the file-local caller string has no
+    module qualifier, so the pair keys the binding to its source file. Every
+    precondition that fails returns ``("unresolved", None, [])`` — this NEVER
+    synthesizes a false edge (unannotated / external / union / Optional /
+    forward-ref / ambiguous / missing-method all fall through).
+    """
+    if not callee or "." not in callee:
+        return "unresolved", None, []
+    receiver, _, method = callee.rpartition(".")
+    # ponytail: single-hop only. ``a.b.m()`` is a chained call whose
+    # intermediate type is not statically tracked here; leave unresolved.
+    # Upgrade path: iterate var_bindings to a fixpoint.
+    if "." in receiver:
+        return "unresolved", None, []
+    factory_eid = var_bindings.get(scope, {}).get(receiver)
+    if not factory_eid:
+        return "unresolved", None, []
+    return_type = entity_return_type.get(factory_eid, "")
+    # ``str.isidentifier()`` rejects unions (``Store | None``), generics
+    # (``Optional[Store]``, ``list[int]``), dotted (``os.PathLike``), and
+    # quoted forward refs — none resolve to a single in-workspace class.
+    if not return_type.isidentifier():
+        return "unresolved", None, []
+    classes = last_index.get(return_type, [])
+    if len(classes) != 1:
+        return "unresolved", None, []
+    target = f"{classes[0]}.{method}"
+    if target in last_index.get(method, []):
+        return "resolved", target, []
+    return "unresolved", None, []
+
+
 def _unresolved_breakdown(edges: list[Edge]) -> dict[str, int]:
     """Bucket unresolved edges by ``dst_raw`` shape (GH #148).
 
@@ -638,6 +684,9 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
     entities: list[Entity] = []
     # last-segment -> entity ids, for cross-file resolution
     last_index: dict[str, list[str]] = defaultdict(list)
+    # GH #185: entity id -> bare return-type annotation (e.g. "Store"), for
+    # propagating a factory's return type to a locally assigned receiver.
+    entity_return_type: dict[str, str] = {}
     # all scanned module ids, for IMPORTS resolution (GH #117)
     module_set: set[str] = set()
     # TS path-alias map from tsconfig.json (GH #139); empty when no tsconfig.
@@ -668,6 +717,26 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
                     )
                 )
                 last_index[sym.name.rsplit(".", 1)[-1]].append(eid)
+                if sym.return_type:
+                    entity_return_type[eid] = sym.return_type
+
+    # Pass 1.5: local var -> factory entity, per (module, caller) scope.
+    # A call with ``assigned_to`` set is the RHS of ``var = factory()``;
+    # resolve the factory now (it has no dependency on var_bindings) and pin
+    # its eid to the var. Pre-scanned independently of Pass 2 so call order
+    # within a scope doesn't matter (``f(); x = f()`` still resolves).
+    var_bindings: dict[tuple[str, str], dict[str, str]] = {}
+    for node in buffer.directories():
+        for pr in node.parse_results:
+            module = _module_of(pr.path, root)
+            for call in pr.calls:
+                if not call.assigned_to:
+                    continue
+                qual, dst, _ = _resolve(call.callee, module, last_index)
+                if qual == "resolved" and dst:
+                    var_bindings.setdefault(
+                        (module, call.caller), {}
+                    )[call.assigned_to] = dst
 
     # Pass 2: edges (CALLS + INHERITS), resolved against the global index
     edges: list[Edge] = []
@@ -680,6 +749,17 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
                     module, call.caller, is_java=is_java
                 )
                 qual, dst, cands = _resolve(call.callee, module, last_index)
+                # GH #185: a dotted callee that _resolve left unresolved may
+                # still be statically resolvable when the receiver was bound
+                # to a factory whose return type is an in-workspace class.
+                if qual == "unresolved" and call.callee and "." in call.callee:
+                    qual, dst, cands = _resolve_via_factory_return(
+                        call.callee,
+                        (module, call.caller),
+                        var_bindings,
+                        entity_return_type,
+                        last_index,
+                    )
                 edges.append(
                     Edge(
                         kind="CALLS",

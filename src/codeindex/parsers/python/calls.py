@@ -211,6 +211,26 @@ def _extract_call_name(func_node: Node, source_bytes: bytes) -> str:
     return ""
 
 
+def _extract_assignment_target(node: Node, source_bytes: bytes) -> str:
+    """Return the LHS variable name when ``node`` is a call directly assigned.
+
+    Matches ``x = f()`` and ``x = await f()`` — the two forms a factory
+    assignment takes. Returns "" for anything else (tuple unpacking, attribute
+    assignment, bare expression statements, decorator arguments).
+    """
+    parent = node.parent
+    # ``x = await f()``: the call's parent is ``await``, whose parent is the
+    # ``assignment``; ``x = f()``: the call's parent is the ``assignment``.
+    if parent is not None and parent.type == "await" and parent.parent is not None:
+        parent = parent.parent
+    if parent is None or parent.type != "assignment":
+        return ""
+    lhs = parent.child_by_field_name("left")
+    if lhs is None or lhs.type != "identifier":
+        return ""
+    return get_node_text(lhs, source_bytes)
+
+
 def _parse_python_call(
     node: Node,
     source_bytes: bytes,
@@ -271,12 +291,22 @@ def _parse_python_call(
     args_node = node.child_by_field_name("arguments")
     args_count = count_arguments(args_node) if args_node else None
 
+    # GH #185: if this call is the RHS of a direct local assignment
+    # (``store = create_store()`` or ``store = await create_store()``), capture
+    # the LHS variable name. graph-export propagates a factory's return type to
+    # later ``var.method()`` calls in the same scope. Only the direct form:
+    # tuple unpacking (``a, b = f()`` → left is pattern_list), attribute
+    # assignment (``self.x = f()`` → left is attribute), and bare/decorator
+    # contexts leave assigned_to empty.
+    assigned_to = _extract_assignment_target(node, source_bytes)
+
     return Call(
         caller=caller,
         callee=callee,
         line_number=node.start_point[0] + 1,
         call_type=call_type,
         arguments_count=args_count,
+        assigned_to=assigned_to,
     )
 
 
