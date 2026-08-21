@@ -1,7 +1,7 @@
 # codeindex Strategic Roadmap
 
-**Last Updated**: 2026-07-11
-**Current Version**: v0.33.1
+**Last Updated**: 2026-08-21
+**Current Version**: v0.40.0
 **Vision**: LoomGraph 的 parser engine —— 多语言 AST → structural slice → graph-export NDJSON
 **Positioning**: the "see" layer([ADR-009](../architecture/adr/009-codeindex-loomgraph-parser-engine.md))。用户操作 LoomGraph,codeindex 是其解析后端;也可 standalone 用于 README_AI.md navigation index。
 
@@ -158,5 +158,5 @@ contract** —— codeindex 作为 LoomGraph parser engine 的唯一 seam。v0.2
 
 **Roadmap Status**: 🎯 Active
 **Maintained By**: @dreamlx
-**Last Updated**: 2026-07-11
-**Current Version**: v0.33.1
+**Last Updated**: 2026-08-21
+**Current Version**: v0.40.0
