@@ -8,11 +8,15 @@
 
 ### 命令与 escape hatch
 
-完整参考：`codeindex --help`。非显而易见的一个：
+完整参考：`codeindex --help`。非显而易见的几个：
 
 ```bash
+codeindex scan <dir>                  # 单模块结构变更（该目录下文件增删/重命名）后刷新
+codeindex scan-all                    # 全仓刷新
 codeindex scan-all --ai --retry-all   # 强制重新 enrich 每个目录，忽略缓存
 ```
+
+`README_AI.md` 是生成物——结构变更后跑 `scan` / `scan-all` 刷新，不要手改。
 
 瞬时 AI 失败（`⚠ <dir>: AI error`）→ 重跑 `codeindex scan-all --ai`，成功目录走缓存只重试失败的；持续失败 → 改 `.codeindex.yaml` 的 `ai_command` 换模型。
 
