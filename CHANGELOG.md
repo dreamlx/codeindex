@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Co-located "structural change → refresh" command in the injected
+  CLAUDE.md section** (GH #190). The AI-facing "Commands & escape hatches"
+  block listed `scan-all --ai --retry-all` and the transient-failure retry
+  path, but not what to run after a **structural change** (file add / delete
+  / rename). An AI agent seeing a stale controller list in `README_AI.md`
+  defaulted to hand-editing the generated index instead of regenerating it.
+  The block now co-locates two refresh granularities — `codeindex scan <dir>`
+  (one module) and `codeindex scan-all` (whole repo) — plus an explicit
+  "do not hand-edit" line. Single-dir `scan` dissolves the KISS tension
+  (hand-edit 4 lines vs pay for a full enrich pass) by making the targeted
+  refresh tool visible. Template-only change (`claude_md_core.md` +
+  `_zh` variant); no behavior or schema change. `codeindex claude-md update`
+  propagates to all host repos on next refresh.
+
 ## [0.40.0] - 2026-08-21
 
 ### Added

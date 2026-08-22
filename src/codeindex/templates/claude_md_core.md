@@ -8,11 +8,16 @@ This project uses [codeindex](https://github.com/dreamlx/codeindex) (v{version})
 
 ### Commands & escape hatches
 
-Full reference: `codeindex --help`. The non-obvious one:
+Full reference: `codeindex --help`. The non-obvious ones:
 
 ```bash
+codeindex scan <dir>                  # refresh after a structural change in ONE module
+                                      # (file add / delete / rename under that dir)
+codeindex scan-all                    # refresh the whole repo
 codeindex scan-all --ai --retry-all   # force re-enrich every dir, ignore cache
 ```
+
+`README_AI.md` is a generated index — run `scan` / `scan-all` to refresh it after structural changes; do not hand-edit.
 
 Transient AI failures (`⚠ <dir>: AI error`) → re-run `codeindex scan-all --ai`; successes restore from cache, only failures retry. Persistent → swap model in `ai_command` (`.codeindex.yaml`).
 
