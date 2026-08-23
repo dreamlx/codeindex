@@ -244,5 +244,90 @@ If framework route extraction needed (e.g., Gin for Go):
 
 ---
 
-**Last Updated**: 2026-02-07
-**Version**: v0.12.1
+## Two-Phase Pipeline (v0.23.0)
+
+codeindex's documentation generation is a two-phase pipeline. The split keeps
+structure deterministic (tree-sitter, no AI) and semantics optional (AI, only
+when configured) — so the structural index is always reproducible, and AI is a
+pure overlay that can be dropped or re-run without touching structure.
+
+```
+Phase 1 (Structural):
+  Directory → Scanner → Parser (tree-sitter) → SmartWriter → README_AI.md
+
+Phase 2 (AI Enrichment, automatic when ai_command configured):
+  README_AI.md → symbol names + file names → AI → one-line description → blockquote injection
+```
+
+**Phase 1: Structural generation** (always runs)
+1. **Scanner** — walks directories, filters by config patterns
+2. **Parser** — extracts symbols (classes, functions, imports, calls, inheritance) via tree-sitter
+3. **SmartWriter** — generates tiered documentation with size limits (≤50KB)
+4. **Output** — `README_AI.md` optimized for AI consumption, or JSON for tool integration
+
+**Phase 2: AI enrichment** (auto-enabled when `ai_command` configured)
+- Generates a one-line functional description for each non-leaf module
+- Writes as blockquote: `> 会员等级管理、积分兑换、权益卡券`
+- ~200-400 tokens per directory, 10-20x cheaper than full AI generation
+- Parent directories read child descriptions for hierarchical navigation
+
+### Before vs After: Code Navigation
+
+```
+Before (structural only):
+  └── Application/
+      ├── Vip/           — 48 files | 386 symbols     ← AI agent cannot determine purpose
+      ├── Pay/           — 23 files | 178 symbols
+      └── SmallProgramApi/ — 31 files | 245 symbols
+
+After (structural + AI enrichment):
+  └── Application/
+      ├── Vip/           — 会员等级管理、积分兑换、权益卡券 | 48 files
+      ├── Pay/           — 支付网关（支付宝/微信/退款） | 23 files
+      └── SmallProgramApi/ — 小程序端API（登录、头像、商品） | 31 files
+                             ↑ AI agent can navigate directly
+```
+
+---
+
+## Two-Repo Architecture (codeindex → LoomGraph)
+
+codeindex is the **parser engine** (stateless, ADR-007); LoomGraph is the
+**store + query layer** (stateful). The sole seam between them is the
+`graph-export` NDJSON contract (ADR-009). Users operate LoomGraph, which pulls
+`ai-codeindex` as a dependency; codeindex is operated directly only for the
+standalone README_AI.md navigation surface.
+
+```
+┌────────────────────────────────────────────────────┐
+│            Enterprise Intranet Environment          │
+├────────────────────────────────────────────────────┤
+│                                                    │
+│  📦 Code Repository (Git)                          │
+│       ↓                                            │
+│  🔍 codeindex (Parse Layer — stateless)            │
+│       ├── graph-export → NDJSON graph artifact     │
+│       ├── README_AI.md → architecture docs         │
+│       └── tech-debt → comprehensive quality scan   │
+│       ↓                                            │
+│  🕸️ LoomGraph (Store + Query — stateful)           │
+│       ├── import-export ← codeindex NDJSON         │
+│       ├── SQLite + sqlite-vec (graph + vectors)    │
+│       ├── embeddings + KNN semantic search         │
+│       └── query CLI + MCP server                   │
+│       ↓                                            │
+│  💬 AI Agents (Claude Code, Internal Chat)         │
+│       └── Natural language code search (MCP)       │
+│                                                    │
+└────────────────────────────────────────────────────┘
+```
+
+> **Note**: LightRAG + PostgreSQL are no longer part of this flow. LoomGraph's
+> local refactor replaced them with an embedded SQLite + sqlite-vec store
+> ("no RAG framework needed"). See ADR-009 for the parser-engine positioning
+> and ADR-013 (in the LoomGraph repo) for the sqlite-vec replacement rationale.
+
+---
+
+**Last Updated**: 2026-08-23
+**Version**: v0.40.0

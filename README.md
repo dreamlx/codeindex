@@ -1,141 +1,43 @@
 # codeindex
 
-[🇬🇧 English](README.md) | [🇨🇳 中文](README_zh.md)
-
 [![PyPI version](https://badge.fury.io/py/ai-codeindex.svg)](https://badge.fury.io/py/ai-codeindex)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://github.com/dreamlx/codeindex/workflows/Tests/badge.svg)](https://github.com/dreamlx/codeindex/actions)
 
-**Make AI coding agents navigate your codebase by reading, not grepping.**
+[🇬🇧 English](README.md) | [🇨🇳 中文](README_zh.md)
 
-codeindex is an **open-source CLI** that turns any codebase into AI-readable navigation indexes (`README_AI.md`) via a **two-phase pipeline** — structural indexing (tree-sitter AST) + optional one-line AI module descriptions. Agents browse the README_AI.md hierarchy, see what each module does, and jump straight to the right file — across Python, PHP, Java, TypeScript, JavaScript, Swift, and Objective-C. The measured payoff is efficiency, not magic (benchmark below).
+**codeindex is the parser engine that powers [LoomGraph](https://github.com/dreamlx/LoomGraph).** It turns any codebase into AI-readable structural artifacts — a `graph-export` NDJSON call/inheritance graph (the sole seam LoomGraph consumes) and, as a standalone by-product, `README_AI.md` navigation indexes. Stateless (ADR-007); the user-facing product is LoomGraph.
 
-**Runs fully offline.** Structural indexing needs no AI at all; AI descriptions use *your* local agent CLI (e.g. `claude -p`), so no code leaves your network — fine for air-gapped intranets. MIT-licensed, free, and meant to stay that way. **codeindex is the parser engine that powers [LoomGraph](FOR_LOOMGRAPH.md)** — for the full AI-agent experience (knowledge graph, MCP server, impact analysis, skills), `pipx install loomgraph` and run `loomgraph index .`; codeindex is pulled in automatically as a dependency, you never operate it directly. Use codeindex standalone only if you want structural `README_AI.md` navigation indexes without the graph layer.
-
----
-
-## Does this actually help an agent? We measured it.
-
-Most "AI code understanding" tools assert value. We A/B-tested ours — and published the unflattering parts.
-
-Across **15 graded navigation questions on 3 heterogeneous real projects**, a coding agent **with** `README_AI.md` vs **without**:
-
-- **−28% tokens, −19% wall-time** on average — agents reach the right file faster and cheaper.
-- **Answer quality is a wash.** It does *not* make answers more *correct* — the win is efficiency, not capability. (An undisciplined index even hurt a few precise-mechanism questions; fixed in [ADR-005](docs/architecture/adr/005-navigation-disclaimer-and-readme-size-cap.md).)
-- **Smallest win on the largest codebases.** On a 250-directory legacy system the token win nearly vanished — a flat index points you to files but can't synthesize cross-module semantics. codeindex is the *navigate* layer, not the *understand-everything* layer (pair it with source-reading / [Serena](https://github.com/oraios/serena) for precise mechanism).
-
-Full data incl. the failure cases: **[2026-05 benchmark](docs/benchmark/2026-05-readme-impact.md)**. Reproduce on your own repos: **[`bench/`](bench/)** (`make setup && make run && make grade`).
-
-> Why publish the parts that don't flatter the tool: a navigation index that quietly degrades answer quality is worse than none. Knowing *exactly* where it helps — and where to drop to source — is the point.
+> **End users**: `pipx install loomgraph` — it pulls `ai-codeindex` automatically. You never operate codeindex directly. See the [LoomGraph integration guide](FOR_LOOMGRAPH.md).
+> **Standalone users** (navigation indexes without the graph layer): see [Standalone usage](#standalone-usage-without-the-graph-layer) below.
 
 ---
 
-> **For LoomGraph Developers**: [`FOR_LOOMGRAPH.md`](FOR_LOOMGRAPH.md) (quick start) | [`docs/guides/loomgraph-integration.md`](docs/guides/loomgraph-integration.md) (full guide)
+## Why
+
+AI agents in an unfamiliar codebase waste tokens grepping for the right entry point. codeindex pre-computes a structural slice (tree-sitter AST → symbols, calls, inheritance) so the agent — or the graph layer that serves the agent — starts from a known map, not from raw `grep`. The win is navigation efficiency, not capability: a measured −28% tokens / −19% wall-time on the discovery phase, but answer quality is a wash (it does not make the agent smarter — see [Benchmark](#benchmark)).
 
 ---
 
-## Features
-
-### Core: Code Understanding for AI Agents
-
-- **Two-phase documentation pipeline** (v0.23.0) — Phase 1: structural README_AI.md via SmartWriter; Phase 2: AI generates one-line functional descriptions per module. AI agents can browse README_AI.md hierarchy and find the right module **without grep**.
-- **Smart indexing** — Tiered documentation (overview → navigation → detailed) optimized for AI agents, ≤10KB per file (navigation index, not a tech doc — see [ADR-005](docs/architecture/adr/005-navigation-disclaimer-and-readme-size-cap.md))
-- **Auto-AI enrichment** — When an AI backend is configured (`ai:` section per [ADR-008](docs/architecture/adr/008-direct-http-api-ai-default.md), or `ai_command` CLI escape hatch), `scan-all` automatically enables AI module descriptions. Use `--no-ai` to opt out
-
-### Parsing & Analysis
-
-- **Multi-language AST parsing** — Python, PHP, Java, TypeScript, JavaScript, Swift, Objective-C via tree-sitter; more languages plug in via the extractor API (`src/codeindex/extractors/`, community-contributed)
-- **Call relationship extraction** — Function/method call graphs across Python, Java, PHP, TypeScript, JavaScript
-- **Inheritance extraction** — Class hierarchy and interface relationships
-- **Framework route extraction** — ThinkPHP and Spring Boot route tables (more planned)
-- **Technical debt analysis** — Detect large files, god classes, symbol overload, test smells
-- **Single file parse** — `codeindex parse <file>` with JSON output for tool integration
-- **Structured JSON output** — `--output json` for CI/CD, knowledge graphs, and downstream tools
-
-### Developer Experience
-
-- **Adaptive symbol extraction** — Dynamic 5–150 symbols per file based on size
-- **CLAUDE.md injection** — `codeindex init` injects a codeindex section into your **project's** `CLAUDE.md` (never `~/.claude`)
-- **Claude Code plugin** — `codeindex:arch` / `:index` / `:update-guide` skills via [dreamlx/codeindex-claude](https://github.com/dreamlx/codeindex-claude)
-- **Template-based test generation** — YAML + Jinja2 for rapid language support (88–91% time savings)
-- **Parallel scanning** — Concurrent directory processing with configurable workers
-
----
-
-## Use Cases
-
-### 🏢 Enterprise Intranet (Core Scenario)
-
-**Without external tools**: When Serena MCP or other cloud-based code intelligence tools are unavailable due to network isolation or security policies, codeindex becomes the **primary code understanding tool**.
+## Install
 
 ```bash
-# Enterprise developer workflow
-git clone <internal-repo>
-codeindex init                       # Configure project (init --dry-run previews)
-codeindex scan-all                   # Structural + AI descriptions (auto)
-# AI agent reads README_AI.md → sees module purposes → navigates directly
-# No grep needed for code discovery
-codeindex tech-debt src/ --output review.md  # Code quality analysis
+pipx install loomgraph          # end users: pulls ai-codeindex as a dependency
 ```
 
-**Why enterprises choose codeindex**:
-- ✅ **Semantic navigation** — AI agents understand module purposes from README_AI.md hierarchy
-- ✅ **Intranet compatible** — no external dependencies, fully offline
-- ✅ **Self-contained** — no upstream MCP servers required
-- ✅ **Version stable** — enterprise-controlled release cycle
-- ✅ **Data sovereignty** — code never leaves internal network
-
----
-
-### 🕸️ Knowledge Graph Integration (LoomGraph)
-
-**For enterprise teams**: codeindex serves as the **core data source** for [LoomGraph](https://github.com/dreamlx/LoomGraph) knowledge graphs, enabling semantic code search across the organization.
-
-```bash
-# Data pipeline
-codeindex scan --output json > parse_results.json
-loomgraph inject parse_results.json  # Build knowledge graph
-# Team can now search code using natural language
-```
-
-**Two-repo architecture**:
-```
-codeindex (Parse)         →   LoomGraph (Store + Query)
-   ↓ graph-export NDJSON        ↓ SQLite + sqlite-vec
-   AST extraction               Knowledge graph + vector search + MCP
-```
-
-codeindex is the stateless parse layer; LoomGraph is the self-contained
-knowledge graph (SQLite + sqlite-vec, no external RAG framework). Without
-codeindex, LoomGraph has nothing to index. See [LoomGraph Integration Guide](docs/guides/loomgraph-integration.md).
-
----
-
-### 👤 Personal Developers (Complementary)
-
-**With Serena MCP**: For individual developers using Claude Code + Serena MCP, codeindex provides **complementary value**:
-
-- **codeindex** (build-time): Semantic architecture map (README_AI.md with module descriptions) + quality analysis
-- **Serena** (real-time): Precise symbol navigation (`find_symbol`, `find_referencing_symbols`)
-
-```bash
-# Personal developer workflow
-codeindex init                    # Setup CLAUDE.md integration
-codeindex scan-all                # Structural + AI descriptions (auto)
-# Claude Code reads README_AI.md → understands module purpose → uses Serena for details
-```
-
-**Relationship**: codeindex provides the "map with labels," Serena provides the "GPS navigation."
-
----
-
-## Installation
-
-codeindex is a CLI tool — install it with **pipx** (isolated, no dependency conflicts):
+Standalone (navigation indexes only, no graph layer):
 
 ```bash
 pipx install ai-codeindex
+```
+
+From source:
+
+```bash
+git clone https://github.com/dreamlx/codeindex.git
+cd codeindex
+pip install -e ".[all]"
 ```
 
 > **Claude Code users** — also install the companion plugin for skills
@@ -144,360 +46,162 @@ pipx install ai-codeindex
 > /plugin marketplace add dreamlx/codeindex-claude
 > /plugin install codeindex@codeindex-claude
 > ```
-> The plugin is optional and only for Claude Code. The CLI works standalone
-> in any editor / terminal. See [dreamlx/codeindex-claude](https://github.com/dreamlx/codeindex-claude).
 
 ### Language parsers
 
-codeindex uses **lazy loading** — language parsers are imported only when needed.
-`pipx install ai-codeindex` pulls all of them by default. To inject extras into the
-pipx environment later, or to install a subset:
+Python and PHP grammars ship by default. Other languages need the matching `tree-sitter` grammar:
 
 ```bash
-pipx inject ai-codeindex tree-sitter-python tree-sitter-typescript   # add to pipx env
+pipx inject ai-codeindex tree-sitter-typescript tree-sitter-java   # add to pipx env
 # or pin a subset at install time:
-pipx install "ai-codeindex[python]"      # python only
-pipx install "ai-codeindex[ios]"         # Swift + Objective-C
+pipx install "ai-codeindex[ios]"      # Swift + Objective-C
 ```
 
-### Alternatives to pipx
-
-```bash
-pip install --user ai-codeindex          # if you don't have pipx
-```
-
-> **🇨🇳 China users**: if your default mirror (e.g. aliyun) hasn't synced the
-> latest release yet, install straight from upstream PyPI:
-> ```bash
-> pipx install --index-url https://pypi.org/simple/ ai-codeindex
-> ```
-
-### From Source
-
-```bash
-git clone https://github.com/dreamlx/codeindex.git
-cd codeindex
-pip install -e ".[all]"
-```
+> 🇨🇳 China users: if your mirror hasn't synced the latest release, install from upstream PyPI:
+> `pipx install --index-url https://pypi.org/simple/ ai-codeindex`
 
 ---
 
-## Quick Start
+## Quick start
 
-### 1. Initialize Your Project
-
-```bash
-cd /your/project
-codeindex init
-```
-
-This creates:
-- `.codeindex.yaml` — scan configuration (languages, include/exclude patterns)
-- `CLAUDE.md` — injects codeindex instructions so Claude Code uses README_AI.md automatically
-- `CODEINDEX.md` — project-level documentation reference
-
-### 2. Scan Your Codebase
+**LoomGraph users** (the main path):
 
 ```bash
-# Scan all directories
-# When ai_command is configured → auto Phase 1 (structural) + Phase 2 (AI descriptions)
-# Without ai_command → Phase 1 only (structural)
-codeindex scan-all
-
-# Structural only (skip AI enrichment)
-codeindex scan-all --no-ai
-
-# Scan a single directory
-codeindex scan ./src/auth
-
-# Full AI-generated README for a single directory
-codeindex scan ./src/auth --ai
-
-# Preview AI prompt without executing
-codeindex scan ./src/auth --ai --dry-run
+loomgraph index .            # codeindex graph-export → embed → inject, one pipeline
+loomgraph graph "UserService.login" --depth 2
+loomgraph topology           # orphans / hubs + resolved_ratio trust signal
 ```
 
-### 3. Check Status
+**Standalone** (README_AI navigation indexes only):
 
 ```bash
-codeindex status
+codeindex init               # creates .codeindex.yaml + injects CLAUDE.md section
+codeindex scan-all           # structural + optional AI descriptions (auto when ai_command set)
+codeindex scan-all --no-ai   # structural only
 ```
 
-```
-Indexing Status
-───────────────────────────────
-✅ src/auth/
-✅ src/utils/
-⚠️  src/api/ (no README_AI.md)
-Indexed: 2/3 (67%)
-```
-
-### 4. Generate Indexes
-
-```bash
-# Global symbol index (PROJECT_SYMBOLS.md)
-codeindex symbols
-
-# Module overview (PROJECT_INDEX.md)
-codeindex index
-
-# Git change impact analysis
-codeindex affected --since HEAD~5
-```
-
-### More Commands
-
-| Command | Description | Guide |
-|---------|-------------|-------|
-| `codeindex scan --output json` | JSON output for tools | [JSON Output Guide](docs/guides/json-output-integration.md) |
-| `codeindex parse <file>` | Parse single file to JSON | [LoomGraph Integration](docs/guides/loomgraph-integration.md) |
-| `codeindex tech-debt ./src` | Code quality analysis (debt + test smells) | Enhanced in v0.22.0 |
-| `codeindex debt-scan ./src` | Alias for tech-debt | Backward compatibility |
-| `codeindex doctor` | Health/sync check (CLI, parsers, CLAUDE.md, plugin) | Read-only diagnostic |
-| `codeindex config explain <param>` | Parameter help | [Configuration Guide](docs/guides/configuration.md) |
+Full command reference: `codeindex --help`.
 
 ---
 
-## Claude Code Integration
+## Standalone usage (without the graph layer)
 
-**The codeindex plugin** gives Claude Code four skills backed by the CLI:
+codeindex's `README_AI.md` is a tiered **navigation index** — agents browse it to find the right module, then drop to source for precise mechanism. It is *not* a knowledge graph and does not resolve cross-module relationships; for that, use LoomGraph.
 
-```
-/plugin marketplace add dreamlx/codeindex-claude
-/plugin install codeindex@codeindex-claude
-```
+**When standalone is the right fit**:
+- Small / mid codebase where a graph layer is more weight than you need.
+- Air-gapped intranet where you want navigation without any external service.
+- Pairing with [Serena MCP](https://github.com/oraios/serena) for precise symbol queries (codeindex = the "map", Serena = the "GPS").
 
-| Skill | What it does |
-|-------|--------------|
-| `codeindex:arch` | Answer architecture / "where is X" questions from `README_AI.md` |
-| `codeindex:index` | Walk you through `codeindex init` → `scan-all` |
-| `codeindex:update-guide` | Refresh the codeindex section in your project's `CLAUDE.md` |
+**When you should move to LoomGraph**:
+- You need cross-module call-graph walks (callers of `authenticate()` two hops deep).
+- You need change-impact analysis, topology smells, or semantic search.
+- The codebase is large enough that a flat navigation index stops paying (see benchmark: on a 250-directory legacy system the token win nearly vanished — a flat index points at files but can't synthesize cross-module semantics).
 
-`codeindex init` also injects a codeindex section into your project's `CLAUDE.md`
-so Claude Code reads `README_AI.md` files first. (As of v0.25.0, `init` only
-touches project-scoped files — see [ADR-006](docs/architecture/adr/006-distribution-architecture-split.md).)
-
-**For enterprise users without Serena**: README_AI.md and PROJECT_SYMBOLS.md become your **primary code navigation tools**.
-
-> The plugin skills don't replace the `codeindex claude-md` / `codeindex hooks`
-> CLI commands — they orchestrate them. The commands stay first-class for
-> CLI-only users (Cursor, scripts); the skills add a guided Claude Code UX on top.
+`codeindex init` injects a codeindex section into your **project's** `CLAUDE.md` so Claude Code reads `README_AI.md` first (never `~/.claude` — ADR-006). `codeindex scan-all` refreshes indexes after structural changes; `README_AI.md` is a generated artifact — do not hand-edit.
 
 ---
 
-## Language Support
+## Benchmark
 
-| Language | Status | Since | Key Features |
-|----------|--------|-------|-------------|
-| Python | ✅ Supported | v0.1.0 | Classes, functions, methods, imports, docstrings, inheritance, calls |
-| PHP | ✅ Supported | v0.5.0 | Classes (extends/implements), methods, properties, PHPDoc, inheritance, calls |
-| Java | ✅ Supported | v0.7.0 | Classes, interfaces, enums, records, annotations, Spring routes, Lombok, calls |
-| TypeScript/JS | ✅ Supported | v0.19.0 | Classes, interfaces, enums, type aliases, arrow functions, JSX/TSX, imports/exports, calls |
-| Swift | ✅ Supported | v0.21.0 | Classes, structs, enums, protocols, extensions, methods, properties |
-| Objective-C | ✅ Supported | v0.21.0 | Classes, protocols, categories, properties, methods (instance/class) |
-| Go | 📋 Planned | — | Packages, interfaces, struct methods |
-| Rust | 📋 Planned | — | Structs, traits, modules |
-| C# | 📋 Planned | — | Classes, interfaces, .NET projects |
+Most "AI code understanding" tools assert value. We A/B-tested ours — and published the unflattering parts.
 
-**Want to add a language?** The template-based test system lets you contribute by writing YAML specs — no Python knowledge required. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+Across **15 graded navigation questions on 3 heterogeneous real projects**, a coding agent **with** `README_AI.md` vs **without**:
 
-### Framework Route Extraction
+- **−28% tokens, −19% wall-time** on average — agents reach the right file faster and cheaper.
+- **Answer quality is a wash.** It does *not* make answers more *correct* — the win is efficiency, not capability. (An undisciplined index even hurt a few precise-mechanism questions; fixed in [ADR-005](docs/architecture/adr/005-navigation-disclaimer-and-readme-size-cap.md).)
+- **Smallest win on the largest codebases.** On a 250-directory legacy system the token win nearly vanished — a flat index points you to files but can't synthesize cross-module semantics. codeindex is the *navigate* layer, not the *understand-everything* layer (pair it with source-reading / [Serena](https://github.com/oraios/serena) for precise mechanism, or move to LoomGraph for cross-module graph queries).
 
-| Framework | Language | Status |
-|-----------|----------|--------|
-| ThinkPHP | PHP | ✅ Stable (v0.5.0) |
-| Spring Boot | Java | ✅ Stable (v0.8.0) |
-| Laravel | PHP | 📋 Planned |
-| FastAPI | Python | 📋 Planned |
-| Django | Python | 📋 Planned |
-| Express.js | JS/TS | 📋 Planned |
+Full data incl. the failure cases: **[2026-05 benchmark](docs/benchmark/2026-05-readme-impact.md)**. Reproduce on your own repos: **[`bench/`](bench/)** (`make setup && make run && make grade`).
+
+> Why publish the parts that don't flatter the tool: a navigation index that quietly degrades answer quality is worse than none. Knowing *exactly* where it helps — and where to drop to source — is the point.
 
 ---
 
-## Code Quality Analysis
+## Commands
 
-### tech-debt: Comprehensive Quality Analysis (Enhanced in v0.22.0)
+Full reference: `codeindex --help`. Highlights:
 
-The `tech-debt` command provides comprehensive code quality analysis, now including test smells detection:
+| Command | Purpose |
+|---|---|
+| `codeindex scan-all` | Generate / refresh `README_AI.md` indexes (structural + optional AI) |
+| `codeindex graph-export` | Emit the entities + edges NDJSON that LoomGraph consumes |
+| `codeindex parse <file>` | Single-file JSON parse for tool integration |
+| `codeindex symbols` | Global symbol index (`PROJECT_SYMBOLS.md`) |
+| `codeindex tech-debt <dir>` | Code-quality analysis (large files, god classes, test smells) — see [guide](docs/guides/tech-debt-analysis.md) |
+| `codeindex affected --since HEAD~5` | Git change-impact (affected directories) |
+| `codeindex doctor` | Health/sync check (CLI, parsers, CLAUDE.md, plugin) |
+| `codeindex claude-md update` | Refresh the codeindex section in your project's `CLAUDE.md` |
 
-```bash
-# JSON output (for LoomGraph integration)
-codeindex tech-debt ./src --format json > debt-data.json
-
-# Markdown report (for documentation)
-codeindex tech-debt ./src --format markdown > report.md
-
-# Console output (for quick checks)
-codeindex tech-debt ./src --format console
-
-# Alias: debt-scan also works (backward compatibility)
-codeindex debt-scan ./src --format json
-```
-
-**What it detects**:
-- 🔴 **Super large files** (>5000 lines), **Large files** (>2000 lines)
-- 🔴 **God Classes** (>50 methods)
-- 🔴 **Long methods** (>80/150 lines)
-- 🟡 **High coupling** (>8 internal imports)
-- 🟡 **Symbol overload** (>100 symbols, high noise ratio)
-- 🧪 **Test smells** (skipped tests, giant test files) — **New in v0.22.0**
-- 📊 **Quality scoring** (0-100 scale per file)
-
-**Enhanced JSON output (v0.22.0)**:
-```json
-{
-  "timestamp": "2026-03-06T13:45:39Z",
-  "summary": {
-    "total_files": 97,
-    "giant_files": 0,
-    "giant_functions": 3,
-    "test_smells": 64,
-    "avg_maintainability": 9.9
-  },
-  "total_files": 97,
-  "average_quality_score": 99.4,
-  "giant_files": [],
-  "giant_functions": [...],
-  "test_smells": [
-    {
-      "path": "tests/test_example.py",
-      "type": "skipped_test",
-      "details": "Skipped test detected: @pytest.mark.skip at line 42",
-      "line_number": 42
-    }
-  ],
-  "file_reports": [...]
-}
-```
-
-**Key features**:
-- ✅ **Unified command**: Single entry point for all quality checks
-- ✅ **Backward compatible**: All existing JSON fields preserved
-- ✅ **LoomGraph ready**: Enhanced summary for knowledge graph integration
-- ✅ **Framework-agnostic**: Detects test smells across Jest, pytest, JUnit, etc.
-- ✅ **KISS design**: 90% code reuse, simple regex patterns for test detection
+Each command emits JSON (`--output json`) for CI/CD and downstream tools.
 
 ---
 
-## How It Works
+## Language support
 
-### Two-Phase Pipeline (v0.23.0)
+| Language | Status | Since |
+|----------|--------|-------|
+| Python | ✅ | v0.1.0 |
+| PHP | ✅ | v0.5.0 |
+| Java | ✅ | v0.7.0 |
+| TypeScript / JS | ✅ | v0.19.0 |
+| Swift | ✅ | v0.21.0 |
+| Objective-C | ✅ | v0.21.0 |
+| Go / Rust / C# | 📋 Planned | — |
 
-```
-Phase 1 (Structural):
-  Directory → Scanner → Parser (tree-sitter) → SmartWriter → README_AI.md
+**Framework route extraction**: ThinkPHP (PHP), Spring Boot (Java); Express, Laravel, FastAPI, Django planned.
 
-Phase 2 (AI Enrichment, automatic when ai_command configured):
-  README_AI.md → symbol names + file names → AI → one-line description → blockquote injection
-```
+**Want to add a language?** The template-based test system lets you contribute by writing YAML specs — no Python knowledge required. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-**Phase 1: Structural generation** (always runs)
-1. **Scanner** — walks directories, filters by config patterns
-2. **Parser** — extracts symbols (classes, functions, imports, calls, inheritance) via tree-sitter
-3. **SmartWriter** — generates tiered documentation with size limits (≤50KB)
-4. **Output** — `README_AI.md` optimized for AI consumption, or JSON for tool integration
+---
 
-**Phase 2: AI enrichment** (auto-enabled when `ai_command` configured)
-- Generates a one-line functional description for each non-leaf module
-- Writes as blockquote: `> 会员等级管理、积分兑换、权益卡券`
-- ~200-400 tokens per directory, 10-20x cheaper than full AI generation
-- Parent directories read child descriptions for hierarchical navigation
+## How it works
 
-### Before vs After: Code Navigation
+codeindex's documentation generation is a **two-phase pipeline** — structure is deterministic (tree-sitter, no AI), AI enrichment is an optional overlay. The `graph-export` NDJSON (the LoomGraph seam) is pure AST. Full pipeline + architecture diagrams: [`docs/architecture/design-philosophy.md`](docs/architecture/design-philosophy.md).
 
-```
-Before (structural only):
-  └── Application/
-      ├── Vip/           — 48 files | 386 symbols     ← AI agent cannot determine purpose
-      ├── Pay/           — 23 files | 178 symbols
-      └── SmallProgramApi/ — 31 files | 245 symbols
+---
 
-After (structural + AI enrichment):
-  └── Application/
-      ├── Vip/           — 会员等级管理、积分兑换、权益卡券 | 48 files
-      ├── Pay/           — 支付网关（支付宝/微信/退款） | 23 files
-      └── SmallProgramApi/ — 小程序端API（登录、头像、商品） | 31 files
-                             ↑ AI agent can navigate directly
-```
+## For LoomGraph developers
 
-### Two-Repo Architecture (Enterprise Knowledge Graph)
-
-```
-┌────────────────────────────────────────────────────┐
-│            Enterprise Intranet Environment          │
-├────────────────────────────────────────────────────┤
-│                                                    │
-│  📦 Code Repository (Git)                          │
-│       ↓                                            │
-│  🔍 codeindex (Parse Layer — stateless)            │
-│       ├── graph-export → NDJSON graph artifact     │
-│       ├── README_AI.md → architecture docs         │
-│       └── tech-debt → comprehensive quality scan   │
-│       ↓                                            │
-│  🕸️ LoomGraph (Store + Query — stateful)           │
-│       ├── import-export ← codeindex NDJSON         │
-│       ├── SQLite + sqlite-vec (graph + vectors)    │
-│       ├── embeddings + KNN semantic search         │
-│       └── query CLI + MCP server                   │
-│       ↓                                            │
-│  💬 AI Agents (Claude Code, Internal Chat)         │
-│       └── Natural language code search (MCP)       │
-│                                                    │
-└────────────────────────────────────────────────────┘
-```
-
-> **Note**: LightRAG + PostgreSQL are no longer part of this flow. LoomGraph's
-> local refactor replaced them with an embedded SQLite + sqlite-vec store
-> ("no RAG framework needed").
-
-**codeindex role**: Bottom layer (parsing) — LoomGraph depends on codeindex's
-`graph-export` NDJSON as the sole data seam. codeindex itself stays stateless (ADR-007).
+If you work on LoomGraph (the user-facing product), start here: **[FOR_LOOMGRAPH.md](FOR_LOOMGRAPH.md)** — the parser-engine contract, the graph-export NDJSON seam, and the codeindex commands you'll touch.
 
 ---
 
 ## Documentation
 
-### User Guides
+### User guides
 
 | Guide | Description |
-|-------|-------------|
-| [Getting Started](docs/guides/getting-started.md) | Installation and first scan |
-| [Configuration Guide](docs/guides/configuration.md) | All config options explained |
-| [Advanced Usage](docs/guides/advanced-usage.md) | Parallel scanning, custom prompts |
-| [Git Hooks Integration](docs/guides/git-hooks-integration.md) | Automated quality checks and doc updates |
-| [Claude Code Integration](docs/guides/claude-code-integration.md) | AI agent setup and MCP skills |
-| [JSON Output Integration](docs/guides/json-output-integration.md) | Machine-readable output for tools |
-| [LoomGraph Integration](docs/guides/loomgraph-integration.md) | Knowledge graph data pipeline |
+|---|---|
+| [Getting started](docs/guides/getting-started.md) | Installation and first scan |
+| [Configuration](docs/guides/configuration.md) | All config options explained |
+| [Advanced usage](docs/guides/advanced-usage.md) | Parallel scanning, custom prompts |
+| [Git hooks integration](docs/guides/git-hooks-integration.md) | Automated quality checks and doc updates |
+| [Claude Code integration](docs/guides/claude-code-integration.md) | AI agent setup and MCP skills |
+| [JSON output integration](docs/guides/json-output-integration.md) | Machine-readable output for tools |
+| [Tech-debt analysis](docs/guides/tech-debt-analysis.md) | Code-quality analysis command reference |
+| [LoomGraph integration](docs/guides/loomgraph-integration.md) | The graph-export → graph-store pipeline |
 
-### Developer Guides
+### Developer & architecture
 
-| Guide | Description |
-|-------|-------------|
+| Doc | Description |
+|---|---|
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup, TDD workflow, code style |
-| [CLAUDE.md](CLAUDE.md) | Quick reference for Claude Code and contributors |
-| [Design Philosophy](docs/architecture/design-philosophy.md) | Core design principles and architecture |
-| [ADR-005](docs/architecture/adr/005-navigation-disclaimer-and-readme-size-cap.md) | 2026-05: navigation-contract disclaimer + size cap, backed by benchmark |
-| [Release Automation](docs/development/QUICK_START_RELEASE.md) | 5-minute automated release workflow |
-| [Multi-Language Support](docs/development/multi-language-support-workflow.md) | Adding new language parsers |
-| [Language Support Contribution](docs/development/multi-language-support-workflow.md) | Template-based test generation for new languages |
+| [Design philosophy](docs/architecture/design-philosophy.md) | Two-phase pipeline, two-repo architecture, design principles |
+| [ADR-005](docs/architecture/adr/005-navigation-disclaimer-and-readme-size-cap.md) | Navigation-contract disclaimer + README size cap |
+| [ADR-009](docs/architecture/adr/009-codeindex-loomgraph-parser-engine.md) | codeindex = LoomGraph parser engine positioning |
+| [Release automation](docs/development/QUICK_START_RELEASE.md) | 5-minute automated release workflow |
 
 ### Evidence & benchmarks
 
 | Doc | What it shows |
 |---|---|
-| [2026-05 README impact benchmark](docs/benchmark/2026-05-readme-impact.md) | Measured agent comprehension delta WITH vs WITHOUT `README_AI.md` across 3 heterogeneous projects (15 graded questions). Headline: 19% faster / 28% fewer tokens on average, but speed gains masked quality drops on some detail questions — fix is shipped (see ADR-005). |
-| [`bench/`](bench/) | Reproducible harness (Makefile + python) used to produce the benchmark above; run your own with `cd bench && make setup && make run && make grade && make report`. |
-
-### Planning
-
-- [Strategic Roadmap](docs/planning/ROADMAP.md) — long-term vision and priorities
-- [Changelog](CHANGELOG.md) — version history and breaking changes
+| [2026-05 README impact benchmark](docs/benchmark/2026-05-readme-impact.md) | Agent comprehension delta WITH vs WITHOUT `README_AI.md` (15 graded questions, 3 projects). Headline: 19% faster / 28% fewer tokens on average, but quality wash on some detail questions — fix shipped (ADR-005). |
+| [`bench/`](bench/) | Reproducible harness (`make setup && make run && make grade && make report`). |
 
 ---
 
 ## Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ```bash
 git clone https://github.com/dreamlx/codeindex.git
@@ -507,14 +211,7 @@ make install-hooks
 make test
 ```
 
-### Release Process (Maintainers)
-
-```bash
-make release VERSION=0.17.0
-# GitHub Actions: tests → PyPI publish → GitHub Release
-```
-
-See [Release Automation Guide](docs/development/QUICK_START_RELEASE.md) for details.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines. Maintainer release: `make release VERSION=0.X.0` (CI → tests → PyPI publish → GitHub Release).
 
 ---
 
@@ -522,19 +219,9 @@ See [Release Automation Guide](docs/development/QUICK_START_RELEASE.md) for deta
 
 **Current version**: v0.40.0
 
-**Recent milestones**:
-- v0.23.0 — **AI-Enhanced Module Descriptions**: two-phase pipeline, auto-AI enrichment, post-commit thin wrapper
-- v0.22.2 — Auto-update CLAUDE.md on `pip upgrade`, `/codeindex-update-guide` skill
-- v0.22.0 — Unified tech-debt + test smells analysis
-- v0.21.0 — Swift & Objective-C language support
-- v0.19.0 — TypeScript/JavaScript support with call extraction
+**Next**: framework routes expansion (Express, Laravel, FastAPI, Django); Go, Rust, C# language support.
 
-**Next**:
-- Framework routes expansion: Express, Laravel, FastAPI, Django (Epic 17)
-- Go, Rust, C# language support
-
-**Moved to [LoomGraph](https://github.com/dreamlx/LoomGraph)**:
-- Code similarity search, refactoring suggestions, team collaboration, IDE integration
+Code similarity search, refactoring suggestions, team collaboration, and IDE integration live in [LoomGraph](https://github.com/dreamlx/LoomGraph), not here — codeindex stays the stateless parse layer.
 
 See [Strategic Roadmap](docs/planning/ROADMAP.md) for detailed plans.
 
@@ -542,22 +229,9 @@ See [Strategic Roadmap](docs/planning/ROADMAP.md) for detailed plans.
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- [tree-sitter](https://tree-sitter.github.io/) — fast, incremental parsing
-- [Claude CLI](https://github.com/anthropics/claude-cli) — AI integration inspiration
-- All contributors and users
+[MIT](LICENSE) — free, and meant to stay that way.
 
 ## Support
 
 - **Questions**: [GitHub Discussions](https://github.com/dreamlx/codeindex/discussions)
-- **Bugs**: [GitHub Issues](https://github.com/dreamlx/codeindex/issues)
-- **Feature Requests**: [GitHub Issues](https://github.com/dreamlx/codeindex/issues/new?labels=enhancement)
-
----
-
-<p align="center">
-  Made with ❤️ by the codeindex team
-</p>
+- **Bugs / Feature requests**: [GitHub Issues](https://github.com/dreamlx/codeindex/issues)

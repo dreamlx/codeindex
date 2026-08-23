@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **README rewritten to align with ADR-009** (GH #190 follow-up). codeindex's
+  README had grown to 564 lines by marketing standalone `README_AI.md`
+  navigation as a first-class product line — contradicting ADR-009's
+  positioning of codeindex as LoomGraph's parser engine (standalone is a
+  "secondary surface"). The rewrite demotes standalone to a single section,
+  makes the parser-engine / LoomGraph-seam axis primary, and externalizes
+  deep-dive content: the Code Quality JSON dump + detection list moved to a
+  new [`docs/guides/tech-debt-analysis.md`](docs/guides/tech-debt-analysis.md),
+  and the two-phase pipeline + two-repo architecture diagrams moved into
+  [`docs/architecture/design-philosophy.md`](docs/architecture/design-philosophy.md).
+  `FOR_LOOMGRAPH.md` refreshed as the first-entry doc for LoomGraph developers.
+  README.md / README_zh.md now ~230 lines each (down from 564/559). Documentation-
+  only — no CLI behavior change.
+
 ### Fixed
 
 - **Co-located "structural change → refresh" command in the injected
