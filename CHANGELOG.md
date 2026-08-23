@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.40.1] - 2026-08-23
+
 ### Changed
 
 - **README rewritten to align with ADR-009** (GH #190 follow-up). codeindex's
