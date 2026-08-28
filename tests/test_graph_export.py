@@ -1901,3 +1901,121 @@ class TestLanguageFingerprint:
         assert result.exit_code == 0, result.output
         assert "fingerprint" not in result.output.lower(), result.output
 
+
+
+# GH #193 — PHP CALLS/INHERITS src must land on emitted entity ids.
+# For namespaced PHP files the parser baked the namespace into
+# ``Call.caller`` (``Acme\Billing\OrderService::checkout``) while entity ids
+# are built from the bare ``sym.name`` (``OrderService::checkout``) + the
+# path-derived module (which already encodes the namespace under PSR-4) —
+# so ``src`` carried a doubly-encoded id that joined no entity, and
+# ``dst`` for ``$this->`` calls missed the last-segment pool entirely.
+
+
+def _php_call_fixture(tmp_path):
+    """Minimal synthetic namespaced PHP fixture: caller method, direct
+    $this-> provider call, an extends clause (INHERITS), and a dynamic
+    receiver call that must stay unresolved."""
+    (tmp_path / ".codeindex.yaml").write_text("version: 1\nlanguages: [php]\n")
+    (tmp_path / "OrderService.php").write_text(
+        "<?php\n"
+        "namespace Acme\\Billing;\n"
+        "class OrderService\n"
+        "{\n"
+        "    public function checkout(): void\n"
+        "    {\n"
+        "        $this->placeOrder();\n"
+        "    }\n"
+        "    public function placeOrder(): void\n"
+        "    {\n"
+        "    }\n"
+        "}\n"
+    )
+    (tmp_path / "LegacyOrder.php").write_text(
+        "<?php\n"
+        "namespace Acme\\Billing;\n"
+        "class LegacyOrder extends OrderService\n"
+        "{\n"
+        "    public function run($dyn): void\n"
+        "    {\n"
+        "        $dyn->unknown();\n"
+        "    }\n"
+        "}\n"
+    )
+
+
+def test_php_calls_src_matches_entity_id(tmp_path) -> None:
+    """GH #193: the direct $this-> call must carry a canonical src (an
+    emitted method entity id) AND a resolved canonical dst."""
+    _php_call_fixture(tmp_path)
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    checkout_eid = next(
+        e.id for e in model.entities if e.id.endswith("OrderService::checkout")
+    )
+    place_order_eid = next(
+        e.id for e in model.entities if e.id.endswith("OrderService::placeOrder")
+    )
+    call = [
+        e for e in model.edges
+        if e.kind == "CALLS" and e.dst_raw == "OrderService::placeOrder"
+    ]
+    assert len(call) == 1, model.edges
+    assert call[0].src == checkout_eid
+    assert call[0].dst == place_order_eid
+    assert call[0].resolution_qualifier == "resolved"
+
+
+def test_php_edge_src_joins_entity_id_set(tmp_path) -> None:
+    """Contract (GH #193): every CALLS/INHERITS edge src in a PHP artifact
+    must be an emitted entity id. IMPORTS is excluded — its src is the
+    module id, which has no entity backing by design (schema note, Pass 3)."""
+    _php_call_fixture(tmp_path)
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    entity_ids = {e.id for e in model.entities}
+    offenders = [
+        (e.kind, e.src, e.dst_raw)
+        for e in model.edges
+        if e.kind in ("CALLS", "INHERITS") and e.src not in entity_ids
+    ]
+    assert offenders == [], (
+        f"{len(offenders)} edges with src not in entity id set: "
+        f"{offenders[:5]}"
+    )
+
+
+def test_php_inherits_src_lands_on_class_entity(tmp_path) -> None:
+    """GH #193: INHERITS child is a namespace-qualified FQN
+    (``Acme\\Billing\\LegacyOrder``); the simple-name step behind the src id
+    must collapse it so the edge lands on the class entity."""
+    _php_call_fixture(tmp_path)
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    class_eids = [
+        e.id for e in model.entities if e.entity_type == "class"
+        and e.id.endswith("LegacyOrder")
+    ]
+    assert len(class_eids) == 1
+    inherits = [e for e in model.edges if e.kind == "INHERITS"]
+    assert len(inherits) == 1
+    assert inherits[0].src == class_eids[0]
+
+
+def test_php_dynamic_call_stays_unresolved(tmp_path) -> None:
+    """GH #193 boundary: a call on an unknown receiver keeps its unresolved
+    qualifier — the src fix must not promote dynamic targets to resolved."""
+    _php_call_fixture(tmp_path)
+    config = Config.load(tmp_path / ".codeindex.yaml")
+    model = build_export(walk_and_parse(tmp_path, config), tmp_path)
+
+    dyn = [
+        e for e in model.edges
+        if e.kind == "CALLS" and e.dst_raw == "Dyn::unknown"
+    ]
+    assert len(dyn) == 1
+    assert dyn[0].resolution_qualifier == "unresolved"
+    assert dyn[0].dst is None
