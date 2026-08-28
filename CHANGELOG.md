@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **PHP `graph-export` CALLS/INHERITS `src` now lands on emitted entity
+  ids** (GH #193, PR #194). For namespaced PHP files the parser baked the
+  namespace into `Call.caller` (`Acme\Billing\OrderService::checkout`)
+  while entity ids are built from the bare `sym.name` plus the path-derived
+  module (which already encodes the namespace under PSR-4) — so every CALLS
+  edge `src` was double-encoded and joined no entity (consumers saw inbound
+  links but no outbound callees), `$this->` callees missed the resolution
+  pool entirely, and INHERITS `src` rode through a simple-name step that
+  only split on `.`. Fix at the emitter: `parsers/php/calls.py` now emits
+  bare callers/callees (the shape `sym.name` and global-namespace files
+  already used); `graph_export.py` `_simple_name()` splits the last segment
+  on both `.` and `\` for INHERITS. `Inheritance.child/parent` keep their
+  FQN evidence format; dynamic calls stay unresolved; edge schema and
+  `resolution_qualifier` values unchanged — downstream only sees edges join
+  where they previously didn't.
+
 ## [0.40.1] - 2026-08-23
 
 ### Changed
