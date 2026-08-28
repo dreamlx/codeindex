@@ -139,19 +139,18 @@ def _extract_class_inheritances(
                 if ic_child.type == "name":
                     implements.append(get_node_text(ic_child, source_bytes))
 
-    # Build full class name with namespace
-    full_class_name = f"{namespace}\\{class_name}" if namespace else class_name
-
-    # Create Inheritance objects
+    # GH #193: bare child name — this list only feeds the parent:: lookup
+    # (parent_map keyed by bare current_class). Parent stays qualified so
+    # the callee keeps its full evidence.
     if extends:
         parent_full_name = use_map.get(extends, f"{namespace}\\{extends}" if namespace else extends)
-        inheritances.append(Inheritance(child=full_class_name, parent=parent_full_name))
+        inheritances.append(Inheritance(child=class_name, parent=parent_full_name))
 
     for interface in implements:
         interface_full_name = use_map.get(
             interface, f"{namespace}\\{interface}" if namespace else interface
         )
-        inheritances.append(Inheritance(child=full_class_name, parent=interface_full_name))
+        inheritances.append(Inheritance(child=class_name, parent=interface_full_name))
 
 
 def _extract_calls_from_tree(
@@ -194,7 +193,11 @@ def _extract_calls_from_tree(
                     break
 
             if func_name:
-                caller = f"{namespace}\\{func_name}" if namespace else func_name
+                # GH #193: bare name — entity ids are built from the bare
+                # sym.name + the path-derived module, which already encodes
+                # the namespace (PSR-4); baking it in here double-encodes
+                # the CALLS src so it joins no entity.
+                caller = func_name
                 # Extract calls from function body
                 calls.extend(
                     _extract_calls_from_node(
@@ -213,9 +216,6 @@ def _extract_calls_from_tree(
 
             if not class_name:
                 continue
-
-            # Full class name with namespace
-            full_class_name = f"{namespace}\\{class_name}" if namespace else class_name
 
             # Find class body
             body_node = None
@@ -238,12 +238,16 @@ def _extract_calls_from_tree(
                             break
 
                     if method_name:
-                        caller = f"{full_class_name}::{method_name}"
+                        # GH #193: bare ``Class::method`` caller / current_class
+                        # — matches the bare ``sym.name`` that entity ids are
+                        # built from, and keeps $this/self/static callees in
+                        # the same shape so they resolve same-module.
+                        caller = f"{class_name}::{method_name}"
                         # Extract calls from method body
                         calls.extend(
                             _extract_calls_from_node(
                                 method_node, source_bytes, caller,
-                                use_map, namespace, parent_map, full_class_name
+                                use_map, namespace, parent_map, class_name
                             )
                         )
 
@@ -533,10 +537,10 @@ def _parse_scoped_call(
             # Resolve via use_map
             full_class = use_map[scope_name]
             callee = f"{full_class}::{method_name}"
-        elif namespace:
-            # Assume it's in current namespace
-            callee = f"{namespace}\\{scope_name}::{method_name}"
         else:
+            # GH #193: bare name — the namespace is already encoded in the
+            # module path; a same-namespace static call must resolve like a
+            # same-namespace $this-> call does.
             callee = f"{scope_name}::{method_name}"
     else:
         return None
@@ -597,10 +601,10 @@ def _parse_object_creation(
     elif class_name in use_map:
         # Resolve via use_map
         full_class = use_map[class_name]
-    elif namespace:
-        # Assume it's in current namespace
-        full_class = f"{namespace}\\{class_name}"
     else:
+        # GH #193: bare name — entity ids carry no namespace (the module
+        # path does), so a same-namespace constructor must be emitted in
+        # the shape that can join them.
         full_class = class_name
 
     # Constructor call

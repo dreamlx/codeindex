@@ -206,6 +206,16 @@ def _source_id(path: Path, root: Path, line: int) -> str:
     return f"{path.resolve().relative_to(root.resolve()).as_posix()}:{line}"
 
 
+def _simple_name(qualified: str) -> str:
+    """Last segment of a dotted OR backslash-qualified name.
+
+    INHERITS children are FQNs (Java ``pkg.Class``, PHP ``Ns\\Class``); the
+    simple-name step behind the src id must know both separators or a PHP
+    namespace rides along and the src joins no entity (GH #193).
+    """
+    return qualified.rsplit(".", 1)[-1].rsplit("\\", 1)[-1]
+
+
 def _first_line(text: str) -> str:
     text = (text or "").strip()
     return text.splitlines()[0].strip() if text else ""
@@ -781,7 +791,7 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
                 pqual, pdst, _ = _resolve(inh.parent, module, last_index)
                 if pqual == "resolved" and pdst:
                     child_eid = _qualified_id(
-                        module, inh.child.rsplit(".", 1)[-1], is_java=is_java
+                        module, _simple_name(inh.child), is_java=is_java
                     )
                     child_index[pdst].append(child_eid)
 
@@ -827,10 +837,11 @@ def build_export(buffer: GraphBuffer, root: Path) -> ExportModel:
                 edges.append(
                     Edge(
                         kind="INHERITS",
-                        # INHERITS child is a FQN (pkg.Class); take its simple
-                        # name so src lands on the class entity id (GH #154).
+                        # INHERITS child is a FQN (pkg.Class / Ns\\Class);
+                        # take its simple name so src lands on the class
+                        # entity id (GH #154, backslash for GH #193).
                         src=_qualified_id(
-                            module, inh.child.rsplit(".", 1)[-1], is_java=is_java
+                            module, _simple_name(inh.child), is_java=is_java
                         ),
                         dst=dst,
                         resolution_qualifier=qual,
