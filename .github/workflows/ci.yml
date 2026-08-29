@@ -1,18 +1,32 @@
 name: CI Tests
 
+# Cost-trimmed (2026-08): repo is public (Actions minutes fully discounted),
+# so this is footprint hygiene — but the macOS matrix was 86% of the gross
+# usage and the only macOS minutes on the whole account. macOS now runs as a
+# weekly scheduled smoke instead of on every push/PR; coverage gate runs once
+# (ubuntu/3.11) instead of in all 6 matrix jobs; lint+build share one job;
+# docs-only changes skip CI entirely.
+
 on:
   push:
     branches: [master]
+    paths-ignore: ['docs/**', '*.md']
   pull_request:
     branches: [master]
+    paths-ignore: ['docs/**', '*.md']
+  schedule:
+    - cron: '23 3 * * 1' # weekly: macOS compatibility smoke
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
         python-version: ['3.10', '3.11', '3.12']
 
     steps:
@@ -36,21 +50,28 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e ".[dev,all]"
 
-    - name: Run linter
-      run: ruff check src/ tests/ test_generator/
+    # Coverage gate + Codecov upload run once (3.11); the other matrix legs
+    # are plain regression sweeps.
+    - name: Run tests (3.11 coverage gate)
+      if: matrix.python-version == '3.11'
+      run: pytest -q --cov=src/codeindex --cov-report=xml --cov-fail-under=78
 
-    - name: Run tests with coverage
-      run: |
-        pytest -v --cov=src/codeindex --cov-report=term-missing --cov-report=xml --cov-fail-under=78
+    - name: Run tests
+      if: matrix.python-version != '3.11'
+      run: pytest -q
 
-    - name: Upload coverage to Codecov (Ubuntu Python 3.11 only)
-      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+    - name: Upload coverage to Codecov
+      if: matrix.python-version == '3.11'
       uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
         fail_ci_if_error: false
 
-  lint:
+  check:
+    # lint + packaging validation in one job (was two).
+    # No artifact upload: nothing consumes dist/ here, and publish.yml
+    # rebuilds + uploads on tag — the old per-run upload was the repo's only
+    # nontrivial Actions-storage accumulation.
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -60,8 +81,8 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install lint tools
-      run: pip install ruff mypy
+    - name: Install tools
+      run: pip install ruff mypy build twine
 
     - name: Run ruff check
       run: ruff check src/ tests/ test_generator/
@@ -70,29 +91,38 @@ jobs:
       run: mypy src/codeindex/parser.py src/codeindex/scanner.py src/codeindex/config.py
       continue-on-error: true
 
-  build-check:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-
-    - name: Install build tools
-      run: |
-        python -m pip install --upgrade pip
-        pip install build twine
-
     - name: Build distribution
       run: python -m build
 
     - name: Check distribution
       run: twine check dist/*
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
+  macos-smoke:
+    # Weekly macOS compatibility check (was: 3 matrix jobs on every push/PR).
+    # Platform-specific breakage is otherwise caught by daily local dev on
+    # Apple Silicon; this is the drift safety net.
+    if: github.event_name == 'schedule'
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
       with:
-        name: dist-packages
-        path: dist/
+        python-version: '3.12'
+
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/Library/Caches/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev,all]"
+
+    - name: Run tests
+      run: pytest -q
